@@ -1,0 +1,10 @@
+{
+  "name": "Kmivo",
+  "displayName": "Kmivo",
+  "android": {
+    "package": "com.kmivo.erp"
+  },
+  "ios": {
+    "bundleIdentifier": "com.kmivo.erp"
+  }
+}
