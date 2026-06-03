@@ -27,14 +27,14 @@ const CRMHospitalListScreen = ({ navigation }) => {
       hideHomeIcon: true,
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => navigation.navigate('CRMAddHospital')}
+          onPress={() => navigation.navigate('CRMAddHospital', { onSuccess: fetchHospitals })}
           style={{ paddingRight: 10 }}
         >
           <Icon name="add" color="#FFF" size={28} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, fetchHospitals]);
 
   useEffect(() => {
     fetchHospitals();

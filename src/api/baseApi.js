@@ -459,6 +459,83 @@ export const baseApi = createApi({
         };
       },
     }),
+    getPaymentTermsDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/payment_terms.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+      transformResponse: response => {
+        if (response.status === 'true' && Array.isArray(response.data)) {
+          return {
+            ...response,
+            data: response.data.map(item => {
+              const cleanedItem = {};
+              Object.keys(item).forEach(key => {
+                cleanedItem[key.trim()] = item[key];
+              });
+              return cleanedItem;
+            }),
+          };
+        }
+        return response;
+      },
+    }),
+    getCustomerTypeDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/customer_type.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+      transformResponse: response => {
+        if (response.status === 'true' && Array.isArray(response.data)) {
+          return {
+            ...response,
+            data: response.data.map(item => {
+              const cleanedItem = {};
+              Object.keys(item).forEach(key => {
+                cleanedItem[key.trim()] = item[key];
+              });
+              return cleanedItem;
+            }),
+          };
+        }
+        return response;
+      },
+    }),
+    addHospital: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('user_id', body.user_id);
+        formData.append('name', body.name);
+        if (body.address !== undefined) {
+          formData.append('address', body.address);
+        }
+        formData.append('city', body.city);
+        formData.append('cust_type', body.cust_type);
+        formData.append('beds', body.beds);
+        formData.append('payment_terms', body.payment_terms);
+        formData.append('segment', body.segment);
+
+        return {
+          url: 'portal/hospital_post.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
   }),
 });
 
@@ -487,6 +564,9 @@ export const {
   useGetProductPlanCategoryDropdownMutation,
   useGetSurgicalSpecialityDropdownMutation,
   usePostSampleDataMutation,
+  useGetPaymentTermsDropdownMutation,
+  useGetCustomerTypeDropdownMutation,
+  useAddHospitalMutation,
 } = baseApi;
 
 export default baseApi;

@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,33 +6,44 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@config/useTheme';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Dropdown } from 'react-native-element-dropdown';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '@store/slices/authSlice';
+import Toast from 'react-native-toast-message';
+import {
+  useGetCityDropdownMutation,
+  useGetDepartmentDropdownMutation,
+  useGetPaymentTermsDropdownMutation,
+  useGetCustomerTypeDropdownMutation,
+  useAddHospitalMutation,
+} from '@api/baseApi';
 
-// Generic dummy data for dropdowns
-const DUMMY_OPTIONS = [
-  { label: 'Option A', value: 'A' },
-  { label: 'Option B', value: 'B' },
-  { label: 'Option C', value: 'C' },
-];
-
-const CRMAddHospitalScreen = ({ navigation }) => {
+const CRMAddHospitalScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
+  const user = useSelector(selectCurrentUser);
 
   // Basic Information State
   const [basicInfo, setBasicInfo] = useState({
     hospitalName: '',
     address: '',
     city: null,
-    segment: null,
-    noOfOts: '',
+    segment: null, // Replaced with Department dropdown options
     noOfBeds: '',
-    status: null,
     customersType: null,
+    paymentTerms: null,
   });
+
+  // API Hooks
+  const [getCityDropdown, { data: cityRes, isLoading: cityLoading }] = useGetCityDropdownMutation();
+  const [getDepartmentDropdown, { data: deptRes, isLoading: deptLoading }] = useGetDepartmentDropdownMutation();
+  const [getPaymentTermsDropdown, { data: paymentRes, isLoading: paymentLoading }] = useGetPaymentTermsDropdownMutation();
+  const [getCustomerTypeDropdown, { data: custTypeRes, isLoading: custTypeLoading }] = useGetCustomerTypeDropdownMutation();
+  const [addHospital, { isLoading: isSubmitting }] = useAddHospitalMutation();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -40,11 +51,109 @@ const CRMAddHospitalScreen = ({ navigation }) => {
     });
   }, [navigation]);
 
+  useEffect(() => {
+    if (user?.id) {
+      getCityDropdown({ id: user.id });
+    }
+    getDepartmentDropdown({});
+    getPaymentTermsDropdown({});
+    getCustomerTypeDropdown({});
+  }, [user?.id]);
+
   const updateBasicField = (key, value) => {
     setBasicInfo((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleSave = async () => {
+    if (!basicInfo.hospitalName.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Hospital Name is required',
+      });
+      return;
+    }
+    if (!basicInfo.city) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a City',
+      });
+      return;
+    }
+    if (!basicInfo.customersType) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Customers Type',
+      });
+      return;
+    }
+    if (!basicInfo.noOfBeds.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'No. of Beds is required',
+      });
+      return;
+    }
+    if (!basicInfo.segment) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Segment (Department)',
+      });
+      return;
+    }
+    if (!basicInfo.paymentTerms) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select Payment Terms',
+      });
+      return;
+    }
 
+    try {
+      const payload = {
+        user_id: user?.id || '57',
+        name: basicInfo.hospitalName,
+        address: basicInfo.address,
+        city: basicInfo.city,
+        cust_type: basicInfo.customersType,
+        beds: basicInfo.noOfBeds,
+        payment_terms: basicInfo.paymentTerms,
+        segment: basicInfo.segment,
+      };
+
+      console.log('Post Hospital Payload:', payload);
+      const res = await addHospital(payload).unwrap();
+      if (String(res.status) === 'true') {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: res.message || 'Hospital added successfully',
+        });
+        if (route.params?.onSuccess) {
+          route.params.onSuccess();
+        }
+        navigation.goBack();
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: res.message || 'Failed to add hospital',
+        });
+      }
+    } catch (err) {
+      console.error('Save Hospital Error:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An error occurred while saving the hospital.',
+      });
+    }
+  };
 
   // UI Helpers
   const renderInput = (label, value, onChangeText, keyboardType = 'default') => (
@@ -61,39 +170,42 @@ const CRMAddHospitalScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderDropdown = (label, value, onChange) => (
+  const renderDropdown = (label, data, value, onChange, labelField = 'label', valueField = 'value', isLoading = false) => (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
-      <Dropdown
-        style={[styles.dropdown, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
-        placeholderStyle={[styles.placeholderStyle, { color: theme.colors.textSecondary }]}
-        selectedTextStyle={[styles.selectedTextStyle, { color: theme.colors.text }]}
-        itemTextStyle={[styles.itemTextStyle, { color: theme.colors.text }]}
-        containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
-        data={DUMMY_OPTIONS}
-        maxHeight={300}
-        labelField="label"
-        valueField="value"
-        placeholder={`Select ${label}`}
-        value={value}
-        onChange={(item) => onChange(item.value)}
-      />
+      {isLoading ? (
+        <View style={styles.dropdownLoader}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      ) : (
+        <Dropdown
+          style={[styles.dropdown, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
+          placeholderStyle={[styles.placeholderStyle, { color: theme.colors.textSecondary }]}
+          selectedTextStyle={[styles.selectedTextStyle, { color: theme.colors.text }]}
+          itemTextStyle={[styles.itemTextStyle, { color: theme.colors.text }]}
+          containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
+          data={data || []}
+          maxHeight={300}
+          labelField={labelField}
+          valueField={valueField}
+          placeholder={`Select ${label}`}
+          value={value}
+          onChange={(item) => onChange(item[valueField])}
+        />
+      )}
     </View>
   );
-
-
 
   // Tab Contents
   const renderBasicInfo = () => (
     <View style={styles.formContent}>
       {renderInput('Hospital Name', basicInfo.hospitalName, (text) => updateBasicField('hospitalName', text))}
       {renderInput('Address', basicInfo.address, (text) => updateBasicField('address', text))}
-      {renderDropdown('City', basicInfo.city, (val) => updateBasicField('city', val))}
-      {renderDropdown('Segment', basicInfo.segment, (val) => updateBasicField('segment', val))}
-      {renderInput('No. of OTs', basicInfo.noOfOts, (text) => updateBasicField('noOfOts', text), 'numeric')}
+      {renderDropdown('City', cityRes?.data || [], basicInfo.city, (val) => updateBasicField('city', val), 'cityname', 'id', cityLoading)}
+      {renderDropdown('Customers Type', custTypeRes?.data || [], basicInfo.customersType, (val) => updateBasicField('customersType', val), 'description', 'sales_code', custTypeLoading)}
       {renderInput('No. of Beds', basicInfo.noOfBeds, (text) => updateBasicField('noOfBeds', text), 'numeric')}
-      {renderDropdown('Current Status', basicInfo.status, (val) => updateBasicField('status', val))}
-      {renderDropdown('Customers Type', basicInfo.customersType, (val) => updateBasicField('customersType', val))}
+      {renderDropdown('Segment (Department)', deptRes?.data || [], basicInfo.segment, (val) => updateBasicField('segment', val), 'description', 'sales_code', deptLoading)}
+      {renderDropdown('Payment Terms', paymentRes?.data || [], basicInfo.paymentTerms, (val) => updateBasicField('paymentTerms', val), 'terms', 'terms_indicator', paymentLoading)}
     </View>
   );
 
@@ -104,10 +216,15 @@ const CRMAddHospitalScreen = ({ navigation }) => {
         
         {/* Save Button */}
         <TouchableOpacity 
-          style={[styles.saveBtn, { backgroundColor: theme.colors.primary }]}
-          onPress={() => navigation.goBack()}
+          style={[styles.saveBtn, { backgroundColor: theme.colors.primary }, isSubmitting && { opacity: 0.7 }]}
+          onPress={handleSave}
+          disabled={isSubmitting}
         >
-          <Text style={styles.saveBtnText}>Save Hospital</Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.saveBtnText}>Save Hospital</Text>
+          )}
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -119,23 +236,6 @@ const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  },
-  tabContainer: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
-  },
-  tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   scrollContent: {
     padding: 16,
@@ -173,40 +273,13 @@ const getStyles = (theme) => StyleSheet.create({
   itemTextStyle: {
     fontSize: 15,
   },
-  dynamicRowBlock: {
+  dropdownLoader: {
+    height: 50,
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  dynamicHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dynamicTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  addMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  addMoreText: {
-    fontSize: 15,
-    fontWeight: '600',
+    alignItems: 'center',
+    borderColor: theme.colors.border,
   },
   saveBtn: {
     height: 54,
