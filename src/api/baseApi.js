@@ -177,7 +177,7 @@ export const baseApi = createApi({
         formData.append('contact_person', body.contact_person);
         formData.append(
           'progress_status',
-          body.progress_status !== undefined ? body.progress_status : '0'
+          body.progress_status !== undefined ? body.progress_status : '0',
         );
         formData.append('created_by', body.created_by);
         formData.append('evening_remarks', body.evening_remarks || '');
@@ -350,7 +350,7 @@ export const baseApi = createApi({
         formData.append('personal_email', body.personal_email);
         formData.append('cell_no', body.cell_no);
         formData.append('hospital', body.hospital);
-        
+
         if (body.profile_pic_name) {
           formData.append('profile_pic_name', {
             uri: body.profile_pic_name.uri,
@@ -519,10 +519,8 @@ export const baseApi = createApi({
         formData.append('company', 'CRM');
         formData.append('user_id', body.user_id);
         formData.append('name', body.name);
-        if (body.address !== undefined) {
-          formData.append('address', body.address);
-        }
-        formData.append('city', body.city);
+        formData.append('address', body.address || '');
+        formData.append('city', body.city || '');
         formData.append('cust_type', body.cust_type);
         formData.append('beds', body.beds);
         formData.append('payment_terms', body.payment_terms);

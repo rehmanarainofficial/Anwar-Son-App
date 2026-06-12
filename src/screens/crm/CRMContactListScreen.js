@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, useEffect } from 'react';
+import React, { useLayoutEffect, useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -22,26 +22,7 @@ const CRMContactListScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [getContactsData, { isLoading }] = useGetContactsDataMutation();
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: 'Contacts',
-      hideHomeIcon: true,
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('CRMAddLead')}
-          style={{ paddingRight: 10 }}
-        >
-          <Icon name="add" color="#FFF" size={28} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
-
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
-  const fetchContacts = async () => {
+  const fetchContacts = useCallback(async () => {
     try {
       const res = await getContactsData({ user_id: user?.id }).unwrap();
       if (res.status === 'true') {
@@ -50,7 +31,29 @@ const CRMContactListScreen = ({ navigation }) => {
     } catch (error) {
       console.log('Fetch Contacts Error:', error);
     }
-  };
+  }, [getContactsData, user?.id]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Contacts',
+      hideHomeIcon: true,
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CRMAddLead', { onSuccess: fetchContacts })}
+          style={{ paddingRight: 10 }}
+        >
+          <Icon name="add" color="#FFF" size={28} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, fetchContacts]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchContacts();
+    });
+    return unsubscribe;
+  }, [navigation, fetchContacts]);
 
   const cleanText = text => {
     if (!text) return '';
@@ -246,7 +249,7 @@ const CRMContactListScreen = ({ navigation }) => {
       ) : (
         <FlatList
           data={filteredContacts}
-          keyExtractor={(item, index) => item.contact_id || index.toString()}
+          keyExtractor={(item, index) => `${item.contact_id || index}-${index}`}
           renderItem={renderContactCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}

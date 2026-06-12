@@ -9,6 +9,7 @@ import {
   Animated,
   Platform,
   ActivityIndicator,
+  PermissionsAndroid,
 } from 'react-native';
 import { Dropdown, MultiSelect } from 'react-native-element-dropdown';
 import Toast from 'react-native-toast-message';
@@ -16,13 +17,13 @@ import { useTheme } from '@config/useTheme';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import {
-  useGetHospitalMutation,
   useGetCityDropdownMutation,
   useGetTitleDropdownMutation,
   useAddHospitalContactMutation,
 } from '@api/baseApi';
+import { useGetHospitalDataMutation } from '@api/portalApi';
 
 const CRMAddLeadScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
@@ -34,7 +35,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   const [selectedTitle, setSelectedTitle] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedHospitals, setSelectedHospitals] = useState([]);
-  
+
   const [profilePic, setProfilePic] = useState(null);
   const [businessCard, setBusinessCard] = useState(null);
 
@@ -44,7 +45,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
   const [getTitleDropdown] = useGetTitleDropdownMutation();
   const [getCityDropdown] = useGetCityDropdownMutation();
-  const [getHospital] = useGetHospitalMutation();
+  const [getHospitalData] = useGetHospitalDataMutation();
   const [addHospitalContact] = useAddHospitalContactMutation();
 
   const [loading, setLoading] = useState(true);
@@ -87,21 +88,27 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const titleRes = await getTitleDropdown({ id: user?.id || user?.company_user_id }).unwrap();
+      const titleRes = await getTitleDropdown({
+        id: user?.id || user?.company_user_id,
+      }).unwrap();
       if (titleRes?.status === 'true') {
         setTitles(titleRes.data || []);
       }
-      const cityRes = await getCityDropdown({ id: user?.id || user?.company_user_id }).unwrap();
+      const cityRes = await getCityDropdown({
+        id: user?.id || user?.company_user_id,
+      }).unwrap();
       if (cityRes?.status === 'true') {
         setCities(cityRes.data || []);
       }
-      const hospRes = await getHospital({ id: user?.id || user?.company_user_id }).unwrap();
+      const hospRes = await getHospitalData({
+        user_id: user?.id,
+      }).unwrap();
       if (hospRes?.status === 'true') {
         const hData = hospRes.data || [];
         const formattedHospitals = hData.map((h, i) => ({
           ...h,
-          unique_id: h.id ? String(h.id) : h.hospital_id ? String(h.hospital_id) : String(i),
-          name: h.name || h.hospital_name || 'Unknown Hospital',
+          unique_id: h.debtor_no ? String(h.debtor_no) : String(i),
+          name: h.hospital_name || 'Unknown Hospital',
         }));
         setHospitals(formattedHospitals);
       }
@@ -114,33 +121,85 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
   const validate = () => {
     if (!selectedTitle) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Title' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Title',
+      });
       return false;
     }
     if (!personName || personName.trim() === '') {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Person Name is required' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Person Name is required',
+      });
       return false;
     }
     if (!selectedCity) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select City' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select City',
+      });
       return false;
     }
     if (!cellNo || cellNo.trim() === '') {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Cell No is required' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Cell No is required',
+      });
       return false;
     }
     if (selectedHospitals.length === 0) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select at least one Hospital' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select at least one Hospital',
+      });
       return false;
     }
     return true;
   };
 
-  const handlePickImage = async (setter) => {
-    const options = { mediaType: 'photo', quality: 0.5 };
-    const result = await launchImageLibrary(options);
-    if (result.assets && result.assets.length > 0) {
-      setter(result.assets[0]);
+  const handleImagePick = async (source, setter) => {
+    if (source === 'camera' && Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Camera Permission',
+            message: 'App needs camera permission to take photos.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Toast.show({
+            type: 'error',
+            text1: 'Permission Denied',
+            text2: 'Camera permission is required to take photos.',
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+        return;
+      }
+    }
+
+    const options = { mediaType: 'photo', quality: 0.5, saveToPhotos: false };
+    try {
+      const result = source === 'camera'
+        ? await launchCamera(options)
+        : await launchImageLibrary(options);
+      if (result.assets && result.assets.length > 0) {
+        setter(result.assets[0]);
+      }
+    } catch (err) {
+      console.log('Error picking image:', err);
     }
   };
 
@@ -150,7 +209,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
     setSubmitting(true);
     try {
       const res = await addHospitalContact({
-        user_id: user?.id || user?.company_user_id || '',
+        user_id: user?.id || '',
         title: selectedTitle,
         person_name: personName,
         city: selectedCity,
@@ -158,21 +217,33 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
         cell_no: cellNo,
         hospital: selectedHospitals.join(','),
         profile_pic_name: profilePic,
-        business_card_name: businessCard
+        business_card_name: businessCard,
       }).unwrap();
 
       if (res && String(res.status) === 'true') {
-        Toast.show({ type: 'success', text1: 'Success', text2: res.message || 'Successfully added.' });
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: res.message || 'Successfully added.',
+        });
         if (route.params?.onSuccess) {
           route.params.onSuccess();
         }
         navigation.goBack();
       } else {
-        Toast.show({ type: 'error', text1: 'Failed', text2: res.message || 'Unknown error' });
+        Toast.show({
+          type: 'error',
+          text1: 'Failed',
+          text2: res.message || 'Unknown error',
+        });
       }
     } catch (e) {
       console.log('Error submitting form', e);
-      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not submit form.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Network Error',
+        text2: 'Could not submit form.',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -194,7 +265,8 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
         },
-      ]}>
+      ]}
+    >
       <TextInput
         style={[styles.textInput, { color: theme.colors.text }]}
         placeholder={placeholder}
@@ -217,48 +289,76 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
         },
-      ]}>
-      <Text style={[styles.imageLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
+      ]}
+    >
+      <Text style={[styles.imageLabel, { color: theme.colors.textSecondary }]}>
+        {label}
+      </Text>
       <View style={styles.imagePickerRow}>
         <TouchableOpacity
           style={[styles.uploadBtn, { borderColor: theme.colors.border }]}
-          onPress={() => handlePickImage(setImgState)}
+          onPress={() => handleImagePick('gallery', setImgState)}
         >
           <Icon name="image" size={20} color={theme.colors.primary} />
-          <Text style={[styles.uploadText, { color: theme.colors.text }]}>Gallery</Text>
+          <Text style={[styles.uploadText, { color: theme.colors.text }]}>
+            Gallery
+          </Text>
         </TouchableOpacity>
-        {imageState && (
-          <View style={styles.imagePreviewWrapper}>
-            <Text style={{ color: theme.colors.text, fontSize: 12 }} numberOfLines={1}>
-              {imageState.fileName || 'Selected'}
-            </Text>
-            <TouchableOpacity onPress={() => setImgState(null)}>
-              <Icon name="close-circle" size={20} color={theme.colors.error} />
-            </TouchableOpacity>
-          </View>
-        )}
+        <TouchableOpacity
+          style={[styles.uploadBtn, { borderColor: theme.colors.border }]}
+          onPress={() => handleImagePick('camera', setImgState)}
+        >
+          <Icon name="camera" size={20} color={theme.colors.primary} />
+          <Text style={[styles.uploadText, { color: theme.colors.text }]}>
+            Camera
+          </Text>
+        </TouchableOpacity>
       </View>
+      {imageState && (
+        <View style={[styles.imagePreviewWrapper, { marginTop: 10 }]}>
+          <Text
+            style={{ color: theme.colors.text, fontSize: 12, flex: 1, marginRight: 8 }}
+            numberOfLines={1}
+          >
+            {imageState.fileName || 'Selected'}
+          </Text>
+          <TouchableOpacity onPress={() => setImgState(null)}>
+            <Icon name="close-circle" size={20} color={theme.colors.error} />
+          </TouchableOpacity>
+        </View>
+      )}
     </Animated.View>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 16 }}
-          showsVerticalScrollIndicator={false}>
-          
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View
             style={{
               transform: [{ translateY: animValues[0].translateY }],
               opacity: animValues[0].opacity,
-            }}>
+            }}
+          >
             <Dropdown
-              style={[styles.dropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
               data={titles}
               search
               labelField="description"
@@ -270,7 +370,10 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               onChange={item => setSelectedTitle(item.sales_code)}
               selectedTextStyle={{ color: theme.colors.text }}
               itemTextStyle={{ color: theme.colors.text }}
-              containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
               activeColor={theme.colors.border}
             />
           </Animated.View>
@@ -281,9 +384,16 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
             style={{
               transform: [{ translateY: animValues[2].translateY }],
               opacity: animValues[2].opacity,
-            }}>
+            }}
+          >
             <Dropdown
-              style={[styles.dropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
               data={cities}
               search
               labelField="cityname"
@@ -295,21 +405,40 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               onChange={item => setSelectedCity(item.id)}
               selectedTextStyle={{ color: theme.colors.text }}
               itemTextStyle={{ color: theme.colors.text }}
-              containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
               activeColor={theme.colors.border}
             />
           </Animated.View>
 
-          {renderInputAnimated(3, 'Personal Email', personalEmail, setPersonalEmail, 'email-address')}
+          {renderInputAnimated(
+            3,
+            'Personal Email',
+            personalEmail,
+            setPersonalEmail,
+            'email-address',
+          )}
           {renderInputAnimated(4, 'Cell No *', cellNo, setCellNo, 'phone-pad')}
 
           <Animated.View
             style={{
               transform: [{ translateY: animValues[5].translateY }],
               opacity: animValues[5].opacity,
-            }}>
+            }}
+          >
             <MultiSelect
-              style={[styles.dropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, minHeight: 56, height: 'auto', paddingVertical: 10 }]}
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  minHeight: 56,
+                  height: 'auto',
+                  paddingVertical: 10,
+                },
+              ]}
               data={hospitals}
               search
               labelField="name"
@@ -321,9 +450,18 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               onChange={item => setSelectedHospitals(item)}
               selectedTextStyle={{ color: theme.colors.text }}
               itemTextStyle={{ color: theme.colors.text }}
-              containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
               activeColor={theme.colors.border}
-              selectedStyle={[styles.selectedStyle, { backgroundColor: theme.colors.primary + '20', borderColor: theme.colors.primary }]}
+              selectedStyle={[
+                styles.selectedStyle,
+                {
+                  backgroundColor: theme.colors.primary + '20',
+                  borderColor: theme.colors.primary,
+                },
+              ]}
             />
           </Animated.View>
 
@@ -334,7 +472,8 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
             style={{
               transform: [{ translateY: animValues[7].translateY }],
               opacity: animValues[7].opacity,
-            }}>
+            }}
+          >
             <TouchableOpacity
               style={[
                 styles.submitBtn,
@@ -342,11 +481,14 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
                 submitting && styles.submitBtnDisabled,
               ]}
               onPress={handleSubmit}
-              disabled={submitting}>
+              disabled={submitting}
+            >
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>
+                <Text
+                  style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}
+                >
                   Submit
                 </Text>
               )}
@@ -399,7 +541,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 8,
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
   },
   imagePickerRow: {
     flexDirection: 'row',
