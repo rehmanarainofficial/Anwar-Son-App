@@ -339,6 +339,32 @@ export const baseApi = createApi({
         };
       },
     }),
+    getCommunityDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('community', body.community !== undefined ? body.community : '');
+        return {
+          url: 'dropdown/community.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getAdministrativeRoleDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('administrative_role', body.administrative_role !== undefined ? body.administrative_role : '');
+        return {
+          url: 'dropdown/administrative_role.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
     addHospitalContact: builder.mutation({
       query: body => {
         const formData = new FormData();
@@ -350,6 +376,8 @@ export const baseApi = createApi({
         formData.append('personal_email', body.personal_email);
         formData.append('cell_no', body.cell_no);
         formData.append('hospital', body.hospital);
+        formData.append('community', body.community !== undefined ? body.community : '');
+        formData.append('administrative_role', body.administrative_role !== undefined ? body.administrative_role : '');
 
         if (body.profile_pic_name) {
           formData.append('profile_pic_name', {
@@ -556,6 +584,8 @@ export const {
   useGetBranchAddressMutation,
   useGetCityDropdownMutation,
   useGetTitleDropdownMutation,
+  useGetCommunityDropdownMutation,
+  useGetAdministrativeRoleDropdownMutation,
   useAddHospitalContactMutation,
   useGetStockMasterMainDropdownMutation,
   useGetDepartmentDropdownMutation,

@@ -21,6 +21,8 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import {
   useGetCityDropdownMutation,
   useGetTitleDropdownMutation,
+  useGetCommunityDropdownMutation,
+  useGetAdministrativeRoleDropdownMutation,
   useAddHospitalContactMutation,
 } from '@api/baseApi';
 import { useGetHospitalDataMutation } from '@api/portalApi';
@@ -34,6 +36,8 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   const [cellNo, setCellNo] = useState('');
   const [selectedTitle, setSelectedTitle] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedCommunity, setSelectedCommunity] = useState(null);
+  const [selectedAdministrativeRole, setSelectedAdministrativeRole] = useState(null);
   const [selectedHospitals, setSelectedHospitals] = useState([]);
 
   const [profilePic, setProfilePic] = useState(null);
@@ -41,10 +45,14 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
   const [titles, setTitles] = useState([]);
   const [cities, setCities] = useState([]);
+  const [communities, setCommunities] = useState([]);
+  const [administrativeRoles, setAdministrativeRoles] = useState([]);
   const [hospitals, setHospitals] = useState([]);
 
   const [getTitleDropdown] = useGetTitleDropdownMutation();
   const [getCityDropdown] = useGetCityDropdownMutation();
+  const [getCommunityDropdown] = useGetCommunityDropdownMutation();
+  const [getAdministrativeRoleDropdown] = useGetAdministrativeRoleDropdownMutation();
   const [getHospitalData] = useGetHospitalDataMutation();
   const [addHospitalContact] = useAddHospitalContactMutation();
 
@@ -53,7 +61,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
   // Animated entrance values
   const animValues = useRef([]).current;
-  const inputsCount = 8;
+  const inputsCount = 10;
   if (animValues.length === 0) {
     for (let i = 0; i < inputsCount; i++) {
       animValues.push({
@@ -99,6 +107,14 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
       }).unwrap();
       if (cityRes?.status === 'true') {
         setCities(cityRes.data || []);
+      }
+      const commRes = await getCommunityDropdown({}).unwrap();
+      if (commRes?.status === 'true') {
+        setCommunities(commRes.data || []);
+      }
+      const adminRoleRes = await getAdministrativeRoleDropdown({}).unwrap();
+      if (adminRoleRes?.status === 'true') {
+        setAdministrativeRoles(adminRoleRes.data || []);
       }
       const hospRes = await getHospitalData({
         user_id: user?.id,
@@ -218,6 +234,8 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
         hospital: selectedHospitals.join(','),
         profile_pic_name: profilePic,
         business_card_name: businessCard,
+        community: selectedCommunity || '',
+        administrative_role: selectedAdministrativeRole || '',
       }).unwrap();
 
       if (res && String(res.status) === 'true') {
@@ -428,6 +446,72 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               opacity: animValues[5].opacity,
             }}
           >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              data={communities}
+              search
+              labelField="description"
+              valueField="combo_code"
+              placeholder="Select Community"
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedCommunity}
+              onChange={item => setSelectedCommunity(item.combo_code)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={{
+              transform: [{ translateY: animValues[6].translateY }],
+              opacity: animValues[6].opacity,
+            }}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              data={administrativeRoles}
+              search
+              labelField="description"
+              valueField="combo_code"
+              placeholder="Select Administrative Role"
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedAdministrativeRole}
+              onChange={item => setSelectedAdministrativeRole(item.combo_code)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={{
+              transform: [{ translateY: animValues[7].translateY }],
+              opacity: animValues[7].opacity,
+            }}
+          >
             <MultiSelect
               style={[
                 styles.dropdown,
@@ -465,13 +549,13 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
             />
           </Animated.View>
 
-          {renderImagePicker(6, 'Profile Picture', profilePic, setProfilePic)}
-          {renderImagePicker(6, 'Business Card', businessCard, setBusinessCard)}
+          {renderImagePicker(8, 'Profile Picture', profilePic, setProfilePic)}
+          {renderImagePicker(8, 'Business Card', businessCard, setBusinessCard)}
 
           <Animated.View
             style={{
-              transform: [{ translateY: animValues[7].translateY }],
-              opacity: animValues[7].opacity,
+              transform: [{ translateY: animValues[9].translateY }],
+              opacity: animValues[9].opacity,
             }}
           >
             <TouchableOpacity
