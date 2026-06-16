@@ -51,7 +51,7 @@ const SalesOrderStatusScreen = () => {
       const res = await getViewData({
         company: user?.company_user_code || company,
         trans_no: order.trans_no || '',
-        type: order.type || '30', // Fallback to 30 for Order Status
+        type: order.type || '30',
       }).unwrap();
 
       console.log('API Response (OrderStatus):', res);
@@ -63,7 +63,7 @@ const SalesOrderStatusScreen = () => {
           'Sales Order',
           headerData,
           detailData,
-          user?.company_name || 'ANWAR & SONS',
+          user?.company_name,
         );
       } else {
         console.log('API Response Error or No Data:', res);
@@ -125,9 +125,18 @@ const SalesOrderStatusScreen = () => {
 
   // Derived stats
   const totalOrders = orders.length;
-  const readyCount = orders.filter(o => o.status === 'Ready For Dispatched').length;
-  const awaitedCount = orders.filter(o => o.status === 'Awaited Payment').length;
-  const unapprovedCount = orders.filter(o => o.status === 'Un Approved' || o.status === 'Unapproved' || o.status === 'UnApproved').length;
+  const readyCount = orders.filter(
+    o => o.status === 'Ready For Dispatched',
+  ).length;
+  const awaitedCount = orders.filter(
+    o => o.status === 'Awaited Payment',
+  ).length;
+  const unapprovedCount = orders.filter(
+    o =>
+      o.status === 'Un Approved' ||
+      o.status === 'Unapproved' ||
+      o.status === 'UnApproved',
+  ).length;
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
@@ -255,7 +264,14 @@ const SalesOrderStatusScreen = () => {
         {/* Footer Area with Amount & Details Button Stacked */}
         <View style={styles.amountSection}>
           <View style={styles.amountContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 15,
+              }}
+            >
               <View style={{ alignItems: 'center' }}>
                 <Text style={styles.amountLabel}>TOTAL AMOUNT</Text>
                 <Text style={styles.amountValue}>
@@ -266,47 +282,66 @@ const SalesOrderStatusScreen = () => {
                 </Text>
               </View>
 
-              {(order.status === 'Ready For Dispatched' || order.status === 'Awaited Payment') && (
+              {(order.status === 'Ready For Dispatched' ||
+                order.status === 'Awaited Payment') && (
                 <>
                   <View style={styles.vDivider} />
                   <View style={{ alignItems: 'center' }}>
                     <Text style={styles.amountLabel}>RECEIVED</Text>
-                    <Text style={[styles.amountValue, { color: theme.colors.success, fontSize: 18 }]}>
+                    <Text
+                      style={[
+                        styles.amountValue,
+                        { color: theme.colors.success, fontSize: 18 },
+                      ]}
+                    >
                       {parseFloat(order.payment_received || 0).toLocaleString()}
                     </Text>
                   </View>
                   <View style={styles.vDivider} />
                   <View style={{ alignItems: 'center' }}>
                     <Text style={styles.amountLabel}>REMAINING</Text>
-                    <Text style={[styles.amountValue, { color: theme.colors.error, fontSize: 18 }]}>
-                      {parseFloat(order.payment_reamining || 0).toLocaleString()}
+                    <Text
+                      style={[
+                        styles.amountValue,
+                        { color: theme.colors.error, fontSize: 18 },
+                      ]}
+                    >
+                      {parseFloat(
+                        order.payment_reamining || 0,
+                      ).toLocaleString()}
                     </Text>
                   </View>
                 </>
               )}
             </View>
-            
-            <View style={[
-              styles.statusBadge, 
-              { 
-                backgroundColor: order.status === 'Ready For Dispatched' 
-                  ? '#dcfce7' 
-                  : order.status === 'Awaited Payment'
-                    ? '#fef3c7'
-                    : '#fee2e2', 
-                marginTop: 10 
-              }
-            ]}>
-              <Text style={[
-                styles.statusText, 
-                { 
-                  color: order.status === 'Ready For Dispatched' 
-                    ? '#166534' 
-                    : order.status === 'Awaited Payment'
-                      ? '#b45309'
-                      : '#991b1b' 
-                }
-              ]}>
+
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor:
+                    order.status === 'Ready For Dispatched'
+                      ? '#dcfce7'
+                      : order.status === 'Awaited Payment'
+                      ? '#fef3c7'
+                      : '#fee2e2',
+                  marginTop: 10,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusText,
+                  {
+                    color:
+                      order.status === 'Ready For Dispatched'
+                        ? '#166534'
+                        : order.status === 'Awaited Payment'
+                        ? '#b45309'
+                        : '#991b1b',
+                  },
+                ]}
+              >
                 {order.status}
               </Text>
             </View>

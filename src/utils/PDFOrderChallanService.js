@@ -157,23 +157,34 @@ export const generateAndShareOrderChallanPDF = async (
 
     const customerTaxes = headerData.taxes || [];
     let calculatedTaxes = [];
-    let sumOfPreviousTaxes = 0;
+    let sumOfNonWhtTaxes = 0;
 
-    customerTaxes.forEach((tax, index) => {
-      let rate = parseFloat(tax.tax_rate || 0);
+    // First calculate all taxes that do not start with "WHT" (since they are calculated from subTotal)
+    customerTaxes.forEach(tax => {
+      const isWht = tax.tax_name && tax.tax_name.trim().toUpperCase().startsWith('WHT');
+      if (!isWht) {
+        const rate = parseFloat(tax.tax_rate || 0);
+        const taxValue = subTotal * (rate / 100);
+        sumOfNonWhtTaxes += taxValue;
+      }
+    });
+
+    // Calculate final tax values
+    calculatedTaxes = customerTaxes.map(tax => {
+      const isWht = tax.tax_name && tax.tax_name.trim().toUpperCase().startsWith('WHT');
+      const rate = parseFloat(tax.tax_rate || 0);
       let taxValue = 0;
 
-      if (index === customerTaxes.length - 1 && customerTaxes.length > 1) {
-        taxValue = sumOfPreviousTaxes * (rate / 100);
+      if (isWht) {
+        taxValue = sumOfNonWhtTaxes * (rate / 100);
       } else {
         taxValue = subTotal * (rate / 100);
-        sumOfPreviousTaxes += taxValue;
       }
 
-      calculatedTaxes.push({
+      return {
         ...tax,
         calculatedValue: taxValue,
-      });
+      };
     });
 
     const finalGrandTotal = subTotal + calculatedTaxes.reduce((sum, t) => sum + t.calculatedValue, 0);

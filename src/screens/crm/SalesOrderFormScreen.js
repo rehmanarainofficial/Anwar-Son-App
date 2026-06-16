@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -68,7 +68,7 @@ const SalesOrderFormScreen = ({ navigation, route }) => {
   const [shippers, setShippers] = useState([]);
   const [shippersLoading, setShippersLoading] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchProducts();
     fetchBranches();
     fetchShippers();
@@ -159,23 +159,34 @@ const SalesOrderFormScreen = ({ navigation, route }) => {
 
   const customerTaxes = route.params?.customer?.taxes || [];
   let calculatedTaxes = [];
-  let sumOfPreviousTaxes = 0;
+  let sumOfNonWhtTaxes = 0;
 
-  customerTaxes.forEach((tax, index) => {
-    let rate = parseFloat(tax.tax_rate || 0);
+  customerTaxes.forEach(tax => {
+    const isWht =
+      tax.tax_name && tax.tax_name.trim().toUpperCase().startsWith('WHT');
+    if (!isWht) {
+      const rate = parseFloat(tax.tax_rate || 0);
+      const taxValue = subTotal * (rate / 100);
+      sumOfNonWhtTaxes += taxValue;
+    }
+  });
+
+  calculatedTaxes = customerTaxes.map(tax => {
+    const isWht =
+      tax.tax_name && tax.tax_name.trim().toUpperCase().startsWith('WHT');
+    const rate = parseFloat(tax.tax_rate || 0);
     let taxValue = 0;
 
-    if (index === customerTaxes.length - 1 && customerTaxes.length > 1) {
-      taxValue = sumOfPreviousTaxes * (rate / 100);
+    if (isWht) {
+      taxValue = sumOfNonWhtTaxes * (rate / 100);
     } else {
       taxValue = subTotal * (rate / 100);
-      sumOfPreviousTaxes += taxValue;
     }
 
-    calculatedTaxes.push({
+    return {
       ...tax,
       calculatedValue: taxValue,
-    });
+    };
   });
 
   const finalGrandTotal =
@@ -283,7 +294,7 @@ const SalesOrderFormScreen = ({ navigation, route }) => {
 
       const purch_order_details = cart.map(item => ({
         item_code: item.item_code,
-        description: item.description || '', // Now sending actual description
+        description: item.description || '',
         quantity_ordered: String(item.quantity_ordered),
         del_qty: String(item.quantity_ordered),
         unit_price: String(item.unit_price),
