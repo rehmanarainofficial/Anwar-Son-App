@@ -52,13 +52,22 @@ const CRMSampleRequestScreen = ({ navigation }) => {
   const [products, setProducts] = useState([{ ...emptyProduct }]);
 
   // API Hooks
-  const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
-  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] = useGetHospitalContactsMutation();
-  const [getCityDropdown, { data: cityRes, isLoading: cityLoading }] = useGetCityDropdownMutation();
-  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] = useGetStockMasterMainDropdownMutation();
-  const [getDepartment, { data: deptRes, isLoading: deptLoading }] = useGetDepartmentDropdownMutation();
-  const [getSurgicalSpecialty, { data: surgicalRes, isLoading: surgicalLoading }] = useGetSurgicalSpecialityDropdownMutation();
-  const [postSampleData, { isLoading: isSubmitting }] = usePostSampleDataMutation();
+  const [getHospital, { data: hospRes, isLoading: hospLoading }] =
+    useGetHospitalMutation();
+  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] =
+    useGetHospitalContactsMutation();
+  const [getCityDropdown, { data: cityRes }] =
+    useGetCityDropdownMutation();
+  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] =
+    useGetStockMasterMainDropdownMutation();
+  const [getDepartment, { data: deptRes }] =
+    useGetDepartmentDropdownMutation();
+  const [
+    getSurgicalSpecialty,
+    { data: surgicalRes },
+  ] = useGetSurgicalSpecialityDropdownMutation();
+  const [postSampleData, { isLoading: isSubmitting }] =
+    usePostSampleDataMutation();
 
   useEffect(() => {
     getHospital({ id: user?.id });
@@ -66,9 +75,16 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     getStockMasterMain({});
     getDepartment({});
     getSurgicalSpecialty({});
-  }, [user?.id, getHospital, getCityDropdown, getStockMasterMain, getDepartment, getSurgicalSpecialty]);
+  }, [
+    user?.id,
+    getHospital,
+    getCityDropdown,
+    getStockMasterMain,
+    getDepartment,
+    getSurgicalSpecialty,
+  ]);
 
-  const handleHospitalSelect = (item) => {
+  const handleHospitalSelect = item => {
     setBasicInfo(prev => ({
       ...prev,
       hospital: item.debtor_no,
@@ -80,7 +96,7 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     getHospitalContacts({ hospital_id: item.debtor_no, user_id: user?.id });
   };
 
-  const handleContactSelect = (item) => {
+  const handleContactSelect = item => {
     setBasicInfo(prev => ({
       ...prev,
       hospitalContact: item.id,
@@ -104,9 +120,6 @@ const CRMSampleRequestScreen = ({ navigation }) => {
   const [remarks, setRemarks] = useState('');
 
   // Handlers
-  const updateBasicField = (key, value) => {
-    setBasicInfo(prev => ({ ...prev, [key]: value }));
-  };
 
   const updateProductField = (index, key, value) => {
     const updated = [...products];
@@ -118,7 +131,7 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     setProducts([...products, { ...emptyProduct }]);
   };
 
-  const removeProduct = (index) => {
+  const removeProduct = index => {
     setProducts(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -154,7 +167,9 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     const todayStr = new Date().toISOString().split('T')[0];
 
     const purchOrderDetails = products.map(p => {
-      const selectedProduct = stockRes?.data?.find(s => s.stock_id === p.product);
+      const selectedProduct = stockRes?.data?.find(
+        s => s.stock_id === p.product,
+      );
       return {
         item_code: p.product,
         quantity_ordered: p.quantity || '1',
@@ -162,11 +177,25 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       };
     });
 
-    const hospitalName = hospRes?.data?.find(h => String(h.debtor_no) === String(basicInfo.hospital))?.name || basicInfo.hospital;
-    const contactPerson = contactRes?.data?.find(c => String(c.id) === String(basicInfo.hospitalContact))?.person_name || basicInfo.hospitalContact;
-    const cityName = cityRes?.data?.find(c => String(c.id) === String(basicInfo.salesRegion))?.cityname || basicInfo.salesRegion;
-    const departmentName = deptRes?.data?.find(d => String(d.sales_code) === String(basicInfo.department))?.description || basicInfo.department;
-    const surgicalSpecialtyName = surgicalRes?.data?.find(s => String(s.id) === String(basicInfo.surgicalSpecialty))?.description || basicInfo.surgicalSpecialty;
+    const hospitalName =
+      hospRes?.data?.find(
+        h => String(h.debtor_no) === String(basicInfo.hospital),
+      )?.name || basicInfo.hospital;
+    const contactPerson =
+      contactRes?.data?.find(
+        c => String(c.id) === String(basicInfo.hospitalContact),
+      )?.person_name || basicInfo.hospitalContact;
+    const cityName =
+      cityRes?.data?.find(c => String(c.id) === String(basicInfo.salesRegion))
+        ?.cityname || basicInfo.salesRegion;
+    const departmentName =
+      deptRes?.data?.find(
+        d => String(d.sales_code) === String(basicInfo.department),
+      )?.description || basicInfo.department;
+    const surgicalSpecialtyName =
+      surgicalRes?.data?.find(
+        s => String(s.id) === String(basicInfo.surgicalSpecialty),
+      )?.description || basicInfo.surgicalSpecialty;
 
     const payload = {
       company: 'ANS',
@@ -182,8 +211,6 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       comments: remarks || '',
       purch_order_details: purchOrderDetails,
     };
-
-    console.log('Post Sample Data Payload sent to database/server:', JSON.stringify(payload, null, 2));
 
     try {
       const response = await postSampleData(payload).unwrap();
@@ -212,26 +239,53 @@ const CRMSampleRequestScreen = ({ navigation }) => {
   };
 
   // UI Helpers
-  const renderInput = (label, value, onChangeText, keyboardType = 'default') => (
+  const renderInput = (
+    label,
+    value,
+    onChangeText,
+    keyboardType = 'default',
+    editable = true,
+  ) => (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
       <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-        placeholder={`Enter ${label}`}
+        style={[
+          styles.input,
+          {
+            backgroundColor: editable
+              ? theme.colors.background
+              : theme.colors.border,
+            borderColor: theme.colors.border,
+            color: theme.colors.text,
+            opacity: editable ? 1 : 0.8,
+          },
+        ]}
+        placeholder={editable ? `Enter ${label}` : ''}
         placeholderTextColor={theme.colors.textSecondary}
         keyboardType={keyboardType}
         value={value}
         onChangeText={onChangeText}
+        editable={editable}
       />
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Top Section */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.sectionCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
           <SearchableDropdown
             label="Hospital"
             placeholder="Select Hospital"
@@ -258,54 +312,75 @@ const CRMSampleRequestScreen = ({ navigation }) => {
             disabled={!basicInfo.hospital}
           />
 
-          <SearchableDropdown
-            label="Sales Region/Territory"
-            placeholder="Select City"
-            data={cityRes?.data || []}
-            selectedId={basicInfo.salesRegion}
-            onSelect={item => updateBasicField('salesRegion', item.id)}
-            isLoading={cityLoading}
-            idKey="id"
-            labelKey="cityname"
-            iconName="location-outline"
-          />
+          {renderInput(
+            'Sales Region/Territory',
+            cityRes?.data?.find(
+              c => String(c.id) === String(basicInfo.salesRegion),
+            )?.cityname || '',
+            null,
+            'default',
+            false,
+          )}
 
-          <SearchableDropdown
-            label="Department"
-            placeholder="Select Department"
-            data={deptRes?.data || []}
-            selectedId={basicInfo.department}
-            onSelect={item => updateBasicField('department', item.sales_code)}
-            isLoading={deptLoading}
-            idKey="sales_code"
-            labelKey="description"
-            iconName="briefcase-outline"
-          />
+          {renderInput(
+            'Department',
+            deptRes?.data?.find(
+              d => String(d.sales_code) === String(basicInfo.department),
+            )?.description || '',
+            null,
+            'default',
+            false,
+          )}
 
-          <SearchableDropdown
-            label="Surgical Specialty"
-            placeholder="Select Surgical Specialty"
-            data={surgicalRes?.data || []}
-            selectedId={basicInfo.surgicalSpecialty}
-            onSelect={item => updateBasicField('surgicalSpecialty', item.id)}
-            isLoading={surgicalLoading}
-            idKey="id"
-            labelKey="description"
-            iconName="medical-outline"
-          />
+          {renderInput(
+            'Surgical Specialty',
+            surgicalRes?.data?.find(
+              s => String(s.id) === String(basicInfo.surgicalSpecialty),
+            )?.description || '',
+            null,
+            'default',
+            false,
+          )}
         </View>
 
         {/* Dynamic Products Section */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Products Details</Text>
-          
+        <View
+          style={[
+            styles.sectionCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>
+            Products Details
+          </Text>
+
           {products.map((item, index) => (
-            <View key={index} style={[styles.dynamicBlock, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
+            <View
+              key={index}
+              style={[
+                styles.dynamicBlock,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            >
               <View style={styles.dynamicHeader}>
-                <Text style={[styles.dynamicTitle, { color: theme.colors.text }]}>Item {index + 1}</Text>
+                <Text
+                  style={[styles.dynamicTitle, { color: theme.colors.text }]}
+                >
+                  Item {index + 1}
+                </Text>
                 {products.length > 1 && (
                   <TouchableOpacity onPress={() => removeProduct(index)}>
-                    <Icon name="trash-outline" size={20} color={theme.colors.error} />
+                    <Icon
+                      name="trash-outline"
+                      size={20}
+                      color={theme.colors.error}
+                    />
                   </TouchableOpacity>
                 )}
               </View>
@@ -315,31 +390,62 @@ const CRMSampleRequestScreen = ({ navigation }) => {
                 placeholder="Select Product"
                 data={stockRes?.data || []}
                 selectedId={item.product}
-                onSelect={selectedItem => updateProductField(index, 'product', selectedItem.stock_id)}
+                onSelect={selectedItem =>
+                  updateProductField(index, 'product', selectedItem.stock_id)
+                }
                 isLoading={stockLoading}
                 idKey="stock_id"
                 labelKey="description"
                 iconName="cube-outline"
               />
-              {renderInput('Quantity', item.quantity, (text) => updateProductField(index, 'quantity', text), 'numeric')}
+              {renderInput(
+                'Secondary Quantity',
+                item.quantity,
+                text => updateProductField(index, 'quantity', text),
+                'numeric',
+              )}
             </View>
           ))}
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.addMoreBtn, { borderColor: theme.colors.primary }]}
             onPress={addProduct}
           >
-            <Icon name="add" size={20} color={theme.colors.primary} style={styles.addIcon} />
-            <Text style={[styles.addMoreText, { color: theme.colors.primary }]}>Add More Item</Text>
+            <Icon
+              name="add"
+              size={20}
+              color={theme.colors.primary}
+              style={styles.addIcon}
+            />
+            <Text style={[styles.addMoreText, { color: theme.colors.primary }]}>
+              Add More Item
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Remarks */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.sectionCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Remarks</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Remarks
+            </Text>
             <TextInput
-              style={[styles.textArea, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
+              style={[
+                styles.textArea,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.text,
+                },
+              ]}
               placeholder="Add any remarks..."
               placeholderTextColor={theme.colors.textSecondary}
               multiline
@@ -351,11 +457,11 @@ const CRMSampleRequestScreen = ({ navigation }) => {
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.submitBtn, 
+            styles.submitBtn,
             { backgroundColor: theme.colors.primary },
-            isSubmitting && { opacity: 0.7 }
+            isSubmitting && { opacity: 0.7 },
           ]}
           onPress={handleSubmit}
           disabled={isSubmitting}
@@ -366,109 +472,110 @@ const CRMSampleRequestScreen = ({ navigation }) => {
             <Text style={styles.submitBtnText}>Submit Request</Text>
           )}
         </TouchableOpacity>
-        
+
         <View style={styles.footerSpacer} />
       </ScrollView>
     </View>
   );
 };
 
-const getStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  content: {
-    padding: 16,
-  },
-  sectionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 15,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    fontSize: 15,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  dynamicBlock: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  dynamicHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dynamicTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  addMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 48,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-  },
-  addMoreText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  submitBtn: {
-    height: 54,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  submitBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  addIcon: {
-    marginRight: 8,
-  },
-  footerSpacer: {
-    height: 40,
-  },
-});
+const getStyles = theme =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    content: {
+      padding: 16,
+    },
+    sectionCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 16,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginBottom: 16,
+    },
+    inputContainer: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    input: {
+      height: 50,
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      fontSize: 15,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 16,
+      fontSize: 15,
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+    dynamicBlock: {
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+    },
+    dynamicHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    dynamicTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    addMoreBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 48,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderRadius: 12,
+    },
+    addMoreText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    submitBtn: {
+      height: 54,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    submitBtnText: {
+      color: '#FFF',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    addIcon: {
+      marginRight: 8,
+    },
+    footerSpacer: {
+      height: 40,
+    },
+  });
 
 export default CRMSampleRequestScreen;
