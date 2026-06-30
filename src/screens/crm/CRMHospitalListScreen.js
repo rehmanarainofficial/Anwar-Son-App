@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { useTheme } from '@config/useTheme';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useGetHospitalDataMutation } from '@api/portalApi';
+import { useGetHospitalTierDropdownMutation } from '@api/baseApi';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
 
@@ -19,7 +21,10 @@ const CRMHospitalListScreen = ({ navigation }) => {
   const user = useSelector(selectCurrentUser);
   const [hospitals, setHospitals] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTierId, setSelectedTierId] = useState(null);
+  const [expandedCards, setExpandedCards] = useState({});
   const [getHospitalData, { isLoading }] = useGetHospitalDataMutation();
+  const [getHospitalTierDropdown, { data: tierRes }] = useGetHospitalTierDropdownMutation();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -27,28 +32,44 @@ const CRMHospitalListScreen = ({ navigation }) => {
       hideHomeIcon: true,
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => navigation.navigate('CRMAddHospital', { onSuccess: fetchHospitals })}
+          onPress={() => navigation.navigate('CRMAddHospital', { onSuccess: () => fetchHospitals(selectedTierId) })}
           style={{ paddingRight: 10 }}
         >
           <Icon name="add" color="#FFF" size={28} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, fetchHospitals]);
+  }, [navigation, selectedTierId]);
 
   useEffect(() => {
-    fetchHospitals();
+    fetchHospitals(null);
+    getHospitalTierDropdown({});
   }, []);
 
-  const fetchHospitals = async () => {
+  const fetchHospitals = async (tierId = selectedTierId) => {
     try {
-      const res = await getHospitalData({ user_id: user?.id }).unwrap();
+      const res = await getHospitalData({
+        user_id: user?.id,
+        tier_id: tierId || '',
+      }).unwrap();
       if (res.status === 'true') {
         setHospitals(res.data || []);
       }
     } catch (error) {
       console.log('Fetch Hospitals Error:', error);
     }
+  };
+
+  const handleTierFilter = (tierId) => {
+    setSelectedTierId(tierId);
+    fetchHospitals(tierId);
+  };
+
+  const toggleExpand = (debtorNo) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [debtorNo]: !prev[debtorNo],
+    }));
   };
 
   const cleanText = text => {
@@ -94,88 +115,116 @@ const CRMHospitalListScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderHospitalCard = ({ item }) => (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-        },
-      ]}
-    >
-      <View style={styles.cardHeader}>
-        <View
-          style={[
-            styles.hospitalIcon,
-            { backgroundColor: theme.colors.primary + '15' },
-          ]}
-        >
-          <Icon name="business" size={24} color={theme.colors.primary} />
-        </View>
-        <View style={styles.headerInfo}>
-          <Text style={[styles.nameText, { color: theme.colors.text }]}>
-            {cleanText(item.hospital_name)}
-          </Text>
-          <Text
-            style={[styles.cityText, { color: theme.colors.textSecondary }]}
-          >
-            <Icon name="location-outline" size={12} /> {item.city_name}
-          </Text>
-        </View>
-      </View>
+  const renderHospitalCard = ({ item }) => {
+    const isExpanded = expandedCards[item.debtor_no];
 
+    return (
       <View
-        style={[styles.divider, { backgroundColor: theme.colors.border }]}
-      />
-
-      <View style={styles.cardBody}>
-        <View style={styles.row}>
-          {renderKeyValue('Segment', item.segment)}
-          {renderKeyValue('Status', item.customer_status)}
-        </View>
-        <View style={styles.row}>
-          {renderKeyValue('Primary Contact', item.person_name || 'N/A')}
-          {renderKeyValue('Contact No', item.cell_no || 'N/A')}
-        </View>
-        <View style={styles.row}>
-          {renderKeyValue('Beds', item.beds)}
-          {renderKeyValue('OTs', item.ots)}
-        </View>
-        <View style={styles.row}>
-          {renderKeyValue('Sales Person', item.sales_person)}
-          {renderKeyValue('Type', item.cust_type)}
-        </View>
-
-        <View style={styles.fullWidthCol}>
-          <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
-            Address
-          </Text>
-          <Text style={[styles.valueText, { color: theme.colors.text }]}>
-            {item.address || 'N/A'}
-          </Text>
-        </View>
-
-        {item.competitor_analysis && (
-          <View style={[styles.fullWidthCol, { marginTop: 8 }]}>
-            <Text
-              style={[styles.keyText, { color: theme.colors.textSecondary }]}
-            >
-              Competitor Analysis
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => toggleExpand(item.debtor_no)}
+          style={[styles.cardHeader, isExpanded && { marginBottom: 16 }]}
+        >
+          <View
+            style={[
+              styles.hospitalIcon,
+              { backgroundColor: theme.colors.primary + '15' },
+            ]}
+          >
+            <Icon name="business" size={24} color={theme.colors.primary} />
+          </View>
+          <View style={styles.headerInfo}>
+            <Text style={[styles.nameText, { color: theme.colors.text }]} numberOfLines={2}>
+              {cleanText(item.hospital_name)}
             </Text>
-            <Text
-              style={[
-                styles.valueText,
-                { color: theme.colors.text, fontSize: 12 },
-              ]}
-            >
-              {cleanText(item.competitor_analysis)}
+            <View style={styles.collapsedMeta}>
+              <Text style={[styles.cityText, { color: theme.colors.textSecondary }]}>
+                <Icon name="location-outline" size={12} /> {item.city_name || 'N/A'}
+              </Text>
+              <View style={[styles.tierBadge, { backgroundColor: theme.colors.primary + '10' }]}>
+                <Text style={[styles.tierBadgeText, { color: theme.colors.primary }]}>
+                  {item.tier || item.cust_type || 'N/A'}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.addressText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+              <Icon name="map-outline" size={12} /> {item.address || 'N/A'}
             </Text>
           </View>
+          <View style={styles.expandIconBtn}>
+            <Icon
+              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+              size={20}
+              color={theme.colors.textSecondary}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <>
+            <View
+              style={[styles.divider, { backgroundColor: theme.colors.border }]}
+            />
+            <View style={styles.cardBody}>
+              <View style={styles.row}>
+                {renderKeyValue('Segment', item.segment)}
+                {renderKeyValue('Status', item.customer_status)}
+              </View>
+              <View style={styles.row}>
+                {renderKeyValue('Primary Contact', item.person_name || 'N/A')}
+                {renderKeyValue('Contact No', item.cell_no || 'N/A')}
+              </View>
+              <View style={styles.row}>
+                {renderKeyValue('Beds', item.beds)}
+                {renderKeyValue('OTs', item.ots)}
+              </View>
+              <View style={styles.row}>
+                {renderKeyValue('Sales Person', item.sales_person)}
+                {renderKeyValue('Type', item.cust_type)}
+              </View>
+
+              {item.surgical_facilities && (
+                <View style={styles.fullWidthCol}>
+                  <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
+                    Surgical Facilities
+                  </Text>
+                  <Text style={[styles.valueText, { color: theme.colors.text }]}>
+                    {cleanText(item.surgical_facilities)}
+                  </Text>
+                </View>
+              )}
+
+              {item.competitor_analysis && (
+                <View style={[styles.fullWidthCol, { marginTop: 8 }]}>
+                  <Text
+                    style={[styles.keyText, { color: theme.colors.textSecondary }]}
+                  >
+                    Competitor Analysis
+                  </Text>
+                  <Text
+                    style={[
+                      styles.valueText,
+                      { color: theme.colors.text, fontSize: 12 },
+                    ]}
+                  >
+                    {cleanText(item.competitor_analysis)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </>
         )}
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View
@@ -214,6 +263,62 @@ const CRMHospitalListScreen = ({ navigation }) => {
           )}
         </View>
       </View>
+
+      {/* Horizontal Scrollable Tier Filter */}
+      {tierRes?.data && tierRes.data.length > 0 && (
+        <View style={styles.filterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollFilterContent}
+          >
+            <TouchableOpacity
+              onPress={() => handleTierFilter(null)}
+              style={[
+                styles.chip,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: !selectedTierId ? theme.colors.primary : theme.colors.surface,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: !selectedTierId ? '#FFF' : theme.colors.text },
+                ]}
+              >
+                All
+              </Text>
+            </TouchableOpacity>
+            {tierRes.data.map(tier => {
+              const isActive = selectedTierId === tier.id;
+              return (
+                <TouchableOpacity
+                  key={tier.id}
+                  onPress={() => handleTierFilter(isActive ? null : tier.id)}
+                  style={[
+                    styles.chip,
+                    {
+                      borderColor: theme.colors.border,
+                      backgroundColor: isActive ? theme.colors.primary : theme.colors.surface,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: isActive ? '#FFF' : theme.colors.text },
+                    ]}
+                  >
+                    {tier.description}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={styles.loaderContainer}>
@@ -334,6 +439,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 50,
+  },
+  filterContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  scrollFilterContent: {
+    gap: 8,
+    alignItems: 'center',
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  collapsedMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  tierBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  tierBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  addressText: {
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 4,
+  },
+  expandIconBtn: {
+    paddingLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

@@ -541,18 +541,43 @@ export const baseApi = createApi({
         return response;
       },
     }),
+    getHospitalTierDropdown: builder.mutation({
+      query: () => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/hospital_tier.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getProductOpportunityDropdown: builder.mutation({
+      query: () => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/product_opportunity.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
     addHospital: builder.mutation({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
-        formData.append('user_id', body.user_id);
-        formData.append('name', body.name);
-        formData.append('address', body.address || '');
-        formData.append('city', body.city || '');
-        formData.append('cust_type', body.cust_type);
-        formData.append('beds', body.beds);
-        formData.append('payment_terms', body.payment_terms);
-        formData.append('segment', body.segment);
+        Object.keys(body).forEach(key => {
+          if (key !== 'company' && body[key] !== undefined && body[key] !== null) {
+            if (Array.isArray(body[key])) {
+              formData.append(key, JSON.stringify(body[key]));
+            } else {
+              formData.append(key, body[key]);
+            }
+          }
+        });
 
         return {
           url: 'portal/hospital_post.php',
@@ -594,6 +619,8 @@ export const {
   usePostSampleDataMutation,
   useGetPaymentTermsDropdownMutation,
   useGetCustomerTypeDropdownMutation,
+  useGetHospitalTierDropdownMutation,
+  useGetProductOpportunityDropdownMutation,
   useAddHospitalMutation,
 } = baseApi;
 

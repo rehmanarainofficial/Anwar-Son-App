@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@config/useTheme';
-import { Dropdown } from 'react-native-element-dropdown';
+import { Dropdown, MultiSelect } from 'react-native-element-dropdown';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
 import Toast from 'react-native-toast-message';
@@ -17,6 +17,9 @@ import {
   useGetCityDropdownMutation,
   useGetDepartmentDropdownMutation,
   useGetPaymentTermsDropdownMutation,
+  useGetHospitalTierDropdownMutation,
+  useGetSurgicalSpecialityDropdownMutation,
+  useGetProductOpportunityDropdownMutation,
   useGetCustomerTypeDropdownMutation,
   useAddHospitalMutation,
 } from '@api/baseApi';
@@ -36,6 +39,17 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
     paymentTerms: null,
   });
 
+  const [selectedTier, setSelectedTier] = useState(null);
+  const [selectedSurgicalSpecialities, setSelectedSurgicalSpecialities] =
+    useState([]);
+  const [opportunities, setOpportunities] = useState({
+    wound_closure: null,
+    hemostatis: null,
+    hernia: null,
+    airway: null,
+    other: null,
+  });
+
   // API Hooks
   const [getCityDropdown, { data: cityRes, isLoading: cityLoading }] =
     useGetCityDropdownMutation();
@@ -45,6 +59,16 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
     getPaymentTermsDropdown,
     { data: paymentRes, isLoading: paymentLoading },
   ] = useGetPaymentTermsDropdownMutation();
+  const [getHospitalTierDropdown, { data: tierRes, isLoading: tierLoading }] =
+    useGetHospitalTierDropdownMutation();
+  const [
+    getSurgicalSpecialityDropdown,
+    { data: surgicalRes, isLoading: surgicalLoading },
+  ] = useGetSurgicalSpecialityDropdownMutation();
+  const [
+    getProductOpportunityDropdown,
+    { data: opportunityRes, isLoading: opportunityLoading },
+  ] = useGetProductOpportunityDropdownMutation();
   const [
     getCustomerTypeDropdown,
     { data: custTypeRes, isLoading: custTypeLoading },
@@ -63,11 +87,18 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
     }
     getDepartmentDropdown({});
     getPaymentTermsDropdown({});
+    getHospitalTierDropdown({});
+    getSurgicalSpecialityDropdown({});
+    getProductOpportunityDropdown({});
     getCustomerTypeDropdown({});
   }, [user?.id]);
 
   const updateBasicField = (key, value) => {
     setBasicInfo(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateOpportunityField = (key, value) => {
+    setOpportunities(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
@@ -91,7 +122,7 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
       Toast.show({
         type: 'error',
         text1: 'Validation Error',
-        text2: 'Please select a Customers Type',
+        text2: 'Please select a Status',
       });
       return;
     }
@@ -119,18 +150,36 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
       });
       return;
     }
+    if (!selectedTier) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Tier',
+      });
+      return;
+    }
 
     try {
       const payload = {
         user_id: user?.id,
         name: basicInfo.hospitalName,
-        address: basicInfo.address,
         city: basicInfo.city,
         cust_type: basicInfo.customersType,
         beds: basicInfo.noOfBeds,
         payment_terms: basicInfo.paymentTerms,
         segment: basicInfo.segment,
+        address: basicInfo.address,
+        tier: selectedTier,
+        wound_closure: opportunities.wound_closure || '',
+        hemostatis: opportunities.hemostatis || '',
+        hernia: opportunities.hernia || '',
+        airway: opportunities.airway || '',
+        other: opportunities.other || '',
+        hospital_facities: selectedSurgicalSpecialities,
+        company: 'CRM',
       };
+
+      console.log('CRMAddHospital Saving Payload:', JSON.stringify(payload));
 
       const res = await addHospital(payload).unwrap();
       if (String(res.status) === 'true') {
@@ -235,6 +284,56 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
     </View>
   );
 
+  const renderMultiSelect = (
+    label,
+    data,
+    value,
+    onChange,
+    labelField = 'label',
+    valueField = 'value',
+    isLoading = false,
+  ) => (
+    <View style={styles.inputContainer}>
+      <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
+      {isLoading ? (
+        <View style={styles.dropdownLoader}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      ) : (
+        <MultiSelect
+          style={[
+            styles.dropdown,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+          placeholderStyle={[
+            styles.placeholderStyle,
+            { color: theme.colors.textSecondary },
+          ]}
+          selectedTextStyle={[
+            styles.selectedTextStyle,
+            { color: theme.colors.text },
+          ]}
+          itemTextStyle={[styles.itemTextStyle, { color: theme.colors.text }]}
+          containerStyle={{
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+          }}
+          data={data || []}
+          maxHeight={300}
+          labelField={labelField}
+          valueField={valueField}
+          placeholder={`Select ${label}`}
+          value={value}
+          onChange={onChange}
+          selectedStyle={styles.selectedStyle}
+        />
+      )}
+    </View>
+  );
+
   // Tab Contents
   const renderBasicInfo = () => (
     <View style={styles.formContent}>
@@ -254,21 +353,6 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
         cityLoading,
       )}
       {renderDropdown(
-        'Customers Type',
-        custTypeRes?.data || [],
-        basicInfo.customersType,
-        val => updateBasicField('customersType', val),
-        'description',
-        'sales_code',
-        custTypeLoading,
-      )}
-      {renderInput(
-        'No. of Beds',
-        basicInfo.noOfBeds,
-        text => updateBasicField('noOfBeds', text),
-        'numeric',
-      )}
-      {renderDropdown(
         'Segment (Department)',
         deptRes?.data || [],
         basicInfo.segment,
@@ -278,6 +362,33 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
         deptLoading,
       )}
       {renderDropdown(
+        'Status',
+        custTypeRes?.data || [],
+        basicInfo.customersType,
+        val => updateBasicField('customersType', val),
+        'description',
+        'sales_code',
+        custTypeLoading,
+      )}
+
+      {renderMultiSelect(
+        'Hospital Speciality',
+        surgicalRes?.data || [],
+        selectedSurgicalSpecialities,
+        val => setSelectedSurgicalSpecialities(val),
+        'description',
+        'combo_code',
+        surgicalLoading,
+      )}
+
+      {renderInput(
+        'No. of Beds',
+        basicInfo.noOfBeds,
+        text => updateBasicField('noOfBeds', text),
+        'numeric',
+      )}
+
+      {renderDropdown(
         'Payment Terms',
         paymentRes?.data || [],
         basicInfo.paymentTerms,
@@ -285,6 +396,61 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
         'terms',
         'terms_indicator',
         paymentLoading,
+      )}
+
+      {renderDropdown(
+        'Wound Closure',
+        opportunityRes?.data || [],
+        opportunities.wound_closure,
+        val => updateOpportunityField('wound_closure', val),
+        'description',
+        'id',
+        opportunityLoading,
+      )}
+      {renderDropdown(
+        'Hemostasis',
+        opportunityRes?.data || [],
+        opportunities.hemostatis,
+        val => updateOpportunityField('hemostatis', val),
+        'description',
+        'id',
+        opportunityLoading,
+      )}
+      {renderDropdown(
+        'Hernia',
+        opportunityRes?.data || [],
+        opportunities.hernia,
+        val => updateOpportunityField('hernia', val),
+        'description',
+        'id',
+        opportunityLoading,
+      )}
+      {renderDropdown(
+        'Airway',
+        opportunityRes?.data || [],
+        opportunities.airway,
+        val => updateOpportunityField('airway', val),
+        'description',
+        'id',
+        opportunityLoading,
+      )}
+      {renderDropdown(
+        'Other',
+        opportunityRes?.data || [],
+        opportunities.other,
+        val => updateOpportunityField('other', val),
+        'description',
+        'id',
+        opportunityLoading,
+      )}
+      {renderDropdown(
+        'Tier',
+        tierRes?.data || [],
+        selectedTier,
+        val => setSelectedTier(val),
+        'description',
+        'id',
+        tierLoading,
       )}
     </View>
   );
@@ -380,6 +546,15 @@ const getStyles = theme =>
       color: '#FFF',
       fontSize: 16,
       fontWeight: '700',
+    },
+    selectedStyle: {
+      borderRadius: 12,
+      backgroundColor: theme.colors.primary + '15',
+      borderColor: theme.colors.primary,
+      borderWidth: 1,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginTop: 8,
     },
   });
 

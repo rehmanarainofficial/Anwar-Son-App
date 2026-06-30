@@ -159,7 +159,11 @@ export const portalApi = baseApi.injectEndpoints({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
-        formData.append('user_id', body.user_id);
+        Object.keys(body).forEach(key => {
+          if (key !== 'company' && body[key] !== undefined && body[key] !== null) {
+            formData.append(key, body[key]);
+          }
+        });
         return {
           url: 'portal/get_hospital_data.php',
           method: 'POST',
