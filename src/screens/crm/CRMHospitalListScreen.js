@@ -49,7 +49,8 @@ const CRMHospitalListScreen = ({ navigation }) => {
   const fetchHospitals = async (tierId = selectedTierId) => {
     try {
       const res = await getHospitalData({
-        user_id: user?.id,
+        user_id: user?.id || user?.company_user_id || '',
+        company: 'CRM',
         tier_id: tierId || '',
       }).unwrap();
       if (res.status === 'true') {
@@ -115,6 +116,23 @@ const CRMHospitalListScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderFocusTag = (label, val) => {
+    if (!val) return null;
+    let color = '#3B82F6';
+    const valLower = val.toLowerCase().trim();
+    if (valLower === 'focus') color = '#EF4444';
+    else if (valLower === 'develop') color = '#F59E0B';
+    else if (valLower === 'maintain') color = '#10B981';
+
+    return (
+      <View style={[styles.focusTag, { borderColor: color + '40', backgroundColor: color + '08' }]}>
+        <Text style={[styles.focusTagText, { color }]}>
+          {label}: {val}
+        </Text>
+      </View>
+    );
+  };
+
   const renderHospitalCard = ({ item }) => {
     const isExpanded = expandedCards[item.debtor_no];
 
@@ -149,15 +167,30 @@ const CRMHospitalListScreen = ({ navigation }) => {
               <Text style={[styles.cityText, { color: theme.colors.textSecondary }]}>
                 <Icon name="location-outline" size={12} /> {item.city_name || 'N/A'}
               </Text>
-              <View style={[styles.tierBadge, { backgroundColor: theme.colors.primary + '10' }]}>
-                <Text style={[styles.tierBadgeText, { color: theme.colors.primary }]}>
-                  {item.tier || item.cust_type || 'N/A'}
-                </Text>
-              </View>
+              {item.tier ? (
+                <View style={[styles.tierBadge, { backgroundColor: theme.colors.primary + '10' }]}>
+                  <Text style={[styles.tierBadgeText, { color: theme.colors.primary }]}>
+                    {item.tier}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-            <Text style={[styles.addressText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-              <Icon name="map-outline" size={12} /> {item.address || 'N/A'}
-            </Text>
+            <View style={styles.collapsedSubMeta}>
+              {item.customer_status ? (
+                <View style={[styles.statusBadge, { backgroundColor: '#10B98110' }]}>
+                  <Text style={[styles.statusBadgeText, { color: '#10B981' }]}>
+                    {item.customer_status}
+                  </Text>
+                </View>
+              ) : null}
+              {item.category ? (
+                <View style={[styles.categoryBadge, { backgroundColor: '#3B82F610' }]}>
+                  <Text style={[styles.categoryBadgeText, { color: '#3B82F6' }]}>
+                    {item.category}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </View>
           <View style={styles.expandIconBtn}>
             <Icon
@@ -174,49 +207,89 @@ const CRMHospitalListScreen = ({ navigation }) => {
               style={[styles.divider, { backgroundColor: theme.colors.border }]}
             />
             <View style={styles.cardBody}>
-              <View style={styles.row}>
-                {renderKeyValue('Segment', item.segment)}
-                {renderKeyValue('Status', item.customer_status)}
+              {/* Address */}
+              <View style={styles.fullWidthCol}>
+                <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
+                  Address
+                </Text>
+                <Text style={[styles.valueText, { color: theme.colors.text }]}>
+                  {cleanText(item.address) || 'N/A'}
+                </Text>
               </View>
+
               <View style={styles.row}>
                 {renderKeyValue('Primary Contact', item.person_name || 'N/A')}
                 {renderKeyValue('Contact No', item.cell_no || 'N/A')}
               </View>
+
               <View style={styles.row}>
-                {renderKeyValue('Beds', item.beds)}
-                {renderKeyValue('OTs', item.ots)}
-              </View>
-              <View style={styles.row}>
-                {renderKeyValue('Sales Person', item.sales_person)}
-                {renderKeyValue('Type', item.cust_type)}
+                {renderKeyValue('Beds', item.beds || '0')}
+                {renderKeyValue('OTs', item.ots || '0')}
               </View>
 
-              {item.surgical_facilities && (
+              <View style={styles.row}>
+                {renderKeyValue('Sales Person', item.sales_person || 'N/A')}
+                {renderKeyValue('Payment Terms', item.payment_terms || 'N/A')}
+              </View>
+
+              {item.website ? (
                 <View style={styles.fullWidthCol}>
-                  <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
-                    Surgical Facilities
-                  </Text>
-                  <Text style={[styles.valueText, { color: theme.colors.text }]}>
-                    {cleanText(item.surgical_facilities)}
-                  </Text>
+                  {renderKeyValue('Website', item.website)}
                 </View>
-              )}
+              ) : null}
 
-              {item.competitor_analysis && (
+              {/* Opportunity Focus Tags */}
+              <View style={[styles.fullWidthCol, { marginTop: 4 }]}>
+                <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
+                  Opportunity Focus
+                </Text>
+                <View style={styles.focusRow}>
+                  {renderFocusTag('Wound Closure', item.wound_closure_value)}
+                  {renderFocusTag('Hemostasis', item.hemostatis_value)}
+                  {renderFocusTag('Hernia', item.hernia_value)}
+                  {renderFocusTag('Airway', item.airway_value)}
+                  {renderFocusTag('Other Products', item.other_products_value)}
+                </View>
+              </View>
+
+              {/* Competitor Analysis Table */}
+              {item.comp_analysis && item.comp_analysis.length > 0 && (
                 <View style={[styles.fullWidthCol, { marginTop: 8 }]}>
-                  <Text
-                    style={[styles.keyText, { color: theme.colors.textSecondary }]}
-                  >
+                  <Text style={[styles.keyText, { color: theme.colors.textSecondary, marginBottom: 6 }]}>
                     Competitor Analysis
                   </Text>
-                  <Text
-                    style={[
-                      styles.valueText,
-                      { color: theme.colors.text, fontSize: 12 },
-                    ]}
-                  >
-                    {cleanText(item.competitor_analysis)}
-                  </Text>
+                  
+                  {/* Table Container */}
+                  <View style={[styles.compTable, { borderColor: theme.colors.border }]}>
+                    {/* Header Row */}
+                    <View style={[styles.compTableHeader, { backgroundColor: theme.colors.primary + '08', borderBottomColor: theme.colors.border }]}>
+                      <Text style={[styles.compColHeader, styles.compColCat, { color: theme.colors.text }]}>Product Category</Text>
+                      <Text style={[styles.compColHeader, styles.compColQty, { color: theme.colors.text, textAlign: 'center' }]}>Monthly Consumption</Text>
+                      <Text style={[styles.compColHeader, styles.compColBrand, { color: theme.colors.text }]}>Main Brands</Text>
+                    </View>
+
+                    {/* Data Rows */}
+                    {item.comp_analysis.map((comp, index) => (
+                      <View 
+                        key={index} 
+                        style={[
+                          styles.compTableRow, 
+                          { borderBottomColor: theme.colors.border },
+                          index === item.comp_analysis.length - 1 && { borderBottomWidth: 0 }
+                        ]}
+                      >
+                        <Text style={[styles.compCellText, styles.compColCat, { color: theme.colors.text }]}>
+                          {comp.product_category || 'N/A'}
+                        </Text>
+                        <Text style={[styles.compCellText, styles.compColQty, { color: theme.colors.text, textAlign: 'center' }]}>
+                          {comp.monthly_consumption || '0'}
+                        </Text>
+                        <Text style={[styles.compCellText, styles.compColBrand, { color: theme.colors.textSecondary }]}>
+                          {comp.sutures || 'N/A'}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
               )}
             </View>
@@ -484,6 +557,89 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  collapsedSubMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  focusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  focusTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  focusTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  compItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  compTable: {
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  compTableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+  },
+  compTableRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  compColHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  compCellText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  compColCat: {
+    flex: 1.4,
+  },
+  compColQty: {
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  compColBrand: {
+    flex: 1.2,
+    paddingLeft: 8,
   },
 });
 

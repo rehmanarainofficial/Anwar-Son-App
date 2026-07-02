@@ -160,7 +160,11 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', 'CRM');
         Object.keys(body).forEach(key => {
-          if (key !== 'company' && body[key] !== undefined && body[key] !== null) {
+          if (
+            key !== 'company' &&
+            body[key] !== undefined &&
+            body[key] !== null
+          ) {
             formData.append(key, body[key]);
           }
         });
@@ -188,6 +192,9 @@ export const portalApi = baseApi.injectEndpoints({
         }
         if (body.quater !== undefined && body.quater !== null) {
           formData.append('quater', body.quater);
+        }
+        if (body.salesman_name !== undefined && body.salesman_name !== null) {
+          formData.append('salesman', body.salesman_name);
         }
         return {
           url: 'portal/get_salesman_target_sales.php',
@@ -244,6 +251,22 @@ export const portalApi = baseApi.injectEndpoints({
         };
       },
     }),
+    getSalesmanDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('user_id', body.user_id || '');
+        formData.append('company', body.company || '');
+        formData.append('role_id', body.role_id || '');
+        return {
+          url: 'dropdown/salesman.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
   }),
   overrideExisting: true,
 });
@@ -263,4 +286,5 @@ export const {
   useGetQuarterDropdownMutation,
   useGetYearsDropdownMutation,
   useGetMonthDropdownMutation,
+  useGetSalesmanDropdownMutation,
 } = portalApi;

@@ -12,14 +12,19 @@ import { useTheme } from '@config/useTheme';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useGetSalesTargetMutation } from '@api/portalApi';
+import { Dropdown } from 'react-native-element-dropdown';
+import {
+  useGetSalesTargetMutation,
+  useGetSalesmanDropdownMutation,
+} from '@api/portalApi';
 
 const CRMSalesVsTargetScreen = ({ navigation }) => {
   const { theme } = themeHook();
   const user = useSelector(selectCurrentUser);
-  console.log('CRMSalesVsTarget User Session:', user);
 
   const [getSalesTarget, { isLoading }] = useGetSalesTargetMutation();
+  const [getSalesmanDropdown, { isLoading: isSalesmanLoading }] =
+    useGetSalesmanDropdownMutation();
 
   const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,11 +35,17 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(currentMonthVal);
   const [selectedQuarter, setSelectedQuarter] = useState('');
+  const [salesmen, setSalesmen] = useState([]);
+  const [selectedSalesman, setSelectedSalesman] = useState('');
+
+  const showSalesmanDropdown =
+    String(user?.role_id) === '2' || String(user?.role_id) === '12';
 
   const fetchTargetData = async (
     y = selectedYear,
     m = selectedMonth,
     q = selectedQuarter,
+    s = selectedSalesman,
   ) => {
     try {
       const params = {
@@ -45,6 +56,9 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
       params.years = y !== undefined && y !== null ? y : '';
       params.month = m !== undefined && m !== null ? m : '';
       params.quater = q !== undefined && q !== null ? q : '';
+      if (showSalesmanDropdown) {
+        params.salesman_name = s || '';
+      }
 
       console.log('CRMSalesVsTarget [API Request Params]:', params);
       const response = await getSalesTarget(params).unwrap();
@@ -63,13 +77,51 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (user?.company_user_code && user?.id) {
-      fetchTargetData('', currentMonthVal, '');
+      fetchTargetData('', currentMonthVal, '', '');
     }
   }, [user?.company_user_code, user?.id]);
 
+  useEffect(() => {
+    if (
+      showSalesmanDropdown &&
+      user?.company_user_code &&
+      user?.company_user_id
+    ) {
+      const fetchSalesmen = async () => {
+        try {
+          const res = await getSalesmanDropdown({
+            user_id: user.company_user_id,
+            company: user.company_user_code,
+            role_id: user.role_id || '',
+          }).unwrap();
+          console.log('CRMSalesVsTarget [Salesmen Dropdown Response]:', res);
+          if (res && String(res.status) === 'true') {
+            setSalesmen(res.data || []);
+          } else {
+            setSalesmen([]);
+          }
+        } catch (err) {
+          console.log('Error fetching salesman dropdown:', err);
+          setSalesmen([]);
+        }
+      };
+      fetchSalesmen();
+    }
+  }, [
+    showSalesmanDropdown,
+    user?.company_user_code,
+    user?.company_user_id,
+    user?.role_id,
+  ]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTargetData(selectedYear, selectedMonth, selectedQuarter);
+    await fetchTargetData(
+      selectedYear,
+      selectedMonth,
+      selectedQuarter,
+      selectedSalesman,
+    );
     setRefreshing(false);
   };
 
@@ -78,7 +130,7 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
     setSelectedYear(newVal);
     setSelectedMonth('');
     setSelectedQuarter('');
-    fetchTargetData(newVal, '', '');
+    fetchTargetData(newVal, '', '', selectedSalesman);
   };
 
   const handleQuarterToggle = qVal => {
@@ -86,7 +138,7 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
     setSelectedQuarter(newVal);
     setSelectedYear('');
     setSelectedMonth('');
-    fetchTargetData('', '', newVal);
+    fetchTargetData('', '', newVal, selectedSalesman);
   };
 
   const handleCurrentMonthToggle = () => {
@@ -94,14 +146,20 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
     setSelectedMonth(newVal);
     setSelectedYear('');
     setSelectedQuarter('');
-    fetchTargetData('', newVal, '');
+    fetchTargetData('', newVal, '', selectedSalesman);
+  };
+
+  const handleSalesmanChange = salesmanCode => {
+    setSelectedSalesman(salesmanCode);
+    fetchTargetData(selectedYear, selectedMonth, selectedQuarter, salesmanCode);
   };
 
   const handleClearFilters = () => {
     setSelectedYear('');
     setSelectedMonth('');
     setSelectedQuarter('');
-    fetchTargetData('', '', '');
+    setSelectedSalesman('');
+    fetchTargetData('', '', '', '');
   };
 
   return (
@@ -110,6 +168,56 @@ const CRMSalesVsTargetScreen = ({ navigation }) => {
     >
       {/* Dropdown Filters */}
       <View style={styles.filtersWrapper}>
+        {showSalesmanDropdown && (
+          <View style={styles.salesmanDropdownContainer}>
+            <Text
+              style={[
+                styles.sectionLabel,
+                { color: theme.colors.textSecondary, marginBottom: 6 },
+              ]}
+            >
+              Salesman
+            </Text>
+            {isSalesmanLoading ? (
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.primary}
+                style={{ alignSelf: 'flex-start', marginVertical: 8 }}
+              />
+            ) : (
+              <Dropdown
+                style={[
+                  styles.dropdown,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+                data={salesmen}
+                search
+                labelField="salesman_name"
+                valueField="salesman_code"
+                placeholder="Select Salesman"
+                placeholderStyle={{
+                  color: theme.colors.textSecondary,
+                  fontSize: 13,
+                }}
+                searchPlaceholder="Search salesman..."
+                value={selectedSalesman}
+                onChange={item => handleSalesmanChange(item.salesman_code)}
+                selectedTextStyle={{ color: theme.colors.text, fontSize: 13 }}
+                itemTextStyle={{ color: theme.colors.text, fontSize: 13 }}
+                containerStyle={{
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  borderRadius: 8,
+                }}
+                activeColor={theme.colors.border}
+              />
+            )}
+          </View>
+        )}
+
         <View style={styles.filterRow}>
           {/* Current Year Toggle Button */}
           <TouchableOpacity
@@ -532,6 +640,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
+  },
+  salesmanDropdownContainer: {
+    marginBottom: 4,
+  },
+  dropdown: {
+    height: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
   },
   filterRow: {
     flexDirection: 'row',

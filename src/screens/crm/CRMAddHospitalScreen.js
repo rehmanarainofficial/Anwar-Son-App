@@ -138,7 +138,7 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
       Toast.show({
         type: 'error',
         text1: 'Validation Error',
-        text2: 'Please select a Segment (Department)',
+        text2: 'Please select a Category',
       });
       return;
     }
@@ -337,6 +337,17 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
   // Tab Contents
   const renderBasicInfo = () => (
     <View style={styles.formContent}>
+      <Text
+        style={{
+          color: theme.colors.text,
+          fontWeight: 'bold',
+          fontSize: 18,
+          marginTop: 16,
+          marginBottom: 16,
+        }}
+      >
+        Add Hospital Information{' '}
+      </Text>
       {renderInput('Hospital Name', basicInfo.hospitalName, text =>
         updateBasicField('hospitalName', text),
       )}
@@ -353,7 +364,7 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
         cityLoading,
       )}
       {renderDropdown(
-        'Segment (Department)',
+        'Category',
         deptRes?.data || [],
         basicInfo.segment,
         val => updateBasicField('segment', val),
@@ -397,6 +408,18 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
         'terms_indicator',
         paymentLoading,
       )}
+
+      <Text
+        style={{
+          color: theme.colors.text,
+          fontWeight: 'bold',
+          fontSize: 16,
+          marginTop: 16,
+          marginBottom: 16,
+        }}
+      >
+        Tier Information
+      </Text>
 
       {renderDropdown(
         'Wound Closure',
