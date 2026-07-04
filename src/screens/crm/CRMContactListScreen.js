@@ -12,26 +12,91 @@ import {
 import { useTheme } from '@config/useTheme';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useGetContactsDataMutation } from '@api/portalApi';
+import {
+  useGetContactTierDropdownMutation,
+  useGetSurgicalSpecialityDropdownMutation,
+} from '@api/baseApi';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
+
+const mapDropdownData = (data, valueKey = null, labelKey = null) => {
+  return (data || []).map((item, index) => {
+    let id = valueKey ? item[valueKey] : (
+      item.id !== undefined && item.id !== null ? item.id : (
+        item.sales_code !== undefined && item.sales_code !== null ? item.sales_code : (
+          item.combo_code !== undefined && item.combo_code !== null ? item.combo_code : (
+            item.debtor_no !== undefined && item.debtor_no !== null ? item.debtor_no : (
+              item.unique_id !== undefined && item.unique_id !== null ? item.unique_id : null
+            )
+          )
+        )
+      )
+    );
+    if (id === null || id === undefined || id === '') {
+      id = String(index);
+    }
+    const description = labelKey ? item[labelKey] : (
+      item.description || item.cityname || item.hospital_name || item.name || ''
+    );
+    return {
+      ...item,
+      id: String(id),
+      description: String(description),
+    };
+  });
+};
 
 const CRMContactListScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const user = useSelector(selectCurrentUser);
+  
+  // Data States
   const [contacts, setContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filter States
+  const [tiers, setTiers] = useState([]);
+  const [specialities, setSpecialities] = useState([]);
+  const [selectedTier, setSelectedTier] = useState(null);
+  const [selectedSpeciality, setSelectedSpeciality] = useState(null);
+  
+  // Expansion state: tracks which cards are expanded by contact_id
+  const [expandedCards, setExpandedCards] = useState({});
+
+  // API Mutations
   const [getContactsData, { isLoading }] = useGetContactsDataMutation();
+  const [getContactTierDropdown] = useGetContactTierDropdownMutation();
+  const [getSurgicalSpecialityDropdown] = useGetSurgicalSpecialityDropdownMutation();
+
+  const fetchFilters = useCallback(async () => {
+    try {
+      const tierRes = await getContactTierDropdown({}).unwrap();
+      if (tierRes?.status === 'true') {
+        setTiers(mapDropdownData(tierRes.data || []));
+      }
+      const specRes = await getSurgicalSpecialityDropdown({}).unwrap();
+      if (specRes?.status === 'true') {
+        setSpecialities(mapDropdownData(specRes.data || []));
+      }
+    } catch (e) {
+      console.log('Error fetching filters:', e);
+    }
+  }, [getContactTierDropdown, getSurgicalSpecialityDropdown]);
 
   const fetchContacts = useCallback(async () => {
     try {
-      const res = await getContactsData({ user_id: user?.id }).unwrap();
+      const res = await getContactsData({
+        user_id: user?.id,
+        contact_tier: selectedTier,
+        surgical_speciality: selectedSpeciality,
+      }).unwrap();
       if (res.status === 'true') {
         setContacts(res.data || []);
       }
     } catch (error) {
       console.log('Fetch Contacts Error:', error);
     }
-  }, [getContactsData, user?.id]);
+  }, [getContactsData, user?.id, selectedTier, selectedSpeciality]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -49,15 +114,31 @@ const CRMContactListScreen = ({ navigation }) => {
   }, [navigation, fetchContacts]);
 
   useEffect(() => {
+    fetchFilters();
+  }, [fetchFilters]);
+
+  useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchContacts();
     });
     return unsubscribe;
   }, [navigation, fetchContacts]);
 
-  const cleanText = text => {
+  // Refetch when filters change
+  useEffect(() => {
+    fetchContacts();
+  }, [selectedTier, selectedSpeciality, fetchContacts]);
+
+  const toggleExpand = (id) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const cleanText = (text) => {
     if (!text) return '';
-    return text
+    return String(text)
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
@@ -65,24 +146,28 @@ const CRMContactListScreen = ({ navigation }) => {
       .replace(/&#39;/g, "'");
   };
 
-  const filteredContacts = contacts.filter(item => {
+  const filteredContacts = contacts.filter((item) => {
     const q = searchQuery.toLowerCase();
     const name = (item.person_name || '').toLowerCase();
+    const title = (item.title_name || '').toLowerCase();
     const dept = (item.department_name || '').toLowerCase();
     const city = (item.city_name || '').toLowerCase();
-    const hosp = (item.hosp_1 || '').toLowerCase();
+    const hosp = (item.hospitals_name || '').toLowerCase();
     const cell = (item.cell_no || '').toLowerCase();
-    const role = (item.job_role_name || '').toLowerCase();
-    const specialty = (item.surgery || '').toLowerCase();
+    const role = (item.surgical_role || '').toLowerCase();
+    const specialty = (item.speciality || '').toLowerCase();
+    const tierVal = (item.tier || '').toLowerCase();
 
     return (
       name.includes(q) ||
+      title.includes(q) ||
       dept.includes(q) ||
       city.includes(q) ||
       hosp.includes(q) ||
       cell.includes(q) ||
       role.includes(q) ||
-      specialty.includes(q)
+      specialty.includes(q) ||
+      tierVal.includes(q)
     );
   });
 
@@ -100,145 +185,225 @@ const CRMContactListScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderContactCard = ({ item }) => (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-        },
-      ]}
-    >
-      {/* Header section with Name and Title */}
-      <View style={styles.cardHeader}>
-        {item.profile_pic_url ? (
-          <Image
-            source={{ uri: item.profile_pic_url }}
-            style={styles.avatarImage}
-          />
-        ) : (
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: theme.colors.primary + '20' },
-            ]}
-          >
-            <Text style={[styles.avatarText, { color: theme.colors.primary }]}>
-              {item.person_name ? item.person_name.charAt(0) : 'C'}
-            </Text>
-          </View>
-        )}
-        <View style={styles.headerInfo}>
-          <Text style={[styles.nameText, { color: theme.colors.text }]}>
-            {item.title_name} {item.person_name}
-          </Text>
-          <Text style={[styles.specialtyText, { color: theme.colors.primary }]}>
-            {cleanText(item.department_name)}{' '}
-            {item.job_role_name && `- ${item.job_role_name}`}
-          </Text>
-        </View>
-      </View>
-
+  const renderContactCard = ({ item }) => {
+    const isExpanded = !!expandedCards[item.contact_id];
+    return (
       <View
-        style={[styles.divider, { backgroundColor: theme.colors.border }]}
-      />
-
-      {/* Detail Section */}
-      <View style={styles.cardBody}>
-        {/* Row 1 */}
-        <View style={styles.row}>
-          {renderKeyValue('Mobile No', item.cell_no)}
-          {renderKeyValue('City', item.city_name)}
-        </View>
-
-        {/* Row 2 */}
-        <View style={styles.row}>
-          {renderKeyValue('Gender', item.gender_name)}
-          {renderKeyValue('Education', item.education_name)}
-        </View>
-
-        {/* Row 3 */}
-        <View style={styles.row}>
-          {renderKeyValue('Surgery', item.surgery)}
-          {renderKeyValue('Private Practice', item.private_practice)}
-        </View>
-
-        {/* Full Width Keys */}
-        <View style={styles.fullWidthCol}>
-          <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
-            Hospital
-          </Text>
-          <Text style={[styles.valueText, { color: theme.colors.text }]}>
-            {cleanText(item.hosp_1)}
-          </Text>
-        </View>
-
-        <View style={styles.fullWidthCol}>
-          <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
-            Email
-          </Text>
-          <Text style={[styles.valueText, { color: theme.colors.text }]}>
-            {item.work_email || item.personal_email || '-'}
-          </Text>
-        </View>
-
-        {/* Business Card Section */}
-        {item.business_card_url ? (
-          <View style={styles.businessCardContainer}>
-            <Text
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        {/* Card Header section is touchable, exact style matches hospital card header */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => toggleExpand(item.contact_id)}
+          style={[styles.cardHeader, isExpanded && { marginBottom: 16 }]}
+        >
+          {item.profile_pic_url ? (
+            <Image
+              source={{ uri: item.profile_pic_url }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <View
               style={[
-                styles.keyText,
-                { color: theme.colors.textSecondary, marginBottom: 8 },
+                styles.avatar,
+                { backgroundColor: theme.colors.primary + '15' },
               ]}
             >
-              Business Card
+              <Text style={[styles.avatarText, { color: theme.colors.primary }]}>
+                {item.person_name ? item.person_name.charAt(0) : 'C'}
+              </Text>
+            </View>
+          )}
+          <View style={styles.headerInfo}>
+            <Text style={[styles.nameText, { color: theme.colors.text }]} numberOfLines={2}>
+              {item.title_name || ''}{item.person_name}
             </Text>
-            <Image
-              source={{ uri: item.business_card_url }}
-              style={styles.businessCardImage}
+            <View style={styles.collapsedMeta}>
+              <Text style={[styles.cityText, { color: theme.colors.textSecondary }]}>
+                <Icon name="location-outline" size={12} /> {item.city_name || 'N/A'}
+              </Text>
+              {item.tier ? (
+                <View style={[styles.tierBadge, { backgroundColor: theme.colors.primary + '10' }]}>
+                  <Text style={[styles.tierBadgeText, { color: theme.colors.primary }]}>
+                    {item.tier}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.collapsedSubMeta}>
+              {item.speciality ? (
+                <View style={[styles.categoryBadge, { backgroundColor: '#3B82F610' }]}>
+                  <Text style={[styles.categoryBadgeText, { color: '#3B82F6' }]}>
+                    {cleanText(item.speciality)}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          <View style={styles.expandIconBtn}>
+            <Icon
+              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+              size={20}
+              color={theme.colors.textSecondary}
             />
           </View>
-        ) : null}
+        </TouchableOpacity>
+
+        {/* Expanded View Body */}
+        {isExpanded && (
+          <>
+            <View
+              style={[styles.divider, { backgroundColor: theme.colors.border }]}
+            />
+            <View style={styles.cardBody}>
+              <View style={styles.row}>
+                {renderKeyValue('Mobile No', item.cell_no || '-')}
+                {renderKeyValue('Community', item.community_name || '-')}
+              </View>
+              <View style={styles.row}>
+                {renderKeyValue('Department', item.department_name || '-')}
+                {renderKeyValue('Surgical Role', item.surgical_role || '-')}
+              </View>
+              <View style={styles.row}>
+                {renderKeyValue('Administrative Role', item.administrative_role_name || '-')}
+                {renderKeyValue('Focus Product', item.focus_product || '-')}
+              </View>
+
+              <View style={styles.fullWidthCol}>
+                <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
+                  Hospital
+                </Text>
+                <Text style={[styles.valueText, { color: theme.colors.text }]}>
+                  {cleanText(item.hospitals_name || '-')}
+                </Text>
+              </View>
+
+              <View style={styles.fullWidthCol}>
+                <Text style={[styles.keyText, { color: theme.colors.textSecondary }]}>
+                  Email
+                </Text>
+                <Text style={[styles.valueText, { color: theme.colors.text }]}>
+                  {item.personal_email || '-'}
+                </Text>
+              </View>
+
+              {item.business_card_url ? (
+                <View style={styles.businessCardContainer}>
+                  <Text
+                    style={[
+                      styles.keyText,
+                      { color: theme.colors.textSecondary, marginBottom: 8 },
+                    ]}
+                  >
+                    Business Card
+                  </Text>
+                  <Image
+                    source={{ uri: item.business_card_url }}
+                    style={styles.businessCardImage}
+                  />
+                </View>
+              ) : null}
+            </View>
+          </>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
+
+  const renderHorizontalFilter = (data, selectedValue, onSelect, allLabel, iconName) => {
+    return (
+      <View style={styles.filterRowContainer}>
+        <View style={styles.filterIconWrapper}>
+          <Icon name={iconName} size={18} color={theme.colors.primary} />
+        </View>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[{ id: null, description: allLabel }, ...data]}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.filterScroll}
+          renderItem={({ item }) => {
+            const isActive = selectedValue === item.id;
+            return (
+              <TouchableOpacity
+                onPress={() => onSelect(item.id)}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: isActive ? theme.colors.primary : theme.colors.surface,
+                    borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    {
+                      color: isActive ? '#fff' : theme.colors.text,
+                      fontWeight: isActive ? '600' : '400',
+                    },
+                  ]}
+                >
+                  {item.description}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    );
+  };
 
   return (
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <View style={styles.searchContainer}>
-        <View
-          style={[
-            styles.searchBar,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <Icon
-            name="search-outline"
-            size={20}
-            color={theme.colors.textSecondary}
-          />
-          <TextInput
-            style={[styles.searchInput, { color: theme.colors.text }]}
-            placeholder="Search contacts..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery !== '' && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Icon
-                name="close-circle"
-                size={18}
-                color={theme.colors.textSecondary}
-              />
-            </TouchableOpacity>
-          )}
+      <View style={styles.headerContainer}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View
+            style={[
+              styles.searchBar,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Icon
+              name="search-outline"
+              size={20}
+              color={theme.colors.textSecondary}
+            />
+            <TextInput
+              style={[styles.searchInput, { color: theme.colors.text }]}
+              placeholder="Search contacts..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery !== '' && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Icon
+                  name="close-circle"
+                  size={18}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Filters section */}
+        <View style={styles.filtersSectionContainer}>
+          {renderHorizontalFilter(tiers, selectedTier, setSelectedTier, 'All Tiers', 'funnel-outline')}
+          {renderHorizontalFilter(specialities, selectedSpeciality, setSelectedSpeciality, 'All Specialities', 'git-branch-outline')}
         </View>
       </View>
 
@@ -268,10 +433,15 @@ const CRMContactListScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerContainer: {
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
   listContent: { padding: 16, paddingTop: 8 },
   searchContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   searchBar: {
     flexDirection: 'row',
@@ -285,6 +455,39 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     marginLeft: 8,
+  },
+  filtersSectionContainer: {
+    gap: 8,
+    marginTop: 4,
+  },
+  filterRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  filterIconWrapper: {
+    marginRight: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.02)',
+  },
+  filterScroll: {
+    paddingRight: 16,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterText: {
+    fontSize: 12,
   },
   card: {
     borderRadius: 16,
@@ -300,12 +503,11 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -313,13 +515,13 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     marginRight: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
   },
   headerInfo: {
@@ -330,8 +532,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
   },
-  specialtyText: {
-    fontSize: 14,
+  cityText: {
+    fontSize: 13,
     fontWeight: '500',
   },
   divider: {
@@ -354,13 +556,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   keyText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     marginBottom: 2,
     textTransform: 'uppercase',
   },
   valueText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   businessCardContainer: {
@@ -382,6 +584,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 50,
+  },
+  collapsedMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  tierBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  tierBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  collapsedSubMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  expandIconBtn: {
+    paddingLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

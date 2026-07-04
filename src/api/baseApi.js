@@ -369,15 +369,21 @@ export const baseApi = createApi({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
-        formData.append('user_id', body.user_id);
-        formData.append('title', body.title);
-        formData.append('person_name', body.person_name);
-        formData.append('city', body.city);
-        formData.append('personal_email', body.personal_email);
-        formData.append('cell_no', body.cell_no);
-        formData.append('hospital', body.hospital);
-        formData.append('community', body.community !== undefined ? body.community : '');
-        formData.append('administrative_role', body.administrative_role !== undefined ? body.administrative_role : '');
+        formData.append('user_id', body.user_id || '');
+        formData.append('title', body.title || '');
+        formData.append('person_name', body.person_name || '');
+        formData.append('city', body.city || '');
+        formData.append('personal_email', body.personal_email || '');
+        formData.append('cell_no', body.cell_no || '');
+        formData.append('hospital', body.hospital || '');
+        formData.append('community', body.community || '');
+        formData.append('department', body.department || '');
+        formData.append('surgical_speciality', body.surgical_speciality || '');
+        formData.append('procedure_focus', body.procedure_focus || '');
+        formData.append('surgical_role', body.surgical_role || '');
+        formData.append('administrative_role', body.administrative_role || '');
+        formData.append('contact_tier', body.contact_tier || '');
+        formData.append('focus_product', body.focus_product || '');
 
         if (body.profile_pic_name) {
           formData.append('profile_pic_name', {
@@ -418,6 +424,9 @@ export const baseApi = createApi({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
+        if (body.community_id) {
+          formData.append('community_id', body.community_id);
+        }
         if (body.department) {
           formData.append('department', body.department);
         }
@@ -433,11 +442,77 @@ export const baseApi = createApi({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
+        if (body.department_id) {
+          formData.append('department_id', body.department_id);
+        }
         if (body.surgical_speciality) {
           formData.append('surgical_speciality', body.surgical_speciality);
         }
         return {
           url: 'dropdown/surgical_speciality.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getHospitalDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('user_id', body.user_id);
+        return {
+          url: 'dropdown/hospital.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getProcedureFocusDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('surgery_id', body.surgery_id);
+        return {
+          url: 'dropdown/procedure_focus.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getSurgicalRoleDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('community_id', body.community_id);
+        return {
+          url: 'dropdown/surgical_role.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getContactTierDropdown: builder.mutation({
+      query: () => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/contact_tier.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
+    getFocusProductDropdown: builder.mutation({
+      query: () => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/focus_product.php',
           method: 'POST',
           body: formData,
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -622,6 +697,11 @@ export const {
   useGetHospitalTierDropdownMutation,
   useGetProductOpportunityDropdownMutation,
   useAddHospitalMutation,
+  useGetHospitalDropdownMutation,
+  useGetProcedureFocusDropdownMutation,
+  useGetSurgicalRoleDropdownMutation,
+  useGetContactTierDropdownMutation,
+  useGetFocusProductDropdownMutation,
 } = baseApi;
 
 export default baseApi;

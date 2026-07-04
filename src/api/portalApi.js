@@ -145,6 +145,12 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', 'CRM');
         formData.append('user_id', body.user_id);
+        if (body.contact_tier !== undefined && body.contact_tier !== null) {
+          formData.append('contact_tier', body.contact_tier);
+        }
+        if (body.surgical_speciality !== undefined && body.surgical_speciality !== null) {
+          formData.append('surgical_speciality', body.surgical_speciality);
+        }
         return {
           url: 'portal/get_contacts_data.php',
           method: 'POST',

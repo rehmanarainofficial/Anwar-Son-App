@@ -24,44 +24,100 @@ import {
   useGetCommunityDropdownMutation,
   useGetAdministrativeRoleDropdownMutation,
   useAddHospitalContactMutation,
+  useGetDepartmentDropdownMutation,
+  useGetSurgicalSpecialityDropdownMutation,
+  useGetHospitalDropdownMutation,
+  useGetProcedureFocusDropdownMutation,
+  useGetSurgicalRoleDropdownMutation,
+  useGetContactTierDropdownMutation,
+  useGetFocusProductDropdownMutation,
 } from '@api/baseApi';
-import { useGetHospitalDataMutation } from '@api/portalApi';
+
+const mapDropdownData = (data, valueKey = null, labelKey = null) => {
+  return (data || []).map((item, index) => {
+    let id = valueKey ? item[valueKey] : (
+      item.id !== undefined && item.id !== null ? item.id : (
+        item.sales_code !== undefined && item.sales_code !== null ? item.sales_code : (
+          item.combo_code !== undefined && item.combo_code !== null ? item.combo_code : (
+            item.debtor_no !== undefined && item.debtor_no !== null ? item.debtor_no : (
+              item.unique_id !== undefined && item.unique_id !== null ? item.unique_id : null
+            )
+          )
+        )
+      )
+    );
+    if (id === null || id === undefined || id === '') {
+      id = String(index);
+    }
+    const description = labelKey ? item[labelKey] : (
+      item.description || item.cityname || item.hospital_name || item.name || ''
+    );
+    return {
+      ...item,
+      id: String(id),
+      description: String(description),
+    };
+  });
+};
 
 const CRMAddLeadScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const user = useSelector(selectCurrentUser);
 
+  // Form Field States
+  const [selectedTitle, setSelectedTitle] = useState(null);
   const [personName, setPersonName] = useState('');
+  const [selectedCity, setSelectedCity] = useState(null);
   const [personalEmail, setPersonalEmail] = useState('');
   const [cellNo, setCellNo] = useState('');
-  const [selectedTitle, setSelectedTitle] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [selectedCommunity, setSelectedCommunity] = useState(null);
-  const [selectedAdministrativeRole, setSelectedAdministrativeRole] = useState(null);
+
   const [selectedHospitals, setSelectedHospitals] = useState([]);
+  const [selectedCommunity, setSelectedCommunity] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [selectedSpeciality, setSelectedSpeciality] = useState(null);
+  const [selectedProcedures, setSelectedProcedures] = useState([]);
+  const [selectedSurgicalRole, setSelectedSurgicalRole] = useState(null);
+  const [selectedAdministrativeRole, setSelectedAdministrativeRole] = useState(null);
+
+  const [selectedContactTier, setSelectedContactTier] = useState(null);
+  const [selectedFocusProducts, setSelectedFocusProducts] = useState([]);
 
   const [profilePic, setProfilePic] = useState(null);
   const [businessCard, setBusinessCard] = useState(null);
 
+  // Dropdown Lists Data States
   const [titles, setTitles] = useState([]);
   const [cities, setCities] = useState([]);
-  const [communities, setCommunities] = useState([]);
-  const [administrativeRoles, setAdministrativeRoles] = useState([]);
   const [hospitals, setHospitals] = useState([]);
+  const [communities, setCommunities] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [specialities, setSpecialities] = useState([]);
+  const [procedures, setProcedures] = useState([]);
+  const [surgicalRoles, setSurgicalRoles] = useState([]);
+  const [administrativeRoles, setAdministrativeRoles] = useState([]);
+  const [contactTiers, setContactTiers] = useState([]);
+  const [focusProducts, setFocusProducts] = useState([]);
 
+  // API Mutations
   const [getTitleDropdown] = useGetTitleDropdownMutation();
   const [getCityDropdown] = useGetCityDropdownMutation();
   const [getCommunityDropdown] = useGetCommunityDropdownMutation();
   const [getAdministrativeRoleDropdown] = useGetAdministrativeRoleDropdownMutation();
-  const [getHospitalData] = useGetHospitalDataMutation();
+  const [getHospitalDropdown] = useGetHospitalDropdownMutation();
+  const [getDepartmentDropdown] = useGetDepartmentDropdownMutation();
+  const [getSurgicalSpecialityDropdown] = useGetSurgicalSpecialityDropdownMutation();
+  const [getProcedureFocusDropdown] = useGetProcedureFocusDropdownMutation();
+  const [getSurgicalRoleDropdown] = useGetSurgicalRoleDropdownMutation();
+  const [getContactTierDropdown] = useGetContactTierDropdownMutation();
+  const [getFocusProductDropdown] = useGetFocusProductDropdownMutation();
   const [addHospitalContact] = useAddHospitalContactMutation();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Animated entrance values
+  // Animated entrance values (up to 25 items for all sections and fields)
   const animValues = useRef([]).current;
-  const inputsCount = 10;
+  const inputsCount = 25;
   if (animValues.length === 0) {
     for (let i = 0; i < inputsCount; i++) {
       animValues.push({
@@ -79,54 +135,60 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
         Animated.timing(av.translateY, {
           toValue: 0,
           duration: 450,
-          delay: idx * 60,
+          delay: idx * 40,
           useNativeDriver: true,
         }),
         Animated.timing(av.opacity, {
           toValue: 1,
           duration: 450,
-          delay: idx * 60,
+          delay: idx * 40,
           useNativeDriver: true,
         }),
       ]),
     );
-    Animated.stagger(60, anims).start();
+    Animated.stagger(40, anims).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const titleRes = await getTitleDropdown({
-        id: user?.id || user?.company_user_id,
-      }).unwrap();
+      const uId = user?.id;
+
+      // 1. Sales Title
+      const titleRes = await getTitleDropdown({ id: uId }).unwrap();
       if (titleRes?.status === 'true') {
-        setTitles(titleRes.data || []);
+        setTitles(mapDropdownData(titleRes.data || []));
       }
-      const cityRes = await getCityDropdown({
-        id: user?.id || user?.company_user_id,
-      }).unwrap();
+
+      // 2. City
+      const cityRes = await getCityDropdown({ id: uId }).unwrap();
       if (cityRes?.status === 'true') {
-        setCities(cityRes.data || []);
+        setCities(mapDropdownData(cityRes.data || []));
       }
+
+      // 3. Hospital
+      const hospRes = await getHospitalDropdown({ user_id: uId }).unwrap();
+      if (hospRes?.status === 'true') {
+        setHospitals(mapDropdownData(hospRes.data || []));
+      }
+
+      // 4. Community
       const commRes = await getCommunityDropdown({}).unwrap();
       if (commRes?.status === 'true') {
-        setCommunities(commRes.data || []);
+        setCommunities(mapDropdownData(commRes.data || []));
       }
-      const adminRoleRes = await getAdministrativeRoleDropdown({}).unwrap();
-      if (adminRoleRes?.status === 'true') {
-        setAdministrativeRoles(adminRoleRes.data || []);
+
+      // 10. Contact Tier
+      const tierRes = await getContactTierDropdown({}).unwrap();
+      if (tierRes?.status === 'true') {
+        setContactTiers(mapDropdownData(tierRes.data || []));
       }
-      const hospRes = await getHospitalData({
-        user_id: user?.id,
-      }).unwrap();
-      if (hospRes?.status === 'true') {
-        const hData = hospRes.data || [];
-        const formattedHospitals = hData.map((h, i) => ({
-          ...h,
-          unique_id: h.debtor_no ? String(h.debtor_no) : String(i),
-          name: h.hospital_name || 'Unknown Hospital',
-        }));
-        setHospitals(formattedHospitals);
+
+      // 11. Focus Product
+      const prodRes = await getFocusProductDropdown({}).unwrap();
+      if (prodRes?.status === 'true') {
+        setFocusProducts(mapDropdownData(prodRes.data || []));
       }
     } catch (e) {
       console.log('Error fetching dropdowns:', e);
@@ -135,45 +197,134 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
     }
   };
 
+  // Cascading Dynamic Loads
+  const handleCommunityChange = async (communityId) => {
+    setSelectedCommunity(communityId);
+    
+    // Reset dependant selections
+    setSelectedDepartment(null);
+    setSelectedSurgicalRole(null);
+    setSelectedAdministrativeRole(null);
+    setSelectedSpeciality(null);
+    setSelectedProcedures([]);
+
+    // Clear lists
+    setDepartments([]);
+    setSurgicalRoles([]);
+    setAdministrativeRoles([]);
+    setSpecialities([]);
+    setProcedures([]);
+
+    if (!communityId) return;
+
+    try {
+      // 5. Department
+      const deptRes = await getDepartmentDropdown({ community_id: communityId }).unwrap();
+      if (deptRes?.status === 'true') {
+        setDepartments(mapDropdownData(deptRes.data || []));
+      }
+      
+      // 8. Surgical Role
+      const surgRes = await getSurgicalRoleDropdown({ community_id: communityId }).unwrap();
+      if (surgRes?.status === 'true') {
+        setSurgicalRoles(mapDropdownData(surgRes.data || []));
+      }
+
+      // 9. Administrative Role
+      const adminRes = await getAdministrativeRoleDropdown({ community_id: communityId }).unwrap();
+      if (adminRes?.status === 'true') {
+        setAdministrativeRoles(mapDropdownData(adminRes.data || []));
+      }
+    } catch (e) {
+      console.log('Error fetching community cascade data:', e);
+    }
+  };
+
+  const handleDepartmentChange = async (departmentId) => {
+    setSelectedDepartment(departmentId);
+
+    // Reset dependant selections
+    setSelectedSpeciality(null);
+    setSelectedProcedures([]);
+
+    // Clear lists
+    setSpecialities([]);
+    setProcedures([]);
+
+    if (!departmentId) return;
+
+    try {
+      // 6. Surgical Speciality
+      const specRes = await getSurgicalSpecialityDropdown({ department_id: departmentId }).unwrap();
+      if (specRes?.status === 'true') {
+        setSpecialities(mapDropdownData(specRes.data || []));
+      }
+    } catch (e) {
+      console.log('Error fetching department cascade data:', e);
+    }
+  };
+
+  const handleSpecialityChange = async (specialityId) => {
+    setSelectedSpeciality(specialityId);
+
+    // Reset dependant selections
+    setSelectedProcedures([]);
+
+    // Clear lists
+    setProcedures([]);
+
+    if (!specialityId) return;
+
+    try {
+      // 7. Procedure Focus
+      const procRes = await getProcedureFocusDropdown({ surgery_id: specialityId }).unwrap();
+      if (procRes?.status === 'true') {
+        setProcedures(mapDropdownData(procRes.data || []));
+      }
+    } catch (e) {
+      console.log('Error fetching speciality cascade data:', e);
+    }
+  };
+
   const validate = () => {
     if (!selectedTitle) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation',
-        text2: 'Please select Title',
-      });
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Title' });
       return false;
     }
     if (!personName || personName.trim() === '') {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation',
-        text2: 'Person Name is required',
-      });
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Person Name is required' });
       return false;
     }
     if (!selectedCity) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation',
-        text2: 'Please select City',
-      });
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select City' });
       return false;
     }
     if (!cellNo || cellNo.trim() === '') {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation',
-        text2: 'Cell No is required',
-      });
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Cell No is required' });
       return false;
     }
-    if (selectedHospitals.length === 0) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation',
-        text2: 'Please select at least one Hospital',
-      });
+    if (!selectedCommunity) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Community' });
+      return false;
+    }
+    if (!selectedDepartment) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Department' });
+      return false;
+    }
+    if (!selectedSpeciality) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Speciality' });
+      return false;
+    }
+    if (!selectedSurgicalRole) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Surgical Role' });
+      return false;
+    }
+    if (!selectedAdministrativeRole) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Administrative Role' });
+      return false;
+    }
+    if (!selectedContactTier) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Contact Tier' });
       return false;
     }
     return true;
@@ -232,10 +383,16 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
         personal_email: personalEmail,
         cell_no: cellNo,
         hospital: selectedHospitals.join(','),
+        community: selectedCommunity || '',
+        department: selectedDepartment || '',
+        surgical_speciality: selectedSpeciality || '',
+        procedure_focus: selectedProcedures.join(','),
+        surgical_role: selectedSurgicalRole || '',
+        administrative_role: selectedAdministrativeRole || '',
+        contact_tier: selectedContactTier || '',
+        focus_product: selectedFocusProducts.join(','),
         profile_pic_name: profilePic,
         business_card_name: businessCard,
-        community: selectedCommunity || '',
-        administrative_role: selectedAdministrativeRole || '',
       }).unwrap();
 
       if (res && String(res.status) === 'true') {
@@ -266,6 +423,19 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
       setSubmitting(false);
     }
   };
+
+  const renderHeading = (index, text) => (
+    <Animated.View
+      style={{
+        transform: [{ translateY: animValues[index].translateY }],
+        opacity: animValues[index].opacity,
+      }}
+    >
+      <Text style={[styles.sectionHeader, { color: theme.colors.primary }]}>
+        {text}
+      </Text>
+    </Animated.View>
+  );
 
   const renderInputAnimated = (
     index,
@@ -363,10 +533,13 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
           contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 16 }}
           showsVerticalScrollIndicator={false}
         >
+          {/* Section 1: Basic Information */}
+          {renderHeading(0, 'Basic Information')}
+
           <Animated.View
             style={{
-              transform: [{ translateY: animValues[0].translateY }],
-              opacity: animValues[0].opacity,
+              transform: [{ translateY: animValues[1].translateY }],
+              opacity: animValues[1].opacity,
             }}
           >
             <Dropdown
@@ -380,12 +553,12 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               data={titles}
               search
               labelField="description"
-              valueField="sales_code"
+              valueField="id"
               placeholder="Select Title *"
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedTitle}
-              onChange={item => setSelectedTitle(item.sales_code)}
+              onChange={item => setSelectedTitle(item.id)}
               selectedTextStyle={{ color: theme.colors.text }}
               itemTextStyle={{ color: theme.colors.text }}
               containerStyle={{
@@ -396,12 +569,12 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
             />
           </Animated.View>
 
-          {renderInputAnimated(1, 'Person Name *', personName, setPersonName)}
+          {renderInputAnimated(2, 'Person Name *', personName, setPersonName)}
 
           <Animated.View
             style={{
-              transform: [{ translateY: animValues[2].translateY }],
-              opacity: animValues[2].opacity,
+              transform: [{ translateY: animValues[3].translateY }],
+              opacity: animValues[3].opacity,
             }}
           >
             <Dropdown
@@ -414,7 +587,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               ]}
               data={cities}
               search
-              labelField="cityname"
+              labelField="description"
               valueField="id"
               placeholder="Select City *"
               placeholderStyle={{ color: theme.colors.textSecondary }}
@@ -432,80 +605,19 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
           </Animated.View>
 
           {renderInputAnimated(
-            3,
+            4,
             'Personal Email',
             personalEmail,
             setPersonalEmail,
             'email-address',
           )}
-          {renderInputAnimated(4, 'Cell No *', cellNo, setCellNo, 'phone-pad')}
 
-          <Animated.View
-            style={{
-              transform: [{ translateY: animValues[5].translateY }],
-              opacity: animValues[5].opacity,
-            }}
-          >
-            <Dropdown
-              style={[
-                styles.dropdown,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              data={communities}
-              search
-              labelField="description"
-              valueField="combo_code"
-              placeholder="Select Community"
-              placeholderStyle={{ color: theme.colors.textSecondary }}
-              searchPlaceholder="Search..."
-              value={selectedCommunity}
-              onChange={item => setSelectedCommunity(item.combo_code)}
-              selectedTextStyle={{ color: theme.colors.text }}
-              itemTextStyle={{ color: theme.colors.text }}
-              containerStyle={{
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              }}
-              activeColor={theme.colors.border}
-            />
-          </Animated.View>
+          {renderInputAnimated(5, 'Cell No *', cellNo, setCellNo, 'phone-pad')}
 
-          <Animated.View
-            style={{
-              transform: [{ translateY: animValues[6].translateY }],
-              opacity: animValues[6].opacity,
-            }}
-          >
-            <Dropdown
-              style={[
-                styles.dropdown,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              data={administrativeRoles}
-              search
-              labelField="description"
-              valueField="combo_code"
-              placeholder="Select Administrative Role"
-              placeholderStyle={{ color: theme.colors.textSecondary }}
-              searchPlaceholder="Search..."
-              value={selectedAdministrativeRole}
-              onChange={item => setSelectedAdministrativeRole(item.combo_code)}
-              selectedTextStyle={{ color: theme.colors.text }}
-              itemTextStyle={{ color: theme.colors.text }}
-              containerStyle={{
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              }}
-              activeColor={theme.colors.border}
-            />
-          </Animated.View>
+          {/* Section 2: Professional Information */}
+          {renderHeading(6, 'Professional Information')}
 
+          {/* Hospitals (Multi-Selection) */}
           <Animated.View
             style={{
               transform: [{ translateY: animValues[7].translateY }],
@@ -525,9 +637,9 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               ]}
               data={hospitals}
               search
-              labelField="name"
-              valueField="unique_id"
-              placeholder="Select Hospitals *"
+              labelField="description"
+              valueField="id"
+              placeholder="Select Hospitals"
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedHospitals}
@@ -549,13 +661,332 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
             />
           </Animated.View>
 
-          {renderImagePicker(8, 'Profile Picture', profilePic, setProfilePic)}
-          {renderImagePicker(8, 'Business Card', businessCard, setBusinessCard)}
-
+          {/* Community* */}
           <Animated.View
             style={{
-              transform: [{ translateY: animValues[9].translateY }],
-              opacity: animValues[9].opacity,
+              transform: [{ translateY: animValues[8].translateY }],
+              opacity: animValues[8].opacity,
+            }}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              data={communities}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder="Select Community *"
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedCommunity}
+              onChange={item => handleCommunityChange(item.id)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          {/* Department* (community_id input) */}
+          <Animated.View
+            style={[
+              {
+                transform: [{ translateY: animValues[9].translateY }],
+                opacity: animValues[9].opacity,
+              },
+              !selectedCommunity && { opacity: 0.6 },
+            ]}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              disable={!selectedCommunity}
+              data={departments}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder={selectedCommunity ? "Select Department *" : "Select Department (Select Community First) *"}
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedDepartment}
+              onChange={item => handleDepartmentChange(item.id)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          {/* Surgical Speciality* (department_id input) */}
+          <Animated.View
+            style={[
+              {
+                transform: [{ translateY: animValues[10].translateY }],
+                opacity: animValues[10].opacity,
+              },
+              !selectedDepartment && { opacity: 0.6 },
+            ]}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              disable={!selectedDepartment}
+              data={specialities}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder={selectedDepartment ? "Select Speciality *" : "Select Speciality (Select Department First) *"}
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedSpeciality}
+              onChange={item => handleSpecialityChange(item.id)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          {/* Procedure Focus (Multi-Selection) (surgery_id input) */}
+          <Animated.View
+            style={[
+              {
+                transform: [{ translateY: animValues[11].translateY }],
+                opacity: animValues[11].opacity,
+              },
+              !selectedSpeciality && { opacity: 0.6 },
+            ]}
+          >
+            <MultiSelect
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  minHeight: 56,
+                  height: 'auto',
+                  paddingVertical: 10,
+                },
+              ]}
+              disable={!selectedSpeciality}
+              data={procedures}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder={selectedSpeciality ? "Select Procedures" : "Select Procedures (Select Speciality First)"}
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedProcedures}
+              onChange={item => setSelectedProcedures(item)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+              selectedStyle={[
+                styles.selectedStyle,
+                {
+                  backgroundColor: theme.colors.primary + '20',
+                  borderColor: theme.colors.primary,
+                },
+              ]}
+            />
+          </Animated.View>
+
+          {/* Surgical Role* (community_id input) */}
+          <Animated.View
+            style={[
+              {
+                transform: [{ translateY: animValues[12].translateY }],
+                opacity: animValues[12].opacity,
+              },
+              !selectedCommunity && { opacity: 0.6 },
+            ]}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              disable={!selectedCommunity}
+              data={surgicalRoles}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder={selectedCommunity ? "Select Surgical Role *" : "Select Surgical Role (Select Community First) *"}
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedSurgicalRole}
+              onChange={item => setSelectedSurgicalRole(item.id)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          {/* Administrative Role* (community_id input) */}
+          <Animated.View
+            style={[
+              {
+                transform: [{ translateY: animValues[13].translateY }],
+                opacity: animValues[13].opacity,
+              },
+              !selectedCommunity && { opacity: 0.6 },
+            ]}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              disable={!selectedCommunity}
+              data={administrativeRoles}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder={selectedCommunity ? "Select Administrative Role *" : "Select Administrative Role (Select Community First) *"}
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedAdministrativeRole}
+              onChange={item => setSelectedAdministrativeRole(item.id)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          {/* Section 3: Business Focus */}
+          {renderHeading(14, 'Business Focus')}
+
+          {/* Contact Tier* */}
+          <Animated.View
+            style={{
+              transform: [{ translateY: animValues[15].translateY }],
+              opacity: animValues[15].opacity,
+            }}
+          >
+            <Dropdown
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              data={contactTiers}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder="Select Contact Tier *"
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedContactTier}
+              onChange={item => setSelectedContactTier(item.id)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+            />
+          </Animated.View>
+
+          {/* Focus Products (Multi-Selection) */}
+          <Animated.View
+            style={{
+              transform: [{ translateY: animValues[16].translateY }],
+              opacity: animValues[16].opacity,
+            }}
+          >
+            <MultiSelect
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  minHeight: 56,
+                  height: 'auto',
+                  paddingVertical: 10,
+                },
+              ]}
+              data={focusProducts}
+              search
+              labelField="description"
+              valueField="id"
+              placeholder="Select Focus Products"
+              placeholderStyle={{ color: theme.colors.textSecondary }}
+              searchPlaceholder="Search..."
+              value={selectedFocusProducts}
+              onChange={item => setSelectedFocusProducts(item)}
+              selectedTextStyle={{ color: theme.colors.text }}
+              itemTextStyle={{ color: theme.colors.text }}
+              containerStyle={{
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }}
+              activeColor={theme.colors.border}
+              selectedStyle={[
+                styles.selectedStyle,
+                {
+                  backgroundColor: theme.colors.primary + '20',
+                  borderColor: theme.colors.primary,
+                },
+              ]}
+            />
+          </Animated.View>
+
+          {/* Section 4: Profile Picture */}
+          {renderHeading(17, 'Profile Picture')}
+
+          {renderImagePicker(18, 'Profile Picture', profilePic, setProfilePic)}
+          {renderImagePicker(19, 'Business Card', businessCard, setBusinessCard)}
+
+          {/* Submit */}
+          <Animated.View
+            style={{
+              transform: [{ translateY: animValues[20].translateY }],
+              opacity: animValues[20].opacity,
             }}
           >
             <TouchableOpacity
@@ -653,6 +1084,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#00000008',
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 12,
+    marginBottom: 4,
   },
   submitBtn: {
     height: 56,
