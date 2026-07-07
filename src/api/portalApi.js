@@ -273,6 +273,42 @@ export const portalApi = baseApi.injectEndpoints({
         };
       },
     }),
+    getSalesmanProductSalesAverage: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', body.company || '');
+        formData.append('category_id', body.category_id || '');
+        formData.append('product_id', body.product_id || '');
+        formData.append('salesman', body.salesman || '');
+        formData.append('user_id', body.user_id || '');
+        return {
+          url: 'portal/get_salesman_product_sales_average.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
+    getSalesmanProductSalesAverageCustomer: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', body.company || '');
+        formData.append('salesman', body.salesman || '');
+        formData.append('category_id', body.category_id || '');
+        formData.append('debtor_no', body.debtor_no || '');
+        formData.append('user_id', body.user_id || '');
+        return {
+          url: 'portal/get_salesman_product_sales_average_customer.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
   }),
   overrideExisting: true,
 });
@@ -293,4 +329,6 @@ export const {
   useGetYearsDropdownMutation,
   useGetMonthDropdownMutation,
   useGetSalesmanDropdownMutation,
+  useGetSalesmanProductSalesAverageMutation,
+  useGetSalesmanProductSalesAverageCustomerMutation,
 } = portalApi;

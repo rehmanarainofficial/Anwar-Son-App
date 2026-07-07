@@ -35,23 +35,29 @@ import {
 
 const mapDropdownData = (data, valueKey = null, labelKey = null) => {
   return (data || []).map((item, index) => {
-    let id = valueKey ? item[valueKey] : (
-      item.id !== undefined && item.id !== null ? item.id : (
-        item.sales_code !== undefined && item.sales_code !== null ? item.sales_code : (
-          item.combo_code !== undefined && item.combo_code !== null ? item.combo_code : (
-            item.debtor_no !== undefined && item.debtor_no !== null ? item.debtor_no : (
-              item.unique_id !== undefined && item.unique_id !== null ? item.unique_id : null
-            )
-          )
-        )
-      )
-    );
+    let id = valueKey
+      ? item[valueKey]
+      : item.id !== undefined && item.id !== null
+      ? item.id
+      : item.sales_code !== undefined && item.sales_code !== null
+      ? item.sales_code
+      : item.combo_code !== undefined && item.combo_code !== null
+      ? item.combo_code
+      : item.debtor_no !== undefined && item.debtor_no !== null
+      ? item.debtor_no
+      : item.unique_id !== undefined && item.unique_id !== null
+      ? item.unique_id
+      : null;
     if (id === null || id === undefined || id === '') {
       id = String(index);
     }
-    const description = labelKey ? item[labelKey] : (
-      item.description || item.cityname || item.hospital_name || item.name || ''
-    );
+    const description = labelKey
+      ? item[labelKey]
+      : item.description ||
+        item.cityname ||
+        item.hospital_name ||
+        item.name ||
+        '';
     return {
       ...item,
       id: String(id),
@@ -77,7 +83,8 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   const [selectedSpeciality, setSelectedSpeciality] = useState(null);
   const [selectedProcedures, setSelectedProcedures] = useState([]);
   const [selectedSurgicalRole, setSelectedSurgicalRole] = useState(null);
-  const [selectedAdministrativeRole, setSelectedAdministrativeRole] = useState(null);
+  const [selectedAdministrativeRole, setSelectedAdministrativeRole] =
+    useState(null);
 
   const [selectedContactTier, setSelectedContactTier] = useState(null);
   const [selectedFocusProducts, setSelectedFocusProducts] = useState([]);
@@ -102,10 +109,12 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   const [getTitleDropdown] = useGetTitleDropdownMutation();
   const [getCityDropdown] = useGetCityDropdownMutation();
   const [getCommunityDropdown] = useGetCommunityDropdownMutation();
-  const [getAdministrativeRoleDropdown] = useGetAdministrativeRoleDropdownMutation();
+  const [getAdministrativeRoleDropdown] =
+    useGetAdministrativeRoleDropdownMutation();
   const [getHospitalDropdown] = useGetHospitalDropdownMutation();
   const [getDepartmentDropdown] = useGetDepartmentDropdownMutation();
-  const [getSurgicalSpecialityDropdown] = useGetSurgicalSpecialityDropdownMutation();
+  const [getSurgicalSpecialityDropdown] =
+    useGetSurgicalSpecialityDropdownMutation();
   const [getProcedureFocusDropdown] = useGetProcedureFocusDropdownMutation();
   const [getSurgicalRoleDropdown] = useGetSurgicalRoleDropdownMutation();
   const [getContactTierDropdown] = useGetContactTierDropdownMutation();
@@ -115,7 +124,6 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Animated entrance values (up to 25 items for all sections and fields)
   const animValues = useRef([]).current;
   const inputsCount = 25;
   if (animValues.length === 0) {
@@ -129,7 +137,6 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchDropdowns();
-    // Staggered entrance animation
     const anims = animValues.map((av, idx) =>
       Animated.parallel([
         Animated.timing(av.translateY, {
@@ -198,9 +205,9 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
   };
 
   // Cascading Dynamic Loads
-  const handleCommunityChange = async (communityId) => {
+  const handleCommunityChange = async communityId => {
     setSelectedCommunity(communityId);
-    
+
     // Reset dependant selections
     setSelectedDepartment(null);
     setSelectedSurgicalRole(null);
@@ -219,19 +226,25 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
     try {
       // 5. Department
-      const deptRes = await getDepartmentDropdown({ community_id: communityId }).unwrap();
+      const deptRes = await getDepartmentDropdown({
+        community_id: communityId,
+      }).unwrap();
       if (deptRes?.status === 'true') {
         setDepartments(mapDropdownData(deptRes.data || []));
       }
-      
+
       // 8. Surgical Role
-      const surgRes = await getSurgicalRoleDropdown({ community_id: communityId }).unwrap();
+      const surgRes = await getSurgicalRoleDropdown({
+        community_id: communityId,
+      }).unwrap();
       if (surgRes?.status === 'true') {
         setSurgicalRoles(mapDropdownData(surgRes.data || []));
       }
 
       // 9. Administrative Role
-      const adminRes = await getAdministrativeRoleDropdown({ community_id: communityId }).unwrap();
+      const adminRes = await getAdministrativeRoleDropdown({
+        community_id: communityId,
+      }).unwrap();
       if (adminRes?.status === 'true') {
         setAdministrativeRoles(mapDropdownData(adminRes.data || []));
       }
@@ -240,7 +253,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleDepartmentChange = async (departmentId) => {
+  const handleDepartmentChange = async departmentId => {
     setSelectedDepartment(departmentId);
 
     // Reset dependant selections
@@ -255,7 +268,9 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
     try {
       // 6. Surgical Speciality
-      const specRes = await getSurgicalSpecialityDropdown({ department_id: departmentId }).unwrap();
+      const specRes = await getSurgicalSpecialityDropdown({
+        department_id: departmentId,
+      }).unwrap();
       if (specRes?.status === 'true') {
         setSpecialities(mapDropdownData(specRes.data || []));
       }
@@ -264,7 +279,7 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleSpecialityChange = async (specialityId) => {
+  const handleSpecialityChange = async specialityId => {
     setSelectedSpeciality(specialityId);
 
     // Reset dependant selections
@@ -277,7 +292,9 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
     try {
       // 7. Procedure Focus
-      const procRes = await getProcedureFocusDropdown({ surgery_id: specialityId }).unwrap();
+      const procRes = await getProcedureFocusDropdown({
+        surgery_id: specialityId,
+      }).unwrap();
       if (procRes?.status === 'true') {
         setProcedures(mapDropdownData(procRes.data || []));
       }
@@ -288,43 +305,83 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
   const validate = () => {
     if (!selectedTitle) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Title' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Title',
+      });
       return false;
     }
     if (!personName || personName.trim() === '') {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Person Name is required' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Person Name is required',
+      });
       return false;
     }
     if (!selectedCity) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select City' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select City',
+      });
       return false;
     }
     if (!cellNo || cellNo.trim() === '') {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Cell No is required' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Cell No is required',
+      });
       return false;
     }
     if (!selectedCommunity) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Community' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Community',
+      });
       return false;
     }
     if (!selectedDepartment) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Department' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Department',
+      });
       return false;
     }
     if (!selectedSpeciality) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Speciality' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Speciality',
+      });
       return false;
     }
     if (!selectedSurgicalRole) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Surgical Role' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Surgical Role',
+      });
       return false;
     }
     if (!selectedAdministrativeRole) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Administrative Role' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Administrative Role',
+      });
       return false;
     }
     if (!selectedContactTier) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select Contact Tier' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation',
+        text2: 'Please select Contact Tier',
+      });
       return false;
     }
     return true;
@@ -359,9 +416,10 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
 
     const options = { mediaType: 'photo', quality: 0.5, saveToPhotos: false };
     try {
-      const result = source === 'camera'
-        ? await launchCamera(options)
-        : await launchImageLibrary(options);
+      const result =
+        source === 'camera'
+          ? await launchCamera(options)
+          : await launchImageLibrary(options);
       if (result.assets && result.assets.length > 0) {
         setter(result.assets[0]);
       }
@@ -505,7 +563,12 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
       {imageState && (
         <View style={[styles.imagePreviewWrapper, { marginTop: 10 }]}>
           <Text
-            style={{ color: theme.colors.text, fontSize: 12, flex: 1, marginRight: 8 }}
+            style={{
+              color: theme.colors.text,
+              fontSize: 12,
+              flex: 1,
+              marginRight: 8,
+            }}
             numberOfLines={1}
           >
             {imageState.fileName || 'Selected'}
@@ -718,7 +781,11 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               search
               labelField="description"
               valueField="id"
-              placeholder={selectedCommunity ? "Select Department *" : "Select Department (Select Community First) *"}
+              placeholder={
+                selectedCommunity
+                  ? 'Select Department *'
+                  : 'Select Department (Select Community First) *'
+              }
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedDepartment}
@@ -756,7 +823,11 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               search
               labelField="description"
               valueField="id"
-              placeholder={selectedDepartment ? "Select Speciality *" : "Select Speciality (Select Department First) *"}
+              placeholder={
+                selectedDepartment
+                  ? 'Select Speciality *'
+                  : 'Select Speciality (Select Department First) *'
+              }
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedSpeciality}
@@ -797,7 +868,11 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               search
               labelField="description"
               valueField="id"
-              placeholder={selectedSpeciality ? "Select Procedures" : "Select Procedures (Select Speciality First)"}
+              placeholder={
+                selectedSpeciality
+                  ? 'Select Procedures'
+                  : 'Select Procedures (Select Speciality First)'
+              }
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedProcedures}
@@ -842,7 +917,11 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               search
               labelField="description"
               valueField="id"
-              placeholder={selectedCommunity ? "Select Surgical Role *" : "Select Surgical Role (Select Community First) *"}
+              placeholder={
+                selectedCommunity
+                  ? 'Select Surgical Role *'
+                  : 'Select Surgical Role (Select Community First) *'
+              }
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedSurgicalRole}
@@ -880,7 +959,11 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
               search
               labelField="description"
               valueField="id"
-              placeholder={selectedCommunity ? "Select Administrative Role *" : "Select Administrative Role (Select Community First) *"}
+              placeholder={
+                selectedCommunity
+                  ? 'Select Administrative Role *'
+                  : 'Select Administrative Role (Select Community First) *'
+              }
               placeholderStyle={{ color: theme.colors.textSecondary }}
               searchPlaceholder="Search..."
               value={selectedAdministrativeRole}
@@ -980,7 +1063,12 @@ const CRMAddLeadScreen = ({ navigation, route }) => {
           {renderHeading(17, 'Profile Picture')}
 
           {renderImagePicker(18, 'Profile Picture', profilePic, setProfilePic)}
-          {renderImagePicker(19, 'Business Card', businessCard, setBusinessCard)}
+          {renderImagePicker(
+            19,
+            'Business Card',
+            businessCard,
+            setBusinessCard,
+          )}
 
           {/* Submit */}
           <Animated.View

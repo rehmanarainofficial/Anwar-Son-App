@@ -56,6 +56,16 @@ const reportActions = [
     title: 'CUSTOMER\nBALANCES',
     icon: 'pie-chart-outline',
   },
+  {
+    id: 'product_sales',
+    title: 'PRODUCT\nSALES',
+    icon: 'trending-up-outline',
+  },
+  {
+    id: 'customer_sales',
+    title: 'CUSTOMER\nSALES',
+    icon: 'people-outline',
+  },
 ];
 
 const expense = [
@@ -92,6 +102,10 @@ const SaleManagementScreen = ({ navigation }) => {
       navigation.navigate('SupplyInfoScreen');
     } else if (item.id === 'sample') {
       navigation.navigate('CRMSampleRequest');
+    } else if (item.id === 'product_sales') {
+      navigation.navigate('CRMProductSales');
+    } else if (item.id === 'customer_sales') {
+      navigation.navigate('CRMCustomerSales');
     }
   };
 
@@ -206,7 +220,24 @@ const SaleManagementScreen = ({ navigation }) => {
         {/* REPORTS SECTION */}
         <Text style={styles.sectionHeader}>REPORTS</Text>
         <View style={styles.gridRow}>
-          {reportActions.map(action => (
+          {reportActions.slice(0, 2).map(action => (
+            <TouchableOpacity
+              key={action.id}
+              style={styles.gridItem}
+              onPress={() => handleActionPress(action)}
+            >
+              <Icon
+                name={action.icon}
+                size={20}
+                color={theme.colors.primary}
+                style={styles.gridIcon}
+              />
+              <Text style={styles.gridItemText}>{action.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.gridRow}>
+          {reportActions.slice(2, 4).map(action => (
             <TouchableOpacity
               key={action.id}
               style={styles.gridItem}
@@ -249,14 +280,6 @@ const SaleManagementScreen = ({ navigation }) => {
 
 const getStyles = theme =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 40,
-    },
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,

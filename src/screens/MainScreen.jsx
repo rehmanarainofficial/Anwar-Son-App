@@ -109,6 +109,16 @@ const MainScreen = ({ navigation }) => {
       title: 'CUSTOMER\nBALANCES',
       icon: 'pie-chart-outline',
     },
+    {
+      id: 'product_sales',
+      title: 'PRODUCT\nSALES',
+      icon: 'trending-up-outline',
+    },
+    {
+      id: 'customer_sales',
+      title: 'CUSTOMER\nSALES',
+      icon: 'people-outline',
+    },
   ];
 
   const expense = [
@@ -258,6 +268,10 @@ const MainScreen = ({ navigation }) => {
       navigation.navigate('CRMSampleRequest');
     } else if (item.id === 'sales_target') {
       navigation.navigate('CRMSalesVsTarget');
+    } else if (item.id === 'product_sales') {
+      navigation.navigate('CRMProductSales');
+    } else if (item.id === 'customer_sales') {
+      navigation.navigate('CRMCustomerSales');
     }
   };
 
@@ -457,7 +471,24 @@ const MainScreen = ({ navigation }) => {
         {/* REPORTS SECTION */}
         <Text style={dynamicStyles.sectionHeader}>REPORTS</Text>
         <View style={dynamicStyles.gridRow}>
-          {reportActions.map(action => (
+          {reportActions.slice(0, 2).map(action => (
+            <TouchableOpacity
+              key={action.id}
+              style={dynamicStyles.gridItem}
+              onPress={() => handleActionPress(action)}
+            >
+              <Icon
+                name={action.icon}
+                size={20}
+                color={theme.colors.primary}
+                style={dynamicStyles.gridIcon}
+              />
+              <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={dynamicStyles.gridRow}>
+          {reportActions.slice(2, 4).map(action => (
             <TouchableOpacity
               key={action.id}
               style={dynamicStyles.gridItem}

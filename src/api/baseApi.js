@@ -21,7 +21,7 @@ export const baseApi = createApi({
     }
   },
   tagTypes: ['User', 'Auth', 'Dashboard', 'Dimension'],
-  keepUnusedDataFor: 600, // 10 minutes cache
+  keepUnusedDataFor: 600,
   endpoints: builder => ({
     getFunctionalityCheck: builder.mutation({
       query: body => {
@@ -78,6 +78,38 @@ export const baseApi = createApi({
 
         return {
           url: 'dropdown/sales_category.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
+    getStockCategory: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('user_id', body.user_id || '');
+
+        return {
+          url: 'dropdown/stock_category.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
+    getStockMasterCode: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('category_id', body.category_id || '');
+        formData.append('company', body.company || '');
+
+        return {
+          url: 'dropdown/stock_master_code.php',
           method: 'POST',
           body: formData,
           headers: {
@@ -702,6 +734,8 @@ export const {
   useGetSurgicalRoleDropdownMutation,
   useGetContactTierDropdownMutation,
   useGetFocusProductDropdownMutation,
+  useGetStockCategoryMutation,
+  useGetStockMasterCodeMutation,
 } = baseApi;
 
 export default baseApi;

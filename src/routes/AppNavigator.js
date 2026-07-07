@@ -38,6 +38,8 @@ import SalesPaymentScreen from '@screens/crm/SalesPaymentScreen';
 import SaleTaskScreen from '@screens/crm/SaleTaskScreen';
 import SupplyInfoScreen from '@screens/crm/SupplyInfoScreen';
 import CustomerBalanceScreen from '@screens/crm/CustomerBalanceScreen';
+import CRMProductSalesScreen from '@screens/crm/CRMProductSalesScreen';
+import CRMCustomerSalesScreen from '@screens/crm/CRMCustomerSalesScreen';
 import CRMSalesVsTargetScreen from '@screens/crm/CRMSalesVsTargetScreen';
 import FinanceScreen from '@screens/finance/FinanceScreen';
 import AccountDetailScreen from '@screens/dashboard/AccountDetailScreen';
@@ -301,6 +303,16 @@ const AppNavigator = () => {
               name="CRMSalesVsTarget"
               component={CRMSalesVsTargetScreen}
               options={{ title: 'Sales vs Target' }}
+            />
+            <Stack.Screen
+              name="CRMProductSales"
+              component={CRMProductSalesScreen}
+              options={{ title: 'Product Sales' }}
+            />
+            <Stack.Screen
+              name="CRMCustomerSales"
+              component={CRMCustomerSalesScreen}
+              options={{ title: 'Customer Sales' }}
             />
             <Stack.Screen
               name="CRMMonthlyExpense"
