@@ -271,7 +271,12 @@ const CRMCustomerSalesScreen = () => {
       grouped[desc].push(item);
     });
 
-    const groupKeys = Object.keys(grouped);
+    // Sort group keys by total group current_month_sale in descending order
+    const groupKeys = Object.keys(grouped).sort((a, b) => {
+      const totalA = grouped[a].reduce((sum, i) => sum + parseFloat(i.current_month_sale || 0), 0);
+      const totalB = grouped[b].reduce((sum, i) => sum + parseFloat(i.current_month_sale || 0), 0);
+      return totalB - totalA;
+    });
 
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
@@ -359,8 +364,10 @@ const CRMCustomerSalesScreen = () => {
                   <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM11 === 0 ? '-' : grpSumM11.toFixed(0)}</Text>
                 </View>
 
-                {/* Sub items under group (Individual product codes) */}
-                {groupItems.map((item, index) => {
+                {/* Sub items under group (Individual product codes sorted by total sales desc) */}
+                {[...groupItems]
+                  .sort((a, b) => parseFloat(b.current_month_sale || 0) - parseFloat(a.current_month_sale || 0))
+                  .map((item, index) => {
                   const itCurrent = parseFloat(item.current_month || 0);
                   const itPrevious = parseFloat(item.previous_month || 0);
                   const itM2 = parseFloat(item.month_2 || 0);

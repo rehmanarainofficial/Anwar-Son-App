@@ -375,7 +375,7 @@ const CRMProductSalesScreen = () => {
               ]}
             >
               <Text style={[styles.tableCell, { color: theme.colors.text, width: 180, fontWeight: '500' }]} numberOfLines={2}>
-                {item.customer_name || 'N/A'}
+                {item.customer_name || item.product_name || item.stock_id || 'N/A'}
               </Text>
               <Text style={[styles.tableCell, { color: theme.colors.text, width: 85, textAlign: 'center' }]}>
                 {formatTableCellValue(item.current_month)}
@@ -535,45 +535,51 @@ const CRMProductSalesScreen = () => {
               <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
           ) : (
-            <>
-              {analysisData.filter(prod => prod.complete_analysis && prod.complete_analysis.length > 0).length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={[styles.noDataText, { color: theme.colors.textSecondary }]}>
-                    No sales average analysis found.
-                  </Text>
-                </View>
-              ) : (
-                analysisData.map((prod, index) => {
-                  // Only render if complete_analysis is present and has elements
-                  if (!prod.complete_analysis || prod.complete_analysis.length === 0) {
-                    return null;
-                  }
+            (() => {
+              const allCompleteAnalysis = (analysisData || []).reduce((acc, prod) => {
+                if (prod && Array.isArray(prod.complete_analysis)) {
+                  const items = prod.complete_analysis.map(item => ({
+                    ...item,
+                    product_name: prod.description || prod.stock_id || prod.product_name || item.product_name,
+                  }));
+                  return acc.concat(items);
+                }
+                return acc;
+              }, []);
 
-                  return (
-                    <View key={index} style={styles.analysisContainer}>
-                      {/* Section 1: Summary Cards dynamically populated */}
-                      {renderSummaryCards(prod.complete_analysis)}
+              if (allCompleteAnalysis.length === 0) {
+                return (
+                  <View style={styles.emptyContainer}>
+                    <Text style={[styles.noDataText, { color: theme.colors.textSecondary }]}>
+                      No sales average analysis found.
+                    </Text>
+                  </View>
+                );
+              }
 
-                      {/* Section 2: Monthly Trend Table Header & Layout */}
-                      <View style={styles.trendHeaderContainer}>
-                        <View style={styles.trendHeaderRow}>
-                          <View style={[styles.trendIndicator, { backgroundColor: theme.colors.primary }]} />
-                          <Text style={[styles.trendTitle, { color: theme.colors.text }]}>Monthly trend</Text>
-                        </View>
-                        <Text style={[styles.trendSubtitle, { color: theme.colors.textSecondary }]}>
-                          Scroll sideways once — every row moves together
-                        </Text>
-                      </View>
+              return (
+                <View style={styles.analysisContainer}>
+                  {/* Section 1: Summary Cards dynamically populated for all data */}
+                  {renderSummaryCards(allCompleteAnalysis)}
 
-                      {/* Horizontally scrollable analysis table */}
-                      <View style={[styles.tableCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                        {renderTable(prod.complete_analysis)}
-                      </View>
+                  {/* Section 2: Monthly Trend Table Header & Layout */}
+                  <View style={styles.trendHeaderContainer}>
+                    <View style={styles.trendHeaderRow}>
+                      <View style={[styles.trendIndicator, { backgroundColor: theme.colors.primary }]} />
+                      <Text style={[styles.trendTitle, { color: theme.colors.text }]}>Monthly trend</Text>
                     </View>
-                  );
-                })
-              )}
-            </>
+                    <Text style={[styles.trendSubtitle, { color: theme.colors.textSecondary }]}>
+                      Scroll sideways once — every row moves together
+                    </Text>
+                  </View>
+
+                  {/* Horizontally scrollable analysis table containing all combined data */}
+                  <View style={[styles.tableCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    {renderTable(allCompleteAnalysis)}
+                  </View>
+                </View>
+              );
+            })()
           )}
         </ScrollView>
       )}

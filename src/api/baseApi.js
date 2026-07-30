@@ -470,6 +470,18 @@ export const baseApi = createApi({
         };
       },
     }),
+    getHospitalCategoryDropdown: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        return {
+          url: 'dropdown/hospital_category.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
     getSurgicalSpecialityDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
@@ -721,6 +733,7 @@ export const {
   useAddHospitalContactMutation,
   useGetStockMasterMainDropdownMutation,
   useGetDepartmentDropdownMutation,
+  useGetHospitalCategoryDropdownMutation,
   useGetProductPlanCategoryDropdownMutation,
   useGetSurgicalSpecialityDropdownMutation,
   usePostSampleDataMutation,

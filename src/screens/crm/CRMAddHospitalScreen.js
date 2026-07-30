@@ -15,7 +15,7 @@ import { selectCurrentUser } from '@store/slices/authSlice';
 import Toast from 'react-native-toast-message';
 import {
   useGetCityDropdownMutation,
-  useGetDepartmentDropdownMutation,
+  useGetHospitalCategoryDropdownMutation,
   useGetPaymentTermsDropdownMutation,
   useGetHospitalTierDropdownMutation,
   useGetSurgicalSpecialityDropdownMutation,
@@ -53,8 +53,10 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
   // API Hooks
   const [getCityDropdown, { data: cityRes, isLoading: cityLoading }] =
     useGetCityDropdownMutation();
-  const [getDepartmentDropdown, { data: deptRes, isLoading: deptLoading }] =
-    useGetDepartmentDropdownMutation();
+  const [
+    getHospitalCategoryDropdown,
+    { data: categoryRes, isLoading: categoryLoading },
+  ] = useGetHospitalCategoryDropdownMutation();
   const [
     getPaymentTermsDropdown,
     { data: paymentRes, isLoading: paymentLoading },
@@ -85,7 +87,7 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
     if (user?.id) {
       getCityDropdown({ id: user.id });
     }
-    getDepartmentDropdown({});
+    getHospitalCategoryDropdown({});
     getPaymentTermsDropdown({});
     getHospitalTierDropdown({});
     getSurgicalSpecialityDropdown({});
@@ -179,7 +181,6 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
         company: 'CRM',
       };
 
-      console.log('CRMAddHospital Saving Payload:', JSON.stringify(payload));
 
       const res = await addHospital(payload).unwrap();
       if (String(res.status) === 'true') {
@@ -365,12 +366,12 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
       )}
       {renderDropdown(
         'Category',
-        deptRes?.data || [],
+        categoryRes?.data || [],
         basicInfo.segment,
         val => updateBasicField('segment', val),
         'description',
         'sales_code',
-        deptLoading,
+        categoryLoading,
       )}
       {renderDropdown(
         'Status',
