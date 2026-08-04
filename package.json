@@ -15,7 +15,7 @@
     "@react-navigation/native": "^7.1.28",
     "@react-navigation/native-stack": "^7.12.0",
     "@reduxjs/toolkit": "^2.11.2",
-    "axios": "^1.13.5",
+    "axios": "^1.15.2",
     "geolib": "^3.3.14",
     "moment": "^2.30.1",
     "react": "19.2.0",
