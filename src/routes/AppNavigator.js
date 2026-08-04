@@ -47,6 +47,9 @@ import AccountDetailScreen from '@screens/dashboard/AccountDetailScreen';
 import LedgerScreen from '@components/ledger/LedgerScreen';
 import CustomerAgingScreen from '@components/aging/CustomerAgingScreen';
 import CustomerBalanceDetailsScreen from '@components/aging/CustomerBalanceDetailsScreen';
+import TrackingScreen from '@screens/crm/TrackingScreen';
+import LiveTrackingMapScreen from '@screens/crm/LiveTrackingMapScreen';
+import FuelSummaryScreen from '@screens/crm/FuelSummaryScreen';
 import FinancialDetailScreen from '@screens/dashboard/FinancialDetailScreen';
 import InventoryValuationScreen from '@screens/dashboard/InventoryValuationScreen';
 import ReportingScreen from '@screens/reporting/ReportingScreen';
@@ -355,6 +358,21 @@ const AppNavigator = () => {
               name="CRMWorkshopApproval"
               component={CRMWorkshopApprovalScreen}
               options={{ title: 'Workshops Approval' }}
+            />
+            <Stack.Screen
+              name="TrackingScreen"
+              component={TrackingScreen}
+              options={{ title: 'Live Tracking List' }}
+            />
+            <Stack.Screen
+              name="LiveTrackingMapScreen"
+              component={LiveTrackingMapScreen}
+              options={{ title: 'Live Map View' }}
+            />
+            <Stack.Screen
+              name="FuelSummaryScreen"
+              component={FuelSummaryScreen}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="CRMGiveawayApproval"

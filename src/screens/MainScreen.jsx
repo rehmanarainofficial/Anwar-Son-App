@@ -17,6 +17,8 @@ import { logout, selectCurrentUser } from '@store/slices/authSlice';
 import { useTheme } from '@config/useTheme';
 import { useToggleErpStatusMutation } from '@api/baseApi';
 
+import { startBackgroundTracking } from '../services/BackgroundTrackingService';
+
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT =
   Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.16 : SCREEN_HEIGHT * 0.14;
@@ -32,6 +34,13 @@ const MainScreen = ({ navigation }) => {
 
   const [toggleErpStatus] = useToggleErpStatusMutation();
   const [systemEnabled, setSystemEnabled] = useState(false);
+
+  React.useEffect(() => {
+    const empCode = user?.emp_code || user?.id || '';
+    if (empCode) {
+      startBackgroundTracking(empCode);
+    }
+  }, [user]);
 
   const menuItems = [
     {
@@ -79,6 +88,12 @@ const MainScreen = ({ navigation }) => {
       name: 'Reporting',
       icon: 'bar-chart-outline',
       screen: 'Reporting',
+    },
+    {
+      id: 'Tracking',
+      name: 'Tracking',
+      icon: 'location-outline',
+      screen: 'TrackingScreen',
     },
     {
       id: 'VoidTransactions',
@@ -199,7 +214,7 @@ const MainScreen = ({ navigation }) => {
     } else if (item.id === 'conference') {
       navigation.navigate('EmptyPlaceholder', { title: 'Conference Request' });
     } else if (item.id === 'fuel_summary') {
-      navigation.navigate('EmptyPlaceholder', { title: 'Fuel Summary' });
+      navigation.navigate('FuelSummaryScreen');
     } else if (item.id === 'field_expense') {
       navigation.navigate('CRMMonthlyExpense');
     } else if (item.id === 'outstation_expense') {

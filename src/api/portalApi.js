@@ -309,6 +309,48 @@ export const portalApi = baseApi.injectEndpoints({
         };
       },
     }),
+    getLiveTracking: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('emp_code', body?.emp_code || '');
+        formData.append(
+          'date',
+          body?.date || new Date().toISOString().split('T')[0],
+        );
+        return {
+          url: 'portal/get_live_tracking.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
+    updateLiveTrackingPost: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('code', body?.code || body?.emp_code || '');
+        formData.append('latitude', body?.latitude || '');
+        formData.append('longitude', body?.longitude || '');
+        formData.append('current_location', body?.current_location || '');
+        formData.append(
+          'ActivityDate',
+          body?.ActivityDate || new Date().toISOString().split('T')[0],
+        );
+        formData.append('ActivityTime', body?.ActivityTime || '');
+        return {
+          url: 'portal/update_live_tracking_post.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
   }),
   overrideExisting: true,
 });
@@ -331,4 +373,6 @@ export const {
   useGetSalesmanDropdownMutation,
   useGetSalesmanProductSalesAverageMutation,
   useGetSalesmanProductSalesAverageCustomerMutation,
+  useGetLiveTrackingMutation,
+  useUpdateLiveTrackingPostMutation,
 } = portalApi;

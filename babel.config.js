@@ -21,6 +21,7 @@ module.exports = {
           '@api': './src/api',
           '@store': './src/store',
           '@routes': './src/routes',
+          '@services': './src/services',
         },
       },
     ],
