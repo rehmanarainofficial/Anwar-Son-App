@@ -6,7 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { selectIsAuthenticated, restoreSession } from '@store/slices/authSlice';
 
 import LoginScreen from '@screens/auth/LoginScreen';
-import MainScreen from '@screens/MainScreen';
+import MainTabNavigator from './MainTabNavigator';
+import EmptyPlaceholderScreen from '@screens/common/EmptyPlaceholderScreen';
 import DashboardScreen from '@screens/dashboard/DashboardScreen';
 import ApprovalsScreen from '@screens/approvals/ApprovalsScreen';
 import SalesScreen from '@screens/sales/SalesScreen';
@@ -109,7 +110,12 @@ const AppNavigator = () => {
           <>
             <Stack.Screen
               name="MainScreen"
-              component={MainScreen}
+              component={MainTabNavigator}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="EmptyPlaceholder"
+              component={EmptyPlaceholderScreen}
               options={{ headerShown: false }}
             />
 

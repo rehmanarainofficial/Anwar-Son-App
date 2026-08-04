@@ -20,7 +20,7 @@ import DailyActivitiesSlider from '@components/dashboard/DailyActivitiesSlider';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT =
-  Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.24 : SCREEN_HEIGHT * 0.21;
+  Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.16 : SCREEN_HEIGHT * 0.14;
 
 /**
  * MainScreen - Professional ERP Dashboard with Grid Navigation
@@ -62,109 +62,110 @@ const MainScreen = ({ navigation }) => {
   //   { id: 'KMED Karachi', name: 'KMED Karachi', icon: 'location-outline' },
   // ];
 
-  const orderActions = [
+  const salesActions = [
     {
       id: 'new_order',
-      title: 'NEW ORDER',
+      title: 'New Order',
       icon: 'clipboard-outline',
     },
     {
       id: 'order_status',
-      title: 'ORDER STATUS',
+      title: 'Order Status',
       icon: 'document-text-outline',
     },
     {
       id: 'supply_info',
-      title: 'SUPPLY INFO',
+      title: 'Supply Info',
       icon: 'bus-outline',
     },
     {
       id: 'payment',
-      title: 'PAYMENT',
+      title: 'Payment',
       icon: 'cash-outline',
     },
   ];
 
-  const crmActions = [
+  const fieldActivityRequests = [
     {
-      id: 'hospital',
-      title: 'HOSPITALS',
-      icon: 'business-outline',
+      id: 'sample',
+      title: 'Sample',
+      icon: 'flask-outline',
+      color: '#EC4899',
+      bgColor: '#FCE7F3',
     },
     {
-      id: 'contact',
-      title: 'CONTACTS',
+      id: 'promotional',
+      title: 'Promotional',
+      icon: 'megaphone-outline',
+      color: '#8B5CF6',
+      bgColor: '#F3E8FF',
+    },
+    {
+      id: 'giveaway',
+      title: 'Giveaway',
+      icon: 'gift-outline',
+      color: '#3B82F6',
+      bgColor: '#DBEAFE',
+    },
+    {
+      id: 'workshop',
+      title: 'Workshop',
+      icon: 'easel-outline',
+      color: '#10B981',
+      bgColor: '#D1FAE5',
+    },
+    {
+      id: 'conference',
+      title: 'Conference',
       icon: 'people-outline',
+      color: '#F59E0B',
+      bgColor: '#FEF3C7',
     },
   ];
 
-  const reportActions = [
+  const expenseRequests = [
     {
-      id: 'sales_target',
-      title: 'SALES VS\nTARGET',
-      icon: 'bar-chart-outline',
+      id: 'fuel_summary',
+      title: 'Fuel Summary',
+      icon: 'color-fill-outline',
     },
     {
-      id: 'cust_balance',
-      title: 'CUSTOMER\nBALANCES',
-      icon: 'pie-chart-outline',
-    },
-    {
-      id: 'product_sales',
-      title: 'PRODUCT\nSALES',
-      icon: 'trending-up-outline',
-    },
-    {
-      id: 'customer_sales',
-      title: 'CUSTOMER\nSALES',
-      icon: 'people-outline',
-    },
-  ];
-
-  const expense = [
-    {
-      id: 'expense',
-      title: 'FIELD EXPENSE',
+      id: 'field_expense',
+      title: 'Field Expense',
       icon: 'wallet-outline',
     },
     {
-      id: 'sample',
-      title: 'SAMPLE REQUEST',
-      icon: 'flask-outline',
+      id: 'outstation_expense',
+      title: 'Outstation Expense',
+      icon: 'briefcase-outline',
     },
   ];
 
-  const handleToggleSystem = async () => {
-    const newState = !systemEnabled;
-    const activateValue = newState ? 0 : 1;
-
-    try {
-      const response = await toggleErpStatus({
-        company: company,
-        activate: activateValue,
-      }).unwrap();
-
-      if (response && response.status === true) {
-        setSystemEnabled(newState);
-        Toast.show({
-          type: 'success',
-          text1: 'System Updated',
-          text2: `Application is now turned ${newState ? 'ON' : 'OFF'}.`,
-        });
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Action Failed',
-          text2: 'Could not change system status.',
-        });
-      }
-    } catch (error) {
-      console.log('Toggle ERP Error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Network error occurred.',
-      });
+  const handleActionPress = item => {
+    if (item.id === 'new_order') {
+      navigation.navigate('SalesGenerateOrderScreen');
+    } else if (item.id === 'order_status') {
+      navigation.navigate('SalesTrackOrderStatus');
+    } else if (item.id === 'supply_info') {
+      navigation.navigate('SupplyInfoScreen');
+    } else if (item.id === 'payment') {
+      navigation.navigate('SalesPayment');
+    } else if (item.id === 'sample') {
+      navigation.navigate('CRMSampleRequest');
+    } else if (item.id === 'promotional') {
+      navigation.navigate('EmptyPlaceholder', { title: 'Promotional Request' });
+    } else if (item.id === 'giveaway') {
+      navigation.navigate('CRMGiveawayRequest');
+    } else if (item.id === 'workshop') {
+      navigation.navigate('CRMWorkshopRequest');
+    } else if (item.id === 'conference') {
+      navigation.navigate('EmptyPlaceholder', { title: 'Conference Request' });
+    } else if (item.id === 'fuel_summary') {
+      navigation.navigate('EmptyPlaceholder', { title: 'Fuel Summary' });
+    } else if (item.id === 'field_expense') {
+      navigation.navigate('CRMMonthlyExpense');
+    } else if (item.id === 'outstation_expense') {
+      navigation.navigate('EmptyPlaceholder', { title: 'Outstation Expense' });
     }
   };
 
@@ -172,122 +173,7 @@ const MainScreen = ({ navigation }) => {
     dispatch(logout());
   };
 
-  // const menuItems = [
-  //   {
-  //     id: 'Dashboard',
-  //     name: 'Dashboard',
-  //     icon: 'grid-outline',
-  //     screen: 'Dashboard',
-  //   },
-  //   {
-  //     id: 'Approvals',
-  //     name: 'Approvals',
-  //     icon: 'checkmark-circle-outline',
-  //     screen: 'Approvals',
-  //   },
-  //   { id: 'Sales', name: 'Sales', icon: 'cart-outline', screen: 'Sales' },
-  //   {
-  //     id: 'Purchase',
-  //     name: 'Purchase',
-  //     icon: 'bag-handle-outline',
-  //     screen: 'Purchase',
-  //   },
-  //   {
-  //     id: 'Inventory',
-  //     name: 'Inventory',
-  //     icon: 'cube-outline',
-  //     screen: 'Inventory',
-  //   },
-  //   { id: 'HCM', name: 'HCM', icon: 'people-outline', screen: 'HCM' },
-  //   {
-  //     id: 'Manufacturing',
-  //     name: 'Manufacturing',
-  //     icon: 'settings-outline',
-  //     screen: 'Manufacturing',
-  //   },
-  //   { id: 'CRM', name: 'CRM', icon: 'business-outline', screen: 'CRM' },
-  //   {
-  //     id: 'SalesCRM',
-  //     name: 'Sales CRM',
-  //     icon: 'trending-up-outline',
-  //     screen: 'SalesCRM',
-  //   },
-  //   { id: 'Finance', name: 'Finance', icon: 'cash-outline', screen: 'Finance' },
-  //   {
-  //     id: 'Reporting',
-  //     name: 'Reporting',
-  //     icon: 'bar-chart-outline',
-  //     screen: 'Reporting',
-  //   },
-  //   {
-  //     id: 'VoidTransactions',
-  //     name: 'Reversal Transactions',
-  //     icon: 'refresh-circle-outline',
-  //     screen: 'VoidTransactions',
-  //   },
-  // ];
-
   const dynamicStyles = getStyles(theme);
-
-  // const renderCompanyCard = item => (
-  //   <TouchableOpacity
-  //     key={item.id}
-  //     style={dynamicStyles.companyCard}
-  //     activeOpacity={0.7}
-  //     onPress={() => {
-  //       if (item.id === 'SaleManagement') {
-  //         navigation.navigate('SaleManagement');
-  //       } else {
-  //         setSelectedMenuCompany(item.id);
-  //       }
-  //     }}
-  //   >
-  //     <View style={dynamicStyles.companyIconContainer}>
-  //       <Icon name={item.icon} size={40} color={theme.colors.primary} />
-  //     </View>
-  //     <Text style={dynamicStyles.companyCardName}>{item.name}</Text>
-  //   </TouchableOpacity>
-  // );
-
-  const handleActionPress = item => {
-    if (item.id === 'new_order') {
-      navigation.navigate('SalesGenerateOrderScreen');
-    } else if (item.id === 'cust_balance' || item.id === 'customer_balance') {
-      navigation.navigate('CustomerBalanceScreen');
-    } else if (item.id === 'contact') {
-      navigation.navigate('CRMContactList');
-    } else if (item.id === 'hospital') {
-      navigation.navigate('CRMHospitalList');
-    } else if (item.id === 'payment') {
-      navigation.navigate('SalesPayment');
-    } else if (item.id === 'order_status') {
-      navigation.navigate('SalesTrackOrderStatus');
-    } else if (item.id === 'supply_info') {
-      navigation.navigate('SupplyInfoScreen');
-    } else if (item.id === 'sample') {
-      navigation.navigate('CRMSampleRequest');
-    } else if (item.id === 'sales_target') {
-      navigation.navigate('CRMSalesVsTarget');
-    } else if (item.id === 'product_sales') {
-      navigation.navigate('CRMProductSales');
-    } else if (item.id === 'customer_sales') {
-      navigation.navigate('CRMCustomerSales');
-    }
-  };
-
-  // const renderTile = item => (
-  //   <TouchableOpacity
-  //     key={item.id}
-  //     style={dynamicStyles.gridBox}
-  //     activeOpacity={0.7}
-  //     onPress={() => navigation.navigate(item.screen)}
-  //   >
-  //     <View style={dynamicStyles.iconContainer}>
-  //       <Icon name={item.icon} size={30} color={theme.colors.primary} />
-  //     </View>
-  //     <Text style={dynamicStyles.boxName}>{item.name}</Text>
-  //   </TouchableOpacity>
-  // );
 
   return (
     <View style={dynamicStyles.container}>
@@ -295,51 +181,18 @@ const MainScreen = ({ navigation }) => {
       <View style={dynamicStyles.header}>
         <SafeAreaView style={dynamicStyles.headerContent} edges={['top']}>
           <View style={dynamicStyles.topBar}>
-            <View
-              style={[
-                dynamicStyles.companyInfo,
-                { flexDirection: 'row', alignItems: 'center' },
-              ]}
-            >
-              {selectedMenuCompany && (
-                <TouchableOpacity
-                  onPress={() => setSelectedMenuCompany(null)}
-                  style={{ marginRight: 10 }}
-                >
-                  <Icon name="arrow-back" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
+            <View style={dynamicStyles.companyInfo}>
               <Text style={dynamicStyles.companyName}>
-                {selectedMenuCompany
-                  ? selectedMenuCompany.length > 12
-                    ? selectedMenuCompany.slice(0, 12) + '...'
-                    : selectedMenuCompany
-                  : 'Kmivo'}
+                {user?.user_id || user?.name || 'Ayesha Khan'}
               </Text>
             </View>
             <View style={dynamicStyles.headerActions}>
-              {/* <TouchableOpacity
-                style={dynamicStyles.iconBtn}
-                onPress={handleToggleSystem}
-              >
-                <Icon
-                  name={systemEnabled ? 'power' : 'power-outline'}
-                  size={24}
-                  color={systemEnabled ? '#4ADE80' : 'rgba(255,255,255,0.5)'}
-                />
-              </TouchableOpacity> */}
-
-              {/* Notification Bell */}
               <TouchableOpacity style={dynamicStyles.iconBtn}>
                 <Icon name="notifications-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
-
-              {/* Theme Switcher */}
               <View style={dynamicStyles.themeIcon}>
                 <ThemeDropdown />
               </View>
-
-              {/* Logout */}
               <TouchableOpacity
                 style={[dynamicStyles.iconBtn, dynamicStyles.logoutBtn]}
                 onPress={handleLogout}
@@ -348,16 +201,10 @@ const MainScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
-
-          <View style={dynamicStyles.userInfoContainer}>
-            <Text style={dynamicStyles.userName}>
-              Welcome back, {user?.user_id || 'User'}
-            </Text>
-          </View>
         </SafeAreaView>
       </View>
 
-      {/* Grid Section */}
+      {/* Main Scrollable Content */}
       <ScrollView
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -368,14 +215,10 @@ const MainScreen = ({ navigation }) => {
             style={dynamicStyles.topActionCard}
             onPress={() => navigation.navigate('HCMAttendance')}
           >
-            <Icon
-              name="calendar-number"
-              size={24}
-              color={theme.colors.primary}
-            />
-            <Text style={dynamicStyles.topActionTitle}>
-              Mark{'\n'}Attendance
-            </Text>
+            <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
+              <Icon name="person-outline" size={22} color={theme.colors.primary} />
+            </View>
+            <Text style={dynamicStyles.topActionTitle}>Mark{'\n'}Attendance</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -387,8 +230,10 @@ const MainScreen = ({ navigation }) => {
               })
             }
           >
-            <Icon name="list-outline" size={24} color={theme.colors.primary} />
-            <Text style={dynamicStyles.topActionTitle}>TODAYS{'\n'}PLAN</Text>
+            <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
+              <Icon name="clipboard-outline" size={22} color={theme.colors.primary} />
+            </View>
+            <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Plan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -400,133 +245,89 @@ const MainScreen = ({ navigation }) => {
               })
             }
           >
-            <Icon
-              name="trending-up-outline"
-              size={24}
-              color={theme.colors.primary}
-            />
-            <Text style={dynamicStyles.topActionTitle}>
-              TODAYS{'\n'}PROGRESS
-            </Text>
+            <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
+              <Icon name="trending-up-outline" size={22} color={theme.colors.primary} />
+            </View>
+            <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Progress</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ORDERS SECTION */}
-        <Text style={dynamicStyles.sectionHeader}>ORDERS</Text>
-        <View style={dynamicStyles.gridRow}>
-          {orderActions.slice(0, 2).map(action => (
-            <TouchableOpacity
-              key={action.id}
-              style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(action)}
-            >
-              <Icon
-                name={action.icon}
-                size={20}
-                color={theme.colors.primary}
-                style={dynamicStyles.gridIcon}
-              />
-              <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* SALES SECTION */}
+        <View style={dynamicStyles.sectionHeaderWrap}>
+          <View style={dynamicStyles.accentBar} />
+          <Text style={dynamicStyles.sectionHeader}>SALES</Text>
         </View>
-        <View style={dynamicStyles.gridRow}>
-          {orderActions.slice(2, 4).map(action => (
+
+        <View style={dynamicStyles.gridContainer}>
+          {salesActions.map(action => (
             <TouchableOpacity
               key={action.id}
               style={dynamicStyles.gridItem}
               onPress={() => handleActionPress(action)}
             >
-              <Icon
-                name={action.icon}
-                size={20}
-                color={theme.colors.primary}
-                style={dynamicStyles.gridIcon}
-              />
-              <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
+              <View style={dynamicStyles.gridItemLeft}>
+                <View style={dynamicStyles.gridIconWrap}>
+                  <Icon
+                    name={action.icon}
+                    size={18}
+                    color={theme.colors.primary}
+                  />
+                </View>
+                <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
+              </View>
+              <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* CRM SECTION */}
-        <Text style={dynamicStyles.sectionHeader}>CRM</Text>
-        <View style={dynamicStyles.gridRow}>
-          {crmActions.map(action => (
+        {/* FIELD ACTIVITIES REQUESTS SECTION */}
+        <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
+          <View style={dynamicStyles.accentBar} />
+          <Text style={dynamicStyles.sectionHeader}>FIELD ACTIVITIES REQUESTS</Text>
+        </View>
+
+        <View style={dynamicStyles.fieldReqRow}>
+          {fieldActivityRequests.map(req => (
             <TouchableOpacity
-              key={action.id}
-              style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(action)}
+              key={req.id}
+              style={dynamicStyles.fieldReqItem}
+              onPress={() => handleActionPress(req)}
             >
-              <Icon
-                name={action.icon}
-                size={20}
-                color={theme.colors.primary}
-                style={dynamicStyles.gridIcon}
-              />
-              <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
+              <View style={[dynamicStyles.fieldReqCircle, { backgroundColor: theme.colors.primary + '15' }]}>
+                <Icon name={req.icon} size={22} color={theme.colors.primary} />
+              </View>
+              <Text style={dynamicStyles.fieldReqLabel}>{req.title}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* REPORTS SECTION */}
-        <Text style={dynamicStyles.sectionHeader}>REPORTS</Text>
-        <View style={dynamicStyles.gridRow}>
-          {reportActions.slice(0, 2).map(action => (
-            <TouchableOpacity
-              key={action.id}
-              style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(action)}
-            >
-              <Icon
-                name={action.icon}
-                size={20}
-                color={theme.colors.primary}
-                style={dynamicStyles.gridIcon}
-              />
-              <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={dynamicStyles.gridRow}>
-          {reportActions.slice(2, 4).map(action => (
-            <TouchableOpacity
-              key={action.id}
-              style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(action)}
-            >
-              <Icon
-                name={action.icon}
-                size={20}
-                color={theme.colors.primary}
-                style={dynamicStyles.gridIcon}
-              />
-              <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* EXPENSE REQUESTS SECTION */}
+        <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
+          <View style={dynamicStyles.accentBar} />
+          <Text style={dynamicStyles.sectionHeader}>EXPENSE REQUESTS</Text>
         </View>
 
-        {/* FIELD EXPENSE & SAMPLE SECTION */}
-        <Text style={dynamicStyles.sectionHeader}>FIELD EXPENSE & SAMPLE</Text>
-        <View style={dynamicStyles.gridRow}>
-          {expense.map(item => (
+        <View style={dynamicStyles.gridContainer}>
+          {expenseRequests.map(exp => (
             <TouchableOpacity
-              key={item.id}
+              key={exp.id}
               style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(item)}
+              onPress={() => handleActionPress(exp)}
             >
-              <Icon
-                name={item.icon}
-                size={20}
-                color={theme.colors.primary}
-                style={dynamicStyles.gridIcon}
-              />
-              <Text style={dynamicStyles.gridItemText}>{item.title}</Text>
+              <View style={dynamicStyles.gridItemLeft}>
+                <View style={dynamicStyles.gridIconWrap}>
+                  <Icon
+                    name={exp.icon}
+                    size={18}
+                    color={theme.colors.primary}
+                  />
+                </View>
+                <Text style={dynamicStyles.gridItemText}>{exp.title}</Text>
+              </View>
+              <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Daily Activities Slider (Moved below) */}
-        {/* <DailyActivitiesSlider /> */}
       </ScrollView>
     </View>
   );
@@ -541,9 +342,13 @@ const getStyles = theme =>
     header: {
       height: HEADER_HEIGHT,
       backgroundColor: theme.colors.primary,
-      borderBottomLeftRadius: 30,
-      borderBottomRightRadius: 30,
-      ...theme.shadows.lg,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     headerContent: {
       flex: 1,
@@ -679,16 +484,24 @@ const getStyles = theme =>
       color: theme.colors.text,
       textAlign: 'center',
     },
+    topActionIconWrap: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
     topActionsRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 24,
+      marginBottom: 20,
     },
     topActionCard: {
       width: '31%',
       aspectRatio: 1,
       backgroundColor: theme.colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       justifyContent: 'center',
       alignItems: 'center',
       padding: 8,
@@ -705,44 +518,97 @@ const getStyles = theme =>
       fontWeight: '800',
       textAlign: 'center',
       color: theme.colors.text,
-      marginTop: 8,
+      marginTop: 4,
+    },
+    sectionHeaderWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    accentBar: {
+      width: 4,
+      height: 16,
+      backgroundColor: theme.colors.primary,
+      borderRadius: 2,
+      marginRight: 8,
     },
     sectionHeader: {
-      fontSize: 16,
+      fontSize: 13,
       fontWeight: '900',
       color: theme.colors.primary,
-      marginBottom: 12,
-      marginTop: 20,
+      letterSpacing: 0.5,
     },
-    gridRow: {
+    gridContainer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       justifyContent: 'space-between',
-      marginBottom: 12,
+      gap: 10,
     },
     gridItem: {
       width: '48%',
-      height: 60,
+      height: 54,
       backgroundColor: theme.colors.surface,
-      borderRadius: 8,
+      borderRadius: 12,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: 12,
       elevation: 2,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 1,
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    gridIcon: {
-      marginRight: 10,
+    gridItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      marginRight: 4,
+    },
+    gridIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: theme.colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 8,
     },
     gridItemText: {
-      flex: 1,
-      fontSize: 11,
-      fontWeight: '800',
+      fontSize: 12,
+      fontWeight: '700',
       color: theme.colors.text,
+    },
+    fieldReqRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 6,
+    },
+    fieldReqItem: {
+      alignItems: 'center',
+      width: '18%',
+    },
+    fieldReqCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 6,
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+    },
+    fieldReqLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: theme.colors.text,
+      textAlign: 'center',
     },
   });
 
