@@ -7,9 +7,10 @@ export const hcmApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('emp_code', body.emp_code);
         formData.append('date', body.date);
+        formData.append('company', 'CRM');
 
         const result = await baseQuery({
-          url: 'hcm/get_attendence_detail.php',
+          url: 'portal/get_attendence_detail.php',
           method: 'POST',
           body: formData,
         });
@@ -27,7 +28,7 @@ export const hcmApi = baseApi.injectEndpoints({
         formData.append('current_location', body.current_location || '');
         formData.append('latitude', body.latitude || '');
         formData.append('longitude', body.longitude || '');
-        formData.append('in_out', '1');
+        formData.append('in_out', body.in_out !== undefined ? String(body.in_out) : '0');
         formData.append('status1', '1');
         formData.append('id', '0');
         formData.append('company', 'CRM');

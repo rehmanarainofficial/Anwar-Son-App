@@ -32,20 +32,20 @@ const AppContent = () => {
             '0',
           )}-${String(d.getDate()).padStart(2, '0')}`;
         store.dispatch(
-          dashboardApi.endpoints.getFinancialOverview.initiate({ company }),
+          dashboardApi.endpoints.getFinancialOverview.initiate({ company: 'ANS' }),
         );
         store.dispatch(
-          dashboardApi.endpoints.getDashReceivable.initiate({ company }),
+          dashboardApi.endpoints.getDashReceivable.initiate({ company: 'ANS' }),
         );
         store.dispatch(
-          dashboardApi.endpoints.getDashPayable.initiate({ company }),
+          dashboardApi.endpoints.getDashPayable.initiate({ company: 'ANS' }),
         );
         store.dispatch(
-          dashboardApi.endpoints.getDashBanks.initiate({ company }),
+          dashboardApi.endpoints.getDashBanks.initiate({ company: 'ANS' }),
         );
         store.dispatch(
           dashboardApi.endpoints.getIncomeExpense.initiate({
-            company,
+            company: 'ANS',
             from_date: formatDate(thirtyDaysAgo),
             to_date: formatDate(today),
           }),

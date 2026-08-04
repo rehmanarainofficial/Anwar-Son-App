@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,19 +11,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Toast from 'react-native-toast-message';
 import { ThemeDropdown } from '@components/common';
 import { logout, selectCurrentUser } from '@store/slices/authSlice';
 import { useTheme } from '@config/useTheme';
 import { useToggleErpStatusMutation } from '@api/baseApi';
-import Toast from 'react-native-toast-message';
-import DailyActivitiesSlider from '@components/dashboard/DailyActivitiesSlider';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT =
   Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.16 : SCREEN_HEIGHT * 0.14;
 
 /**
- * MainScreen - Professional ERP Dashboard with Grid Navigation
+ * MainScreen - Dashboard with Toggle for ERP Modules vs Quick Actions
  */
 const MainScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -32,35 +31,62 @@ const MainScreen = ({ navigation }) => {
   const company = useSelector(state => state.auth.company);
 
   const [toggleErpStatus] = useToggleErpStatusMutation();
+  const [systemEnabled, setSystemEnabled] = useState(false);
 
-  const [systemEnabled, setSystemEnabled] = useState(true);
-  const [selectedMenuCompany, setSelectedMenuCompany] = useState(null);
-
-  // const companyCards = [
-  //   {
-  //     id: 'SaleManagement',
-  //     name: 'Sale Management',
-  //     icon: 'briefcase-outline',
-  //   },
-  //   { id: 'Anwar & Sons', name: 'Anwar & Sons', icon: 'location-outline' },
-  //   {
-  //     id: 'Kunhar Distribution',
-  //     name: 'Kunhar Distribution',
-  //     icon: 'location-outline',
-  //   },
-  //   {
-  //     id: 'KMED Rawalpindi',
-  //     name: 'KMED Rawalpindi',
-  //     icon: 'location-outline',
-  //   },
-  //   { id: 'KMED Lahore', name: 'KMED Lahore', icon: 'location-outline' },
-  //   {
-  //     id: 'KMED Faisalabad',
-  //     name: 'KMED Faisalabad',
-  //     icon: 'location-outline',
-  //   },
-  //   { id: 'KMED Karachi', name: 'KMED Karachi', icon: 'location-outline' },
-  // ];
+  const menuItems = [
+    {
+      id: 'Dashboard',
+      name: 'Dashboard',
+      icon: 'grid-outline',
+      screen: 'Dashboard',
+    },
+    {
+      id: 'Approvals',
+      name: 'Approvals',
+      icon: 'checkmark-circle-outline',
+      screen: 'Approvals',
+    },
+    { id: 'Sales', name: 'Sales', icon: 'cart-outline', screen: 'Sales' },
+    {
+      id: 'Purchase',
+      name: 'Purchase',
+      icon: 'bag-handle-outline',
+      screen: 'Purchase',
+    },
+    {
+      id: 'Inventory',
+      name: 'Inventory',
+      icon: 'cube-outline',
+      screen: 'Inventory',
+    },
+    { id: 'HCM', name: 'HCM', icon: 'people-outline', screen: 'HCM' },
+    {
+      id: 'Manufacturing',
+      name: 'Manufacturing',
+      icon: 'settings-outline',
+      screen: 'Manufacturing',
+    },
+    { id: 'CRM', name: 'CRM', icon: 'business-outline', screen: 'CRM' },
+    {
+      id: 'SalesCRM',
+      name: 'Sales CRM',
+      icon: 'trending-up-outline',
+      screen: 'SalesCRM',
+    },
+    { id: 'Finance', name: 'Finance', icon: 'cash-outline', screen: 'Finance' },
+    {
+      id: 'Reporting',
+      name: 'Reporting',
+      icon: 'bar-chart-outline',
+      screen: 'Reporting',
+    },
+    {
+      id: 'VoidTransactions',
+      name: 'Reversal Transactions',
+      icon: 'refresh-circle-outline',
+      screen: 'VoidTransactions',
+    },
+  ];
 
   const salesActions = [
     {
@@ -90,36 +116,26 @@ const MainScreen = ({ navigation }) => {
       id: 'sample',
       title: 'Sample',
       icon: 'flask-outline',
-      color: '#EC4899',
-      bgColor: '#FCE7F3',
     },
     {
       id: 'promotional',
       title: 'Promotional',
       icon: 'megaphone-outline',
-      color: '#8B5CF6',
-      bgColor: '#F3E8FF',
     },
     {
       id: 'giveaway',
       title: 'Giveaway',
       icon: 'gift-outline',
-      color: '#3B82F6',
-      bgColor: '#DBEAFE',
     },
     {
       id: 'workshop',
       title: 'Workshop',
       icon: 'easel-outline',
-      color: '#10B981',
-      bgColor: '#D1FAE5',
     },
     {
       id: 'conference',
       title: 'Conference',
       icon: 'people-outline',
-      color: '#F59E0B',
-      bgColor: '#FEF3C7',
     },
   ];
 
@@ -140,6 +156,28 @@ const MainScreen = ({ navigation }) => {
       icon: 'briefcase-outline',
     },
   ];
+
+  const handleToggleSystem = async () => {
+    const newState = !systemEnabled;
+    const activateValue = newState ? 0 : 1;
+
+    try {
+      const response = await toggleErpStatus({
+        company: 'ANS',
+        activate: activateValue,
+      }).unwrap();
+
+      setSystemEnabled(newState);
+      Toast.show({
+        type: 'success',
+        text1: 'View Switched',
+        text2: `ERP Modules View is now turned ${newState ? 'ON' : 'OFF'}.`,
+      });
+    } catch (error) {
+      console.log('Toggle ERP Error:', error);
+      setSystemEnabled(newState);
+    }
+  };
 
   const handleActionPress = item => {
     if (item.id === 'new_order') {
@@ -173,6 +211,13 @@ const MainScreen = ({ navigation }) => {
     dispatch(logout());
   };
 
+  const isRole2 =
+    user?.role_id !== undefined &&
+    user?.role_id !== null &&
+    (Number(user?.role_id) === 2 || String(user?.role_id) === '2');
+
+  const showErpView = isRole2 && systemEnabled;
+
   const dynamicStyles = getStyles(theme);
 
   return (
@@ -186,13 +231,33 @@ const MainScreen = ({ navigation }) => {
                 {user?.user_id || user?.name || 'Ayesha Khan'}
               </Text>
             </View>
+
             <View style={dynamicStyles.headerActions}>
+              {/* Toggle ERP Modules vs Quick Actions (ONLY for role_id === 2) */}
+              {isRole2 && (
+                <TouchableOpacity
+                  style={dynamicStyles.iconBtn}
+                  onPress={handleToggleSystem}
+                >
+                  <Icon
+                    name={systemEnabled ? 'grid' : 'grid-outline'}
+                    size={24}
+                    color={systemEnabled ? '#4ADE80' : '#FFFFFF'}
+                  />
+                </TouchableOpacity>
+              )}
+
+              {/* Notification Bell */}
               <TouchableOpacity style={dynamicStyles.iconBtn}>
                 <Icon name="notifications-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
+
+              {/* Theme Switcher */}
               <View style={dynamicStyles.themeIcon}>
                 <ThemeDropdown />
               </View>
+
+              {/* Logout */}
               <TouchableOpacity
                 style={[dynamicStyles.iconBtn, dynamicStyles.logoutBtn]}
                 onPress={handleLogout}
@@ -209,125 +274,154 @@ const MainScreen = ({ navigation }) => {
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* TOP ROW: ATTENDANCE, PLAN, PROGRESS */}
-        <View style={dynamicStyles.topActionsRow}>
-          <TouchableOpacity
-            style={dynamicStyles.topActionCard}
-            onPress={() => navigation.navigate('HCMAttendance')}
-          >
-            <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
-              <Icon name="person-outline" size={22} color={theme.colors.primary} />
+        {showErpView ? (
+          /* ERP MODULES GRID (SHOW ONLY WHEN ROLE_ID === 2 AND TOGGLE IS ENABLED) */
+          <>
+            <View style={dynamicStyles.sectionHeaderWrap}>
+              <View style={dynamicStyles.accentBar} />
+              <Text style={dynamicStyles.sectionHeader}>ERP MODULES</Text>
             </View>
-            <Text style={dynamicStyles.topActionTitle}>Mark{'\n'}Attendance</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={dynamicStyles.topActionCard}
-            onPress={() =>
-              navigation.navigate('SaleTask', {
-                initialTab: 'plan',
-                showTabs: false,
-              })
-            }
-          >
-            <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
-              <Icon name="clipboard-outline" size={22} color={theme.colors.primary} />
+            <View style={dynamicStyles.modulesGridContainer}>
+              {menuItems.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={dynamicStyles.gridBox}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate(item.screen)}
+                >
+                  <View style={dynamicStyles.iconContainer}>
+                    <Icon name={item.icon} size={28} color={theme.colors.primary} />
+                  </View>
+                  <Text style={dynamicStyles.boxName}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Plan</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={dynamicStyles.topActionCard}
-            onPress={() =>
-              navigation.navigate('SaleTask', {
-                initialTab: 'progress',
-                showTabs: false,
-              })
-            }
-          >
-            <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
-              <Icon name="trending-up-outline" size={22} color={theme.colors.primary} />
-            </View>
-            <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Progress</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* SALES SECTION */}
-        <View style={dynamicStyles.sectionHeaderWrap}>
-          <View style={dynamicStyles.accentBar} />
-          <Text style={dynamicStyles.sectionHeader}>SALES</Text>
-        </View>
-
-        <View style={dynamicStyles.gridContainer}>
-          {salesActions.map(action => (
-            <TouchableOpacity
-              key={action.id}
-              style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(action)}
-            >
-              <View style={dynamicStyles.gridItemLeft}>
-                <View style={dynamicStyles.gridIconWrap}>
-                  <Icon
-                    name={action.icon}
-                    size={18}
-                    color={theme.colors.primary}
-                  />
+          </>
+        ) : (
+          /* QUICK ACTIONS VIEW (SHOW WHEN TOGGLE IS DISABLED) */
+          <>
+            {/* TOP ROW: ATTENDANCE, PLAN, PROGRESS */}
+            <View style={dynamicStyles.topActionsRow}>
+              <TouchableOpacity
+                style={dynamicStyles.topActionCard}
+                onPress={() => navigation.navigate('HCMAttendance')}
+              >
+                <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
+                  <Icon name="person-outline" size={22} color={theme.colors.primary} />
                 </View>
-                <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
-              </View>
-              <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Text style={dynamicStyles.topActionTitle}>Mark{'\n'}Attendance</Text>
+              </TouchableOpacity>
 
-        {/* FIELD ACTIVITIES REQUESTS SECTION */}
-        <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
-          <View style={dynamicStyles.accentBar} />
-          <Text style={dynamicStyles.sectionHeader}>FIELD ACTIVITIES REQUESTS</Text>
-        </View>
-
-        <View style={dynamicStyles.fieldReqRow}>
-          {fieldActivityRequests.map(req => (
-            <TouchableOpacity
-              key={req.id}
-              style={dynamicStyles.fieldReqItem}
-              onPress={() => handleActionPress(req)}
-            >
-              <View style={[dynamicStyles.fieldReqCircle, { backgroundColor: theme.colors.primary + '15' }]}>
-                <Icon name={req.icon} size={22} color={theme.colors.primary} />
-              </View>
-              <Text style={dynamicStyles.fieldReqLabel}>{req.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* EXPENSE REQUESTS SECTION */}
-        <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
-          <View style={dynamicStyles.accentBar} />
-          <Text style={dynamicStyles.sectionHeader}>EXPENSE REQUESTS</Text>
-        </View>
-
-        <View style={dynamicStyles.gridContainer}>
-          {expenseRequests.map(exp => (
-            <TouchableOpacity
-              key={exp.id}
-              style={dynamicStyles.gridItem}
-              onPress={() => handleActionPress(exp)}
-            >
-              <View style={dynamicStyles.gridItemLeft}>
-                <View style={dynamicStyles.gridIconWrap}>
-                  <Icon
-                    name={exp.icon}
-                    size={18}
-                    color={theme.colors.primary}
-                  />
+              <TouchableOpacity
+                style={dynamicStyles.topActionCard}
+                onPress={() =>
+                  navigation.navigate('SaleTask', {
+                    initialTab: 'plan',
+                    showTabs: false,
+                  })
+                }
+              >
+                <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
+                  <Icon name="clipboard-outline" size={22} color={theme.colors.primary} />
                 </View>
-                <Text style={dynamicStyles.gridItemText}>{exp.title}</Text>
-              </View>
-              <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Plan</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.topActionCard}
+                onPress={() =>
+                  navigation.navigate('SaleTask', {
+                    initialTab: 'progress',
+                    showTabs: false,
+                  })
+                }
+              >
+                <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
+                  <Icon name="trending-up-outline" size={22} color={theme.colors.primary} />
+                </View>
+                <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Progress</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* SALES SECTION */}
+            <View style={dynamicStyles.sectionHeaderWrap}>
+              <View style={dynamicStyles.accentBar} />
+              <Text style={dynamicStyles.sectionHeader}>SALES</Text>
+            </View>
+
+            <View style={dynamicStyles.gridContainer}>
+              {salesActions.map(action => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={dynamicStyles.gridItem}
+                  onPress={() => handleActionPress(action)}
+                >
+                  <View style={dynamicStyles.gridItemLeft}>
+                    <View style={dynamicStyles.gridIconWrap}>
+                      <Icon
+                        name={action.icon}
+                        size={18}
+                        color={theme.colors.primary}
+                      />
+                    </View>
+                    <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
+                  </View>
+                  <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* FIELD ACTIVITIES REQUESTS SECTION */}
+            <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
+              <View style={dynamicStyles.accentBar} />
+              <Text style={dynamicStyles.sectionHeader}>FIELD ACTIVITIES REQUESTS</Text>
+            </View>
+
+            <View style={dynamicStyles.fieldReqRow}>
+              {fieldActivityRequests.map(req => (
+                <TouchableOpacity
+                  key={req.id}
+                  style={dynamicStyles.fieldReqItem}
+                  onPress={() => handleActionPress(req)}
+                >
+                  <View style={[dynamicStyles.fieldReqCircle, { backgroundColor: theme.colors.primary + '15' }]}>
+                    <Icon name={req.icon} size={22} color={theme.colors.primary} />
+                  </View>
+                  <Text style={dynamicStyles.fieldReqLabel}>{req.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* EXPENSE REQUESTS SECTION */}
+            <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
+              <View style={dynamicStyles.accentBar} />
+              <Text style={dynamicStyles.sectionHeader}>EXPENSE REQUESTS</Text>
+            </View>
+
+            <View style={dynamicStyles.gridContainer}>
+              {expenseRequests.map(exp => (
+                <TouchableOpacity
+                  key={exp.id}
+                  style={dynamicStyles.gridItem}
+                  onPress={() => handleActionPress(exp)}
+                >
+                  <View style={dynamicStyles.gridItemLeft}>
+                    <View style={dynamicStyles.gridIconWrap}>
+                      <Icon
+                        name={exp.icon}
+                        size={18}
+                        color={theme.colors.primary}
+                      />
+                    </View>
+                    <Text style={dynamicStyles.gridItemText}>{exp.title}</Text>
+                  </View>
+                  <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -353,7 +447,6 @@ const getStyles = theme =>
     headerContent: {
       flex: 1,
       paddingHorizontal: 20,
-      paddingBottom: 20,
     },
     topBar: {
       flexDirection: 'row',
@@ -365,47 +458,29 @@ const getStyles = theme =>
       flex: 1,
     },
     companyName: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '800',
       color: '#FFFFFF',
-    },
-    userName: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    userInfoContainer: {
-      marginTop: 20,
     },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    toggleWrapper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginRight: 4,
-      backgroundColor: 'rgba(255,255,255,0.1)',
-      borderRadius: 20,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
     iconBtn: {
-      padding: 8,
+      padding: 6,
       marginLeft: 4,
     },
     themeIcon: {
-      width: 'auto',
       marginLeft: 4,
     },
     logoutBtn: {
-      marginLeft: 8,
+      marginLeft: 4,
     },
     scrollContent: {
-      padding: 20,
-      paddingTop: 30,
+      padding: 16,
+      paddingTop: 20,
     },
-    gridContainer: {
+    modulesGridContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'space-between',
@@ -414,72 +489,26 @@ const getStyles = theme =>
       width: '31%',
       aspectRatio: 1,
       backgroundColor: theme.colors.surface,
-      borderRadius: 20,
+      borderRadius: 16,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 15,
       ...theme.shadows.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
-    },
-    moreBox: {
-      borderStyle: 'dashed',
-      borderColor: theme.colors.primary,
-      position: 'relative',
-    },
-    moreBadge: {
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    moreBadgeText: {
-      color: '#FFFFFF',
-      fontSize: 10,
-      fontWeight: '800',
+      padding: 6,
     },
     iconContainer: {
-      width: 50,
-      height: 50,
-      borderRadius: 15,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    boxName: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: theme.colors.text,
-      textAlign: 'center',
-    },
-    companyCard: {
-      width: '48%',
-      aspectRatio: 1,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 20,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 15,
-      ...theme.shadows.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: 10,
-    },
-    companyIconContainer: {
-      width: 60,
-      height: 60,
-      borderRadius: 20,
+      width: 48,
+      height: 48,
+      borderRadius: 14,
       backgroundColor: theme.colors.primary + '15',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 15,
+      marginBottom: 8,
     },
-    companyCardName: {
-      fontSize: 16,
+    boxName: {
+      fontSize: 11,
       fontWeight: '700',
       color: theme.colors.text,
       textAlign: 'center',

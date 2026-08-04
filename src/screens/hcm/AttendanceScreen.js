@@ -72,17 +72,19 @@ const AttendanceScreen = () => {
 
   const fetchHistory = async () => {
     const currentDateStr = new Date().toISOString().split('T')[0];
+    const empCode = userData?.emp_code || userData?.id || '';
+    if (!empCode) return;
     try {
       const response = await getAttendanceDetail({
-        emp_code: userData?.emp_code || '',
+        emp_code: empCode,
         date: currentDateStr,
       }).unwrap();
 
-      if (response.status === 'true' || response.status === true) {
+      if (response && (response.status === 'true' || response.status === true)) {
         setAttendanceHistory(response.data || []);
       }
     } catch (error) {
-      console.log('Fetch History Error:', error);
+      console.log('Fetch History Error:', error?.message || error);
     }
   };
 
@@ -205,15 +207,15 @@ const AttendanceScreen = () => {
     const addressName = await getAddressFromCoords(lat, lon);
 
     const payload = {
-      code: userData?.emp_code || '',
+      code: userData?.emp_code || userData?.id || '',
       ActivityDate: currentDateStr,
       ActivityTime: currentTimeStr,
       current_location: addressName,
       latitude: lat.toString(),
       longitude: lon.toString(),
-      in_out: '1',
+      in_out: isOut ? '1' : '0',
       status1: '1',
-      id: '0',
+      id: checkOutId ? checkOutId.toString() : '0',
     };
 
     setLoading(true);
@@ -469,7 +471,7 @@ const AttendanceScreen = () => {
             </View>
           ) : (
             attendanceHistory.map((item, index) => {
-              const isOutValue = item.status === '1' || item.status === 1;
+              const isOutValue = String(item.in_out) === '1';
               return (
                 <View
                   key={index}
@@ -503,7 +505,7 @@ const AttendanceScreen = () => {
                       <TouchableOpacity
                         style={[
                           styles.outButton,
-                          { backgroundColor: theme.colors.secondary },
+                          { backgroundColor: theme.colors.primary },
                         ]}
                         onPress={() => handleCheckOut(item.id)}
                       >

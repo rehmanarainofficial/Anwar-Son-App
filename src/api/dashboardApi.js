@@ -7,8 +7,15 @@ export const dashboardApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('from_date', body.from_date);
         formData.append('to_date', body.to_date);
-        formData.append('company', body.company);
+        formData.append('company', 'ANS');
         formData.append('dimension_id', body.dimension_id || '');
+
+        console.log('📊 [getIncomeExpense POST Payload]', {
+          from_date: body.from_date,
+          to_date: body.to_date,
+          company: 'ANS',
+          dimension_id: body.dimension_id || '',
+        });
 
         return {
           url: 'dashboard/income_and_expense.php',
@@ -22,15 +29,20 @@ export const dashboardApi = baseApi.injectEndpoints({
     }),
     getParentAccountDetail: builder.mutation({
       async queryFn(body, queryApi, _extraOptions, baseQuery) {
-        const state = queryApi.getState();
-        const company = body.company || state.auth.company;
-
         const formData = new FormData();
         formData.append('from_date', body.from_date);
         formData.append('to_date', body.to_date);
         formData.append('account_type', body.account_type);
-        formData.append('company', company);
+        formData.append('company', 'ANS');
         formData.append('dimension_id', body.dimension_id || '');
+
+        console.log('📊 [getParentAccountDetail POST Payload]', {
+          from_date: body.from_date,
+          to_date: body.to_date,
+          account_type: body.account_type,
+          company: 'ANS',
+          dimension_id: body.dimension_id || '',
+        });
 
         const result = await baseQuery({
           url: 'dashboard/parent_account_detail.php',
@@ -44,8 +56,13 @@ export const dashboardApi = baseApi.injectEndpoints({
     getFinancialOverview: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getFinancialOverview POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
 
         return {
           url: 'dashboard/financial_overview.php',
@@ -57,8 +74,14 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashReceivable: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getDashReceivable POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
+
         return {
           url: 'dashboard/dash_receivable.php',
           method: 'POST',
@@ -69,8 +92,14 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashPayable: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getDashPayable POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
+
         return {
           url: 'dashboard/dash_payable.php',
           method: 'POST',
@@ -81,8 +110,14 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashBanks: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getDashBanks POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
+
         return {
           url: 'dashboard/dash_banks.php',
           method: 'POST',
@@ -93,8 +128,14 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashCategoryWiseValution: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getDashCategoryWiseValution POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
+
         return {
           url: 'dashboard/dash_category_wise_valution.php',
           method: 'POST',
@@ -105,8 +146,14 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashLocationWiseValution: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getDashLocationWiseValution POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
+
         return {
           url: 'dashboard/dash_location_wise_valution.php',
           method: 'POST',
@@ -117,8 +164,14 @@ export const dashboardApi = baseApi.injectEndpoints({
     getDashItemWiseValution: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company);
-        formData.append('dimension_id', body.dimension_id || '');
+        formData.append('company', 'ANS');
+        formData.append('dimension_id', body?.dimension_id || '');
+
+        console.log('📊 [getDashItemWiseValution POST Payload]', {
+          company: 'ANS',
+          dimension_id: body?.dimension_id || '',
+        });
+
         return {
           url: 'dashboard/dash_item_wise_valution.php',
           method: 'POST',

@@ -4,10 +4,8 @@ export const ledgerApi = baseApi.injectEndpoints({
   endpoints: builder => ({
     getGLAccountInquiry: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { from_date, to_date, company, account, person_id } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { from_date, to_date, account, person_id } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('from_date', from_date);
@@ -28,10 +26,8 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getCustomerAging: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, customer_id, from_date, to_date } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { customer_id, from_date, to_date } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
@@ -51,10 +47,8 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getSupplierAging: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, supplier_id, from_date, to_date } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { supplier_id, from_date, to_date } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
@@ -74,10 +68,8 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getCustomerBalanceDetails: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, customer_id, from_date, to_date } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { customer_id, from_date, to_date } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
@@ -97,10 +89,8 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getSupplierBalanceDetails: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, supplier_id, from_date, to_date } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { supplier_id, from_date, to_date } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
@@ -120,9 +110,7 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getGLAccountDropdown: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company } = body;
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
@@ -138,13 +126,12 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getCounterPartyDropdown: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, account } = body;
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { account } = body || {};
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
-        formData.append('account', account);
+        formData.append('account', account || '');
 
         const result = await baseQuery({
           url: 'dropdown/counter_party.php',
@@ -157,10 +144,8 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getTrailBalance: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, from_date, to_date, show_zero } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { from_date, to_date, show_zero } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
@@ -180,10 +165,8 @@ export const ledgerApi = baseApi.injectEndpoints({
     }),
     getBalanceSheet: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const { company, to_date, dimension_id } = body;
-
-        const state = api.getState();
-        const activeCompany = company || state.auth.company;
+        const { to_date, dimension_id } = body;
+        const activeCompany = 'ANS';
 
         const formData = new FormData();
         formData.append('company', activeCompany);
