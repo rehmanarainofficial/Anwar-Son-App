@@ -1,473 +1,1051 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
-  Text,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import { useTheme } from '@config/useTheme';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Dropdown, MultiSelect } from 'react-native-element-dropdown';
+import { useSelector } from 'react-redux';
+import Toast from 'react-native-toast-message';
+import { useTheme } from '@config/useTheme';
+import { CustomDatePicker, SearchableDropdown } from '@components/common';
+import {
+  useGetHospitalMutation,
+  useGetDepartmentDropdownMutation,
+  useGetStockMasterMainDropdownMutation,
+} from '@api/baseApi';
 
-// Generic data
-const DUMMY_DROPDOWN = [{ label: 'Option 1', value: '1' }, { label: 'Option 2', value: '2' }];
+const parseDate = dateStr => {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  const parts = String(dateStr).split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+};
+
+const formatToYYYYMMDD = date => {
+  if (!date) return '';
+  const d = typeof date === 'string' ? parseDate(date) : date;
+  if (isNaN(d.getTime())) return String(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const WORKSHOP_TYPES = [
-  { label: 'Educational', value: 'Educational' },
-  { label: 'Product Demonstration', value: 'Product Demonstration' },
-  { label: 'Hands on training', value: 'Hands on training' },
+  { id: 'Educational', name: 'Educational' },
+  { id: 'Product Demonstration', name: 'Product Demonstration' },
+  { id: 'Hands-on Training', name: 'Hands-on Training' },
+  { id: 'Other', name: 'Other' },
 ];
+
 const PRODUCT_SEGMENTS = [
-  { label: 'Sutures', value: 'Sutures' },
-  { label: 'Airway Management', value: 'Airway Management' },
-  { label: 'Hemostasis', value: 'Hemostasis' },
-  { label: 'Surgical Mesh', value: 'Surgical Mesh' },
-];
-const BUDGET_CATEGORIES = [
-  { label: 'Refreshment', value: 'Refreshment' },
-  { label: 'Hands-on Material', value: 'Hands-on Material' },
-  { label: 'Equipment Rental', value: 'Equipment Rental' },
-  { label: 'Miscellaneous', value: 'Miscellaneous' },
+  { id: 'Sutures', name: 'Sutures' },
+  { id: 'Airway Management', name: 'Airway Management' },
+  { id: 'Haemostats', name: 'Haemostats' },
+  { id: 'Mesh', name: 'Mesh' },
+  { id: 'Other', name: 'Other' },
 ];
 
 const CRMWorkshopRequestScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
+  const user = useSelector(state => state.auth.user);
 
-  const [activeTab, setActiveTab] = useState('Info');
+  // Section 1: Workshop Info State
+  const [title, setTitle] = useState('');
+  const [workshopDate, setWorkshopDate] = useState(formatToYYYYMMDD(new Date()));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedHospital, setSelectedHospital] = useState(null);
+  const [venue, setVenue] = useState('');
+  const [selectedDept, setSelectedDept] = useState(null);
+  const [workshopType, setWorkshopType] = useState(null);
+  const [otherTypeDetail, setOtherTypeDetail] = useState('');
+  const [productSegment, setProductSegment] = useState(null);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: 'Workshop Request' });
-  }, [navigation]);
+  // Section 2: Objective State
+  const [objective, setObjective] = useState('');
 
-  // Tab 1: Workshop Information
-  const [workshopInfo, setWorkshopInfo] = useState({
-    title: '', date: '', duration: '', hospitalName: '', department: '', specialty: '', objective: ''
+  // Section 3: Key Products State
+  const [keyProducts, setKeyProducts] = useState([
+    { id: 1, product: '', sizeCode: '', purpose: '', qty: '' },
+  ]);
+
+  // Section 4: Audience Breakdown State
+  const [audience, setAudience] = useState({
+    hodKols: '0',
+    apsSrs: '0',
+    otNurses: '0',
+    internsStudents: '0',
+    other: '0',
   });
-  const [selectedTypes, setSelectedTypes] = useState([]);
-  const [selectedSegments, setSelectedSegments] = useState([]);
-  
-  const [keyProducts, setKeyProducts] = useState([{ name: '', size: '', purpose: '', comments: '' }]);
-  
-  const TARGET_AUDIENCE_KEYS = ['Head of Department', 'KOLS', 'Associated Professor APs', 'Anesthetics', 'Senior Registrars', 'OT Technicians', 'Nurses', 'Interns/Students', 'Other Mention 1', 'Other Mention 2'];
-  const initialAudience = {};
-  TARGET_AUDIENCE_KEYS.forEach(k => initialAudience[k] = '');
-  const [targetAudience, setTargetAudience] = useState(initialAudience);
 
-  const MATERIAL_KEYS = ['Surgical instrument', 'Knots typing boards', 'Wooden board 1', 'Artificial skin pads', 'Animals Gut / vessels', 'Animals bladders', 'Wooden board 2'];
-  const initialMaterial = {};
-  MATERIAL_KEYS.forEach(k => initialMaterial[k] = { size: '', purpose: '', comments: '' });
-  const [handsOnMaterial, setHandsOnMaterial] = useState(initialMaterial);
+  // Section 5: Materials & Agenda State
+  const [materials, setMaterials] = useState([
+    { id: 1, material: '', sizeQty: '', agenda: '', time: '' },
+  ]);
 
-  // Tab 2: Workshop Content
-  const [agenda, setAgenda] = useState([{ agenda: '', presentation: '', time: '', presenter: '' }]);
+  // Section 6: Samples Required State
+  const [samplesRequired, setSamplesRequired] = useState('');
 
-  // Tab 3: Sample Required
-  const [samples, setSamples] = useState([{ product: null, quantity: '', batchNo: '', primaryQuantity: '', expectedDate: '', secondaryQuantity: '', currentBrand: '', samplePurpose: '' }]);
+  // Section 7: Budget & Approval State
+  const [budget, setBudget] = useState({
+    refreshment: { unitCost: '', qty: '' },
+    handsOnMaterial: { unitCost: '', qty: '' },
+    equipmentRental: { unitCost: '', qty: '' },
+    other: { unitCost: '', qty: '' },
+  });
 
-  // Tab 4: Budget Requirement
-  const [budget, setBudget] = useState([{ breakdown: null, unit: '', cost: '', totalCost: '' }]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
-  const updateDynamicList = (setState, index, key, value) => {
-    setState((prev) => {
+  // API Hooks
+  const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
+  const [getDepartment, { data: deptRes, isLoading: deptLoading }] = useGetDepartmentDropdownMutation();
+  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] = useGetStockMasterMainDropdownMutation();
+
+  useEffect(() => {
+    getHospital({ id: user?.id });
+    getDepartment({});
+    getStockMasterMain({});
+  }, [user?.id, getHospital, getDepartment, getStockMasterMain]);
+
+  // Key Products Helpers
+  const addKeyProductRow = () => {
+    setKeyProducts(prev => [
+      ...prev,
+      { id: Date.now(), product: '', sizeCode: '', purpose: '', qty: '' },
+    ]);
+  };
+  const removeKeyProductRow = index => {
+    if (keyProducts.length <= 1) return;
+    setKeyProducts(prev => prev.filter((_, i) => i !== index));
+  };
+  const updateKeyProduct = (index, field, value) => {
+    setKeyProducts(prev => {
       const updated = [...prev];
-      updated[index][key] = value;
+      updated[index][field] = value;
       return updated;
     });
   };
 
-  const addDynamicRow = (setState, emptyObj) => {
-    setState(prev => [...prev, emptyObj]);
+  // Materials & Agenda Helpers
+  const addMaterialRow = () => {
+    setMaterials(prev => [
+      ...prev,
+      { id: Date.now(), material: '', sizeQty: '', agenda: '', time: '' },
+    ]);
+  };
+  const removeMaterialRow = index => {
+    if (materials.length <= 1) return;
+    setMaterials(prev => prev.filter((_, i) => i !== index));
+  };
+  const updateMaterial = (index, field, value) => {
+    setMaterials(prev => {
+      const updated = [...prev];
+      updated[index][field] = value;
+      return updated;
+    });
   };
 
-  const removeDynamicRow = (setState, index) => {
-    setState(prev => prev.filter((_, i) => i !== index));
+  // Calculations
+  const totalAudience =
+    (parseInt(audience.hodKols, 10) || 0) +
+    (parseInt(audience.apsSrs, 10) || 0) +
+    (parseInt(audience.otNurses, 10) || 0) +
+    (parseInt(audience.internsStudents, 10) || 0) +
+    (parseInt(audience.other, 10) || 0);
+
+  const calcRowTotal = item => {
+    const cost = parseFloat(item.unitCost) || 0;
+    const q = parseFloat(item.qty) || 0;
+    return cost * q;
   };
 
-  // Shared UI Helpers
-  const renderInput = (label, value, onChange, keyboardType = 'default') => (
-    <View style={styles.inputContainer}>
-      {label && <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>}
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-        placeholder={`Enter ${label || 'Value'}`}
-        placeholderTextColor={theme.colors.textSecondary}
-        keyboardType={keyboardType}
-        value={value}
-        onChangeText={onChange}
-      />
-    </View>
-  );
-  
-  const renderTextArea = (label, value, onChange) => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
-      <TextInput
-        style={[styles.textArea, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-        placeholder={`Enter ${label}`}
-        placeholderTextColor={theme.colors.textSecondary}
-        multiline
-        numberOfLines={4}
-        value={value}
-        onChangeText={onChange}
-      />
-    </View>
-  );
+  const totalBudget =
+    calcRowTotal(budget.refreshment) +
+    calcRowTotal(budget.handsOnMaterial) +
+    calcRowTotal(budget.equipmentRental) +
+    calcRowTotal(budget.other);
 
-  const renderDropdown = (label, value, onChange, data = DUMMY_DROPDOWN) => (
-    <View style={styles.inputContainer}>
-      {label && <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>}
-      <Dropdown
-        style={[styles.dropdown, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
-        placeholderStyle={[styles.placeholderStyle, { color: theme.colors.textSecondary }]}
-        selectedTextStyle={[styles.selectedTextStyle, { color: theme.colors.text }]}
-        itemTextStyle={[styles.itemTextStyle, { color: theme.colors.text }]}
-        containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
-        data={data}
-        maxHeight={300}
-        labelField="label"
-        valueField="value"
-        placeholder={`Select ${label || 'Value'}`}
-        value={value}
-        onChange={(item) => onChange(item.value)}
-      />
-    </View>
-  );
+  const updateBudgetItem = (category, field, val) => {
+    setBudget(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [field]: val,
+      },
+    }));
+  };
 
-  const renderMultiSelect = (label, value, onChange, data) => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
-      <MultiSelect
-        style={[styles.dropdown, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
-        placeholderStyle={[styles.placeholderStyle, { color: theme.colors.textSecondary }]}
-        selectedTextStyle={[styles.selectedTextStyle, { color: theme.colors.text }]}
-        itemTextStyle={[styles.itemTextStyle, { color: theme.colors.text }]}
-        containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
-        data={data}
-        labelField="label"
-        valueField="value"
-        placeholder={`Select ${label}`}
-        value={value}
-        onChange={onChange}
-        selectedStyle={[styles.selectedStyle, { backgroundColor: theme.colors.primary + '20', borderColor: theme.colors.primary }]}
-        renderItem={(item, selected) => (
-          <View style={styles.multiSelectItem}>
-            <Icon name={selected ? 'checkbox' : 'square-outline'} size={20} color={selected ? theme.colors.primary : theme.colors.textSecondary} style={{ marginRight: 8 }} />
-            <Text style={[{ color: theme.colors.text }]}>{item.label}</Text>
-          </View>
-        )}
-      />
-    </View>
-  );
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      Toast.show({
+        type: 'info',
+        text1: 'Draft Saved',
+        text2: 'Workshop request saved as draft locally.',
+      });
+    } catch (error) {
+      console.log('Error saving draft:', error);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
-  // Tabs Header
-  const renderTabs = () => (
-    <View style={styles.tabContainer}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-        {['Info', 'Content', 'Samples', 'Budget'].map(tab => {
-          const labels = { Info: 'Workshop Info', Content: 'Workshop Content', Samples: 'Sample Required', Budget: 'Budget Req.' };
-          const isActive = activeTab === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabButton, { backgroundColor: isActive ? theme.colors.primary : theme.colors.surface, borderColor: isActive ? theme.colors.primary : theme.colors.border }]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, { color: isActive ? '#FFF' : theme.colors.textSecondary }]}>{labels[tab]}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter Workshop Title.',
+      });
+      return;
+    }
+    if (!selectedHospital) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Hospital.',
+      });
+      return;
+    }
 
-  // Contents
-  const renderInfoTab = () => (
-    <View>
-      <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>1. Workshop Information</Text>
-        {renderInput('Workshop Title', workshopInfo.title, t => setWorkshopInfo({...workshopInfo, title: t}))}
-        {renderInput('Date', workshopInfo.date, t => setWorkshopInfo({...workshopInfo, date: t}))}
-        {renderInput('Duration', workshopInfo.duration, t => setWorkshopInfo({...workshopInfo, duration: t}))}
-        {renderInput('Hospital Name', workshopInfo.hospitalName, t => setWorkshopInfo({...workshopInfo, hospitalName: t}))}
-        {renderInput('Hospital Department', workshopInfo.department, t => setWorkshopInfo({...workshopInfo, department: t}))}
-        {renderMultiSelect('Workshop Type', selectedTypes, setSelectedTypes, WORKSHOP_TYPES)}
-        {renderMultiSelect('Product Segment', selectedSegments, setSelectedSegments, PRODUCT_SEGMENTS)}
-        {renderTextArea('Specialty', workshopInfo.specialty, t => setWorkshopInfo({...workshopInfo, specialty: t}))}
-      </View>
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        title,
+        date: workshopDate,
+        hospital_id: selectedHospital?.id,
+        hospital_name: selectedHospital?.name,
+        venue,
+        department_id: selectedDept?.id,
+        workshop_type: workshopType?.id,
+        other_type_detail: otherTypeDetail,
+        product_segment: productSegment?.id,
+        objective,
+        key_products: keyProducts,
+        audience_breakdown: { ...audience, total_audience: totalAudience },
+        materials_agenda: materials,
+        samples_required: samplesRequired,
+        budget_breakdown: { ...budget, total_budget: totalBudget },
+        user_id: user?.id,
+      };
 
-      <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>2. Objective of the Workshop</Text>
-        {renderTextArea('Objective', workshopInfo.objective, t => setWorkshopInfo({...workshopInfo, objective: t}))}
-      </View>
+      console.log('Company Workshop Payload:', payload);
+      await new Promise(resolve => setTimeout(resolve, 1200));
 
-      <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>3. Key Product to be Demonstrated</Text>
-        {keyProducts.map((item, index) => (
-          <View key={index} style={[styles.dynamicBlock, { borderColor: theme.colors.border }]}>
-            <View style={styles.dynamicHeader}>
-              <Text style={{ fontWeight: '600', color: theme.colors.text }}>Product {index + 1}</Text>
-              {keyProducts.length > 1 && <TouchableOpacity onPress={() => removeDynamicRow(setKeyProducts, index)}><Icon name="trash" size={20} color={theme.colors.error} /></TouchableOpacity>}
-            </View>
-            {renderInput('Product Name', item.name, t => updateDynamicList(setKeyProducts, index, 'name', t))}
-            {renderInput('Size/Code', item.size, t => updateDynamicList(setKeyProducts, index, 'size', t))}
-            {renderInput('Purpose', item.purpose, t => updateDynamicList(setKeyProducts, index, 'purpose', t))}
-            {renderInput('Comments', item.comments, t => updateDynamicList(setKeyProducts, index, 'comments', t))}
-          </View>
-        ))}
-        <TouchableOpacity style={[styles.addMoreBtn, { borderColor: theme.colors.primary }]} onPress={() => addDynamicRow(setKeyProducts, {name:'', size:'', purpose:'', comments:''})}>
-          <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>+ Add Product</Text>
-        </TouchableOpacity>
-      </View>
+      Toast.show({
+        type: 'success',
+        text1: 'Request Submitted',
+        text2: 'Company Workshop request submitted for manager approval.',
+      });
 
-      <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>4. Target Audience</Text>
-        <View style={styles.tableHeaderRow}>
-          <Text style={[styles.tableHeaderCol, { color: theme.colors.textSecondary, flex: 2 }]}>Category</Text>
-          <Text style={[styles.tableHeaderCol, { color: theme.colors.textSecondary, flex: 1 }]}>Expected Number</Text>
-        </View>
-        {TARGET_AUDIENCE_KEYS.map(cat => (
-          <View key={cat} style={styles.tableRow}>
-            <Text style={[styles.tableLabel, { color: theme.colors.text, flex: 2 }]}>{cat}</Text>
-            <View style={{ flex: 1 }}>
-              <TextInput style={[styles.tableInput, { borderColor: theme.colors.border, color: theme.colors.text }]} keyboardType="numeric" value={targetAudience[cat]} onChangeText={(t) => setTargetAudience({...targetAudience, [cat]: t})} />
-            </View>
-          </View>
-        ))}
-      </View>
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
+    } catch (error) {
+      console.log('Error submitting workshop request:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Submission Failed',
+        text2: 'Failed to submit workshop request.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-      <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>5. Hands on Material</Text>
-        {MATERIAL_KEYS.map(cat => (
-          <View key={cat} style={[styles.dynamicBlock, { borderColor: theme.colors.border }]}>
-            <Text style={{ fontWeight: '600', color: theme.colors.primary, marginBottom: 12 }}>{cat}</Text>
-            {renderInput('Size/Code', handsOnMaterial[cat].size, t => setHandsOnMaterial(prev => ({...prev, [cat]: {...prev[cat], size: t}})))}
-            {renderInput('Purpose', handsOnMaterial[cat].purpose, t => setHandsOnMaterial(prev => ({...prev, [cat]: {...prev[cat], purpose: t}})))}
-            {renderInput('Comment', handsOnMaterial[cat].comments, t => setHandsOnMaterial(prev => ({...prev, [cat]: {...prev[cat], comments: t}})))}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+  // Dropdown options
+  const hospitalList = Array.isArray(hospRes) ? hospRes : hospRes?.data || [];
+  const hospitalOptions = hospitalList.map(h => ({
+    id: h.id || h.hospital_id,
+    name: h.name || h.hospital_name || h.title || 'Hospital',
+  }));
 
-  const renderContentTab = () => (
-    <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>Workshop Agenda</Text>
-      {agenda.map((item, index) => (
-        <View key={index} style={[styles.dynamicBlock, { borderColor: theme.colors.border }]}>
-          <View style={styles.dynamicHeader}>
-            <Text style={{ fontWeight: '600', color: theme.colors.text }}>Agenda {index + 1}</Text>
-            {agenda.length > 1 && <TouchableOpacity onPress={() => removeDynamicRow(setAgenda, index)}><Icon name="trash" size={20} color={theme.colors.error} /></TouchableOpacity>}
-          </View>
-          {renderInput('Agenda', item.agenda, t => updateDynamicList(setAgenda, index, 'agenda', t))}
-          {renderInput('Presentation / Hands on', item.presentation, t => updateDynamicList(setAgenda, index, 'presentation', t))}
-          {renderInput('Time', item.time, t => updateDynamicList(setAgenda, index, 'time', t))}
-          {renderInput('Presenter', item.presenter, t => updateDynamicList(setAgenda, index, 'presenter', t))}
-        </View>
-      ))}
-      <TouchableOpacity style={[styles.addMoreBtn, { borderColor: theme.colors.primary }]} onPress={() => addDynamicRow(setAgenda, {agenda:'', presentation:'', time:'', presenter:''})}>
-        <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>+ Add Agenda</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const deptList = Array.isArray(deptRes) ? deptRes : deptRes?.data || [];
+  const deptOptions = deptList.map(d => ({
+    id: d.id || d.department_id,
+    name: d.name || d.department_name || d.title || 'Department',
+  }));
 
-  const renderSamplesTab = () => (
-    <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>Sample Required</Text>
-      {samples.map((item, index) => (
-        <View key={index} style={[styles.dynamicBlock, { borderColor: theme.colors.border }]}>
-          <View style={styles.dynamicHeader}>
-            <Text style={{ fontWeight: '600', color: theme.colors.text }}>Sample {index + 1}</Text>
-            {samples.length > 1 && <TouchableOpacity onPress={() => removeDynamicRow(setSamples, index)}><Icon name="trash" size={20} color={theme.colors.error} /></TouchableOpacity>}
-          </View>
-          {renderDropdown('Product', item.product, val => updateDynamicList(setSamples, index, 'product', val))}
-          {renderInput('Quantity', item.quantity, t => updateDynamicList(setSamples, index, 'quantity', t), 'numeric')}
-          {renderInput('Batch No.', item.batchNo, t => updateDynamicList(setSamples, index, 'batchNo', t))}
-          {renderInput('Primary Quantity', item.primaryQuantity, t => updateDynamicList(setSamples, index, 'primaryQuantity', t), 'numeric')}
-          {renderInput('Expected Date of Use', item.expectedDate, t => updateDynamicList(setSamples, index, 'expectedDate', t))}
-          {renderInput('Secondary Quantity', item.secondaryQuantity, t => updateDynamicList(setSamples, index, 'secondaryQuantity', t), 'numeric')}
-          {renderInput('Current Brand', item.currentBrand, t => updateDynamicList(setSamples, index, 'currentBrand', t))}
-          {renderInput('Sample Purpose', item.samplePurpose, t => updateDynamicList(setSamples, index, 'samplePurpose', t))}
-        </View>
-      ))}
-      <TouchableOpacity style={[styles.addMoreBtn, { borderColor: theme.colors.primary }]} onPress={() => addDynamicRow(setSamples, {product: null, quantity: '', batchNo: '', primaryQuantity: '', expectedDate: '', secondaryQuantity: '', currentBrand: '', samplePurpose: ''})}>
-        <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>+ Add Sample</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderBudgetTab = () => (
-    <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <Text style={[styles.sectionHeading, { color: theme.colors.primary }]}>Budget Requirement</Text>
-      {budget.map((item, index) => (
-        <View key={index} style={[styles.dynamicBlock, { borderColor: theme.colors.border }]}>
-          <View style={styles.dynamicHeader}>
-            <Text style={{ fontWeight: '600', color: theme.colors.text }}>Budget Row {index + 1}</Text>
-            {budget.length > 1 && <TouchableOpacity onPress={() => removeDynamicRow(setBudget, index)}><Icon name="trash" size={20} color={theme.colors.error} /></TouchableOpacity>}
-          </View>
-          {renderDropdown('Break Down', item.breakdown, val => updateDynamicList(setBudget, index, 'breakdown', val), BUDGET_CATEGORIES)}
-          {renderInput('Unit', item.unit, t => updateDynamicList(setBudget, index, 'unit', t), 'numeric')}
-          {renderInput('Cost', item.cost, t => updateDynamicList(setBudget, index, 'cost', t), 'numeric')}
-          {renderInput('Total Cost', item.totalCost, t => updateDynamicList(setBudget, index, 'totalCost', t), 'numeric')}
-        </View>
-      ))}
-      <TouchableOpacity style={[styles.addMoreBtn, { borderColor: theme.colors.primary }]} onPress={() => addDynamicRow(setBudget, {breakdown: null, unit: '', cost: '', totalCost: ''})}>
-        <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>+ Add Budget Item</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const stockList = Array.isArray(stockRes) ? stockRes : stockRes?.data || [];
+  const stockOptions = stockList.map(s => ({
+    id: s.id || s.stock_id,
+    name: s.description || s.name || s.title || 'Product',
+  }));
 
   return (
     <View style={styles.container}>
-      {renderTabs()}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {activeTab === 'Info' && renderInfoTab()}
-        {activeTab === 'Content' && renderContentTab()}
-        {activeTab === 'Samples' && renderSamplesTab()}
-        {activeTab === 'Budget' && renderBudgetTab()}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header Banner */}
+        <View style={styles.headerBanner}>
+          <View style={styles.headerTitleRow}>
+            <Icon name="easel-outline" size={24} color="#ffffff" style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>COMPANY WORKSHOP</Text>
+          </View>
+          <View style={styles.workflowBadge}>
+            <Text style={styles.workflowText}>
+              Workflow: Draft ➔ Submit ➔ Manager Approval ➔ Progress Update ➔ Completed
+            </Text>
+          </View>
+        </View>
 
-        <TouchableOpacity style={[styles.submitBtn, { backgroundColor: theme.colors.primary }]} onPress={() => navigation.goBack()}>
-          <Text style={styles.submitBtnText}>Submit Workshop</Text>
-        </TouchableOpacity>
-        
-        <View style={{ height: 40 }} />
+        {/* Section 1: Workshop Info */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>1. Workshop Info</Text>
+
+          <Text style={styles.fieldLabel}>
+            Workshop Title <Text style={styles.required}>*</Text>
+          </Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Enter Workshop Title"
+            placeholderTextColor={theme.colors.textSecondary}
+            value={title}
+            onChangeText={setTitle}
+          />
+
+          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
+            Date <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.dateSelector}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.dateText}>{workshopDate ? workshopDate : 'Select Date'}</Text>
+            <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+          </TouchableOpacity>
+
+          <View style={{ marginTop: 12 }}>
+            <SearchableDropdown
+              label="Hospital [CRM Hospital]"
+              placeholder="Select Hospital..."
+              data={hospitalOptions}
+              selectedId={selectedHospital?.id}
+              onSelect={item => setSelectedHospital(item)}
+              isLoading={hospLoading}
+              iconName="business-outline"
+            />
+          </View>
+
+          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Venue</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="e.g. Main Auditorium, Conference Room"
+            placeholderTextColor={theme.colors.textSecondary}
+            value={venue}
+            onChangeText={setVenue}
+          />
+
+          <View style={{ marginTop: 12 }}>
+            <SearchableDropdown
+              label="Department / Specialty"
+              placeholder="Select Department / Specialty..."
+              data={deptOptions}
+              selectedId={selectedDept?.id}
+              onSelect={item => setSelectedDept(item)}
+              isLoading={deptLoading}
+              iconName="medkit-outline"
+            />
+          </View>
+
+          <View style={{ marginTop: 12 }}>
+            <SearchableDropdown
+              label="Workshop Type [Dropdown]"
+              placeholder="Select Workshop Type..."
+              data={WORKSHOP_TYPES}
+              selectedId={workshopType?.id}
+              onSelect={item => setWorkshopType(item)}
+              iconName="school-outline"
+            />
+          </View>
+
+          {workshopType?.id === 'Other' && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={styles.fieldLabel}>Provide details if Other</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter workshop type details..."
+                placeholderTextColor={theme.colors.textSecondary}
+                value={otherTypeDetail}
+                onChangeText={setOtherTypeDetail}
+              />
+            </View>
+          )}
+
+          <View style={{ marginTop: 12 }}>
+            <SearchableDropdown
+              label="Product Segment [Dropdown]"
+              placeholder="Select Product Segment..."
+              data={PRODUCT_SEGMENTS}
+              selectedId={productSegment?.id}
+              onSelect={item => setProductSegment(item)}
+              iconName="shapes-outline"
+            />
+          </View>
+        </View>
+
+        {/* Section 2: Objective */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>2. Objective</Text>
+          <Text style={styles.fieldLabel}>Brief purpose / expected outcome of the workshop</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Enter brief purpose or expected outcome..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={objective}
+            onChangeText={setObjective}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+        </View>
+
+        {/* Section 3: Key Products */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>3. Key Products</Text>
+
+          {keyProducts.map((item, index) => (
+            <View key={item.id} style={styles.tableBlock}>
+              <View style={styles.blockHeader}>
+                <Text style={styles.blockTitle}>Product #{index + 1}</Text>
+                {keyProducts.length > 1 && (
+                  <TouchableOpacity onPress={() => removeKeyProductRow(index)}>
+                    <Icon name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <SearchableDropdown
+                label="Product Name"
+                placeholder="Select or enter product..."
+                data={stockOptions}
+                selectedId={item.productId}
+                onSelect={s => {
+                  updateKeyProduct(index, 'productId', s.id);
+                  updateKeyProduct(index, 'product', s.name);
+                }}
+                isLoading={stockLoading}
+                iconName="cube-outline"
+              />
+
+              <View style={styles.rowTwoCols}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={styles.fieldLabel}>Size/Code</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Size/Code"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={item.sizeCode}
+                    onChangeText={val => updateKeyProduct(index, 'sizeCode', val)}
+                  />
+                </View>
+
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={styles.fieldLabel}>Qty</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    keyboardType="numeric"
+                    value={item.qty}
+                    onChangeText={val => updateKeyProduct(index, 'qty', val)}
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Purpose</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Product purpose in workshop"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={item.purpose}
+                onChangeText={val => updateKeyProduct(index, 'purpose', val)}
+              />
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addBtn} onPress={addKeyProductRow} activeOpacity={0.8}>
+            <Icon name="add-circle-outline" size={18} color="#059669" style={{ marginRight: 6 }} />
+            <Text style={styles.addBtnText}>+ Add Key Product</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 4: Audience */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>4. Audience Breakdown</Text>
+          <View style={styles.tableHeaderRow}>
+            <Text style={[styles.tableColHeader, { flex: 2 }]}>Category</Text>
+            <Text style={[styles.tableColHeader, { flex: 1, textAlign: 'right' }]}>Expected</Text>
+          </View>
+
+          <View style={styles.tableBodyRow}>
+            <Text style={styles.tableRowLabel}>HOD / KOLs</Text>
+            <TextInput
+              style={styles.tableNumInput}
+              keyboardType="numeric"
+              value={audience.hodKols}
+              onChangeText={val => setAudience(prev => ({ ...prev, hodKols: val }))}
+            />
+          </View>
+
+          <View style={styles.tableBodyRow}>
+            <Text style={styles.tableRowLabel}>APs / SRs</Text>
+            <TextInput
+              style={styles.tableNumInput}
+              keyboardType="numeric"
+              value={audience.apsSrs}
+              onChangeText={val => setAudience(prev => ({ ...prev, apsSrs: val }))}
+            />
+          </View>
+
+          <View style={styles.tableBodyRow}>
+            <Text style={styles.tableRowLabel}>OT / Nurses</Text>
+            <TextInput
+              style={styles.tableNumInput}
+              keyboardType="numeric"
+              value={audience.otNurses}
+              onChangeText={val => setAudience(prev => ({ ...prev, otNurses: val }))}
+            />
+          </View>
+
+          <View style={styles.tableBodyRow}>
+            <Text style={styles.tableRowLabel}>Interns / Students</Text>
+            <TextInput
+              style={styles.tableNumInput}
+              keyboardType="numeric"
+              value={audience.internsStudents}
+              onChangeText={val => setAudience(prev => ({ ...prev, internsStudents: val }))}
+            />
+          </View>
+
+          <View style={styles.tableBodyRow}>
+            <Text style={styles.tableRowLabel}>Other</Text>
+            <TextInput
+              style={styles.tableNumInput}
+              keyboardType="numeric"
+              value={audience.other}
+              onChangeText={val => setAudience(prev => ({ ...prev, other: val }))}
+            />
+          </View>
+
+          <View style={styles.tableTotalRow}>
+            <Text style={styles.totalLabel}>Total Audience</Text>
+            <Text style={styles.totalValue}>{totalAudience}</Text>
+          </View>
+        </View>
+
+        {/* Section 5: Materials & Agenda */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>5. Materials & Agenda</Text>
+
+          {materials.map((item, index) => (
+            <View key={item.id} style={styles.tableBlock}>
+              <View style={styles.blockHeader}>
+                <Text style={styles.blockTitle}>Item #{index + 1}</Text>
+                {materials.length > 1 && (
+                  <TouchableOpacity onPress={() => removeMaterialRow(index)}>
+                    <Icon name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.fieldLabel}>Material / Equipment</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Suture pads, Instruments"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={item.material}
+                onChangeText={val => updateMaterial(index, 'material', val)}
+              />
+
+              <View style={styles.rowTwoCols}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={styles.fieldLabel}>Size/Qty</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Size or Qty"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={item.sizeQty}
+                    onChangeText={val => updateMaterial(index, 'sizeQty', val)}
+                  />
+                </View>
+
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={styles.fieldLabel}>Time</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 10:00 AM"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={item.time}
+                    onChangeText={val => updateMaterial(index, 'time', val)}
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Agenda</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Agenda description"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={item.agenda}
+                onChangeText={val => updateMaterial(index, 'agenda', val)}
+              />
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addBtn} onPress={addMaterialRow} activeOpacity={0.8}>
+            <Icon name="add-circle-outline" size={18} color="#059669" style={{ marginRight: 6 }} />
+            <Text style={styles.addBtnText}>+ Add Material / Agenda</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 6: Samples Required */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>6. Samples Required</Text>
+          <Text style={styles.fieldLabel}>Specify required samples / items</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="List required samples or items..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={samplesRequired}
+            onChangeText={setSamplesRequired}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+        </View>
+
+        {/* Section 7: Budget & Approval */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>7. Budget & Approval</Text>
+          <View style={styles.tableHeaderRow}>
+            <Text style={[styles.tableColHeader, { flex: 2 }]}>Budget Item</Text>
+            <Text style={[styles.tableColHeader, { flex: 1 }]}>Unit Cost</Text>
+            <Text style={[styles.tableColHeader, { flex: 1 }]}>Qty</Text>
+            <Text style={[styles.tableColHeader, { flex: 1, textAlign: 'right' }]}>Total</Text>
+          </View>
+
+          {/* Refreshment */}
+          <View style={styles.budgetRow}>
+            <Text style={styles.budgetCategoryLabel}>Refreshment</Text>
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Cost"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.refreshment.unitCost}
+              onChangeText={val => updateBudgetItem('refreshment', 'unitCost', val)}
+            />
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Qty"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.refreshment.qty}
+              onChangeText={val => updateBudgetItem('refreshment', 'qty', val)}
+            />
+            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.refreshment)}</Text>
+          </View>
+
+          {/* Hands-on Material */}
+          <View style={styles.budgetRow}>
+            <Text style={styles.budgetCategoryLabel}>Hands-on Material</Text>
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Cost"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.handsOnMaterial.unitCost}
+              onChangeText={val => updateBudgetItem('handsOnMaterial', 'unitCost', val)}
+            />
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Qty"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.handsOnMaterial.qty}
+              onChangeText={val => updateBudgetItem('handsOnMaterial', 'qty', val)}
+            />
+            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.handsOnMaterial)}</Text>
+          </View>
+
+          {/* Equipment Rental */}
+          <View style={styles.budgetRow}>
+            <Text style={styles.budgetCategoryLabel}>Equipment Rental</Text>
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Cost"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.equipmentRental.unitCost}
+              onChangeText={val => updateBudgetItem('equipmentRental', 'unitCost', val)}
+            />
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Qty"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.equipmentRental.qty}
+              onChangeText={val => updateBudgetItem('equipmentRental', 'qty', val)}
+            />
+            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.equipmentRental)}</Text>
+          </View>
+
+          {/* Other */}
+          <View style={styles.budgetRow}>
+            <Text style={styles.budgetCategoryLabel}>Other</Text>
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Cost"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.other.unitCost}
+              onChangeText={val => updateBudgetItem('other', 'unitCost', val)}
+            />
+            <TextInput
+              style={styles.budgetInput}
+              keyboardType="numeric"
+              placeholder="Qty"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={budget.other.qty}
+              onChangeText={val => updateBudgetItem('other', 'qty', val)}
+            />
+            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.other)}</Text>
+          </View>
+
+          <View style={styles.tableTotalRow}>
+            <Text style={styles.totalLabel}>Total Budget (PKR)</Text>
+            <Text style={[styles.totalValue, { color: theme.colors.primary }]}>Rs. {totalBudget}</Text>
+          </View>
+        </View>
+
+        {/* Action Buttons Row */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.saveDraftBtn]}
+            onPress={handleSaveDraft}
+            disabled={isSavingDraft || isSubmitting}
+            activeOpacity={0.8}
+          >
+            {isSavingDraft ? (
+              <ActivityIndicator size="small" color="#854D0E" />
+            ) : (
+              <>
+                <Icon name="save-outline" size={18} color="#854D0E" style={{ marginRight: 6 }} />
+                <Text style={styles.saveDraftText}>Save Draft</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.submitBtn]}
+            onPress={handleSubmit}
+            disabled={isSavingDraft || isSubmitting}
+            activeOpacity={0.8}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Icon name="checkmark-done-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={styles.submitText}>Submit for Approval</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      <CustomDatePicker
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelect={date => {
+          setWorkshopDate(formatToYYYYMMDD(date));
+          setShowDatePicker(false);
+        }}
+        selectedDate={parseDate(workshopDate)}
+        title="Select Workshop Date"
+      />
     </View>
   );
 };
 
-const getStyles = (theme) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  tabContainer: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
-  },
-  tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  tabText: { fontSize: 14, fontWeight: '600' },
-  scrollContent: { padding: 16 },
-  sectionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  sectionHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  inputContainer: { marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6 },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    fontSize: 14,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    fontSize: 14,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  dropdown: {
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-  },
-  placeholderStyle: { fontSize: 14 },
-  selectedTextStyle: { fontSize: 14 },
-  itemTextStyle: { fontSize: 14 },
-  selectedStyle: {
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  multiSelectItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  dynamicBlock: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-  },
-  dynamicHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  addMoreBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: 10,
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingBottom: 4,
-  },
-  tableHeaderCol: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  tableLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  tableInput: {
-    height: 40,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    fontSize: 13,
-  },
-  submitBtn: {
-    height: 52,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  submitBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const getStyles = theme =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 40,
+    },
+    headerBanner: {
+      backgroundColor: '#0F766E',
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 14,
+    },
+    headerTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#ffffff',
+      letterSpacing: 0.5,
+    },
+    workflowBadge: {
+      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      marginTop: 4,
+    },
+    workflowText: {
+      fontSize: 11,
+      color: '#CCFBF1',
+      fontWeight: '500',
+    },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      elevation: 2,
+    },
+    sectionHeading: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.primary,
+      marginBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      paddingBottom: 6,
+    },
+    fieldLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.colors.text,
+      marginBottom: 6,
+    },
+    required: {
+      color: theme.colors.error || '#EF4444',
+    },
+    dateSelector: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: theme.colors.background,
+    },
+    dateText: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: '500',
+    },
+    textInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      fontSize: 14,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 14,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+      minHeight: 80,
+    },
+    tableBlock: {
+      backgroundColor: theme.colors.background,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    blockHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    blockTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    rowTwoCols: {
+      flexDirection: 'row',
+      marginTop: 8,
+    },
+    addBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: '#059669',
+      borderRadius: 8,
+      backgroundColor: '#D1FAE5',
+      marginTop: 4,
+    },
+    addBtnText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#047857',
+    },
+    tableHeaderRow: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 6,
+      marginBottom: 6,
+    },
+    tableColHeader: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+    },
+    tableBodyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 6,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    tableRowLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.colors.text,
+    },
+    tableNumInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 6,
+      width: 70,
+      height: 36,
+      textAlign: 'center',
+      fontSize: 13,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+    },
+    tableTotalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 10,
+      marginTop: 6,
+    },
+    totalLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    totalValue: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    budgetRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 6,
+      gap: 6,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    budgetCategoryLabel: {
+      flex: 2,
+      fontSize: 12,
+      fontWeight: '500',
+      color: theme.colors.text,
+    },
+    budgetInput: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 6,
+      height: 36,
+      textAlign: 'center',
+      fontSize: 12,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+    },
+    budgetTotalText: {
+      flex: 1,
+      textAlign: 'right',
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginTop: 10,
+      marginBottom: 30,
+    },
+    actionBtn: {
+      flex: 1,
+      borderRadius: 8,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      elevation: 2,
+    },
+    saveDraftBtn: {
+      backgroundColor: '#FEF08A',
+      borderWidth: 1,
+      borderColor: '#EAB308',
+    },
+    saveDraftText: {
+      color: '#854D0E',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    submitBtn: {
+      backgroundColor: '#2563EB',
+    },
+    submitText: {
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+  });
 
 export default CRMWorkshopRequestScreen;

@@ -222,19 +222,19 @@ const MainScreen = ({ navigation }) => {
     } else if (item.id === 'sample') {
       navigation.navigate('CRMSampleRequest');
     } else if (item.id === 'promotional') {
-      navigation.navigate('EmptyPlaceholder', { title: 'Promotional Request' });
+      navigation.navigate('CRMPromotionalRequest');
     } else if (item.id === 'giveaway') {
       navigation.navigate('CRMGiveawayRequest');
     } else if (item.id === 'workshop') {
       navigation.navigate('CRMWorkshopRequest');
     } else if (item.id === 'conference') {
-      navigation.navigate('EmptyPlaceholder', { title: 'Conference Request' });
+      navigation.navigate('CRMConferenceRequest');
     } else if (item.id === 'fuel_summary') {
       navigation.navigate('FuelSummaryScreen');
     } else if (item.id === 'field_expense') {
       navigation.navigate('CRMMonthlyExpense');
     } else if (item.id === 'outstation_expense') {
-      navigation.navigate('EmptyPlaceholder', { title: 'Outstation Expense' });
+      navigation.navigate('OutstationExpense');
     } else if (item.id === 'apply_leave') {
       navigation.navigate('Leave');
     } else if (item.id === 'leave_status') {

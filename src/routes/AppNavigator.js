@@ -22,8 +22,10 @@ import CRMHospitalListScreen from '@screens/crm/CRMHospitalListScreen';
 import CRMAddHospitalScreen from '@screens/crm/CRMAddHospitalScreen';
 import CRMMonthlyExpenseScreen from '@screens/crm/CRMMonthlyExpenseScreen';
 import CRMSampleRequestScreen from '@screens/crm/CRMSampleRequestScreen';
+import CRMPromotionalRequestScreen from '@screens/crm/CRMPromotionalRequestScreen';
 import CRMGiveawayRequestScreen from '@screens/crm/CRMGiveawayRequestScreen';
 import CRMWorkshopRequestScreen from '@screens/crm/CRMWorkshopRequestScreen';
+import CRMConferenceRequestScreen from '@screens/crm/CRMConferenceRequestScreen';
 import CRMApprovalDashboard from '@screens/crm/CRMApprovalDashboard';
 import CRMMonthlyExpenseApprovalScreen from '@screens/crm/CRMMonthlyExpenseApprovalScreen';
 import CRMSampleApprovalScreen from '@screens/crm/CRMSampleApprovalScreen';
@@ -64,6 +66,7 @@ import ExpenseClaimScreen from '@screens/hcm/ExpenseClaimScreen';
 import LeaveScreen from '@screens/hcm/LeaveScreen';
 import LeaveStatusScreen from '@screens/hcm/LeaveStatusScreen';
 import LeaveApprovalScreen from '@screens/approvals/LeaveApprovalScreen';
+import OutstationExpenseScreen from '@screens/hcm/OutstationExpenseScreen';
 import { LoadingSpinner, CustomHeader } from '@components/common';
 
 const Stack = createNativeStackNavigator();
@@ -350,12 +353,22 @@ const AppNavigator = () => {
               component={CRMSampleRequestScreen}
             />
             <Stack.Screen
+              name="CRMPromotionalRequest"
+              component={CRMPromotionalRequestScreen}
+              options={{ title: 'Promotional Request' }}
+            />
+            <Stack.Screen
               name="CRMGiveawayRequest"
               component={CRMGiveawayRequestScreen}
             />
             <Stack.Screen
               name="CRMWorkshopRequest"
               component={CRMWorkshopRequestScreen}
+            />
+            <Stack.Screen
+              name="CRMConferenceRequest"
+              component={CRMConferenceRequestScreen}
+              options={{ title: 'Conference Request' }}
             />
             <Stack.Screen
               name="CRMApprovalDashboard"
@@ -391,6 +404,11 @@ const AppNavigator = () => {
               name="FuelSummaryScreen"
               component={FuelSummaryScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="OutstationExpense"
+              component={OutstationExpenseScreen}
+              options={{ title: 'Outstation Visit' }}
             />
             <Stack.Screen
               name="CRMGiveawayApproval"

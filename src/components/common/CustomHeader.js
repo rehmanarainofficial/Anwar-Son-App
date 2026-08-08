@@ -10,12 +10,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '@config/useTheme';
 
-const CustomHeader = ({ navigation, route, options, back }) => {
+const CustomHeader = props => {
+  const { navigation, route, options, back, title: customTitle } = props || {};
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const title = options.title || route.name;
+  const title = customTitle || options?.title || route?.name || '';
 
-  const isMainScreen = route.name === 'MainScreen';
+  const isMainScreen = route?.name === 'MainScreen';
 
   return (
     <View

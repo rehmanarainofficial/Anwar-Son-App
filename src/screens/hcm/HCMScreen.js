@@ -14,6 +14,7 @@ const HCMScreen = ({ navigation }) => {
     { label: 'Leave Status', icon: 'time-outline', screen: 'LeaveStatus' },
     { label: 'Leave Approval', icon: 'checkmark-done-circle-outline', screen: 'LeaveApproval' },
     { label: 'Expense Claim', icon: 'cash-outline', screen: 'HCMExpenseClaim' },
+    { label: 'Outstation Expense', icon: 'briefcase-outline', screen: 'OutstationExpense' },
     { label: 'DVR Inquiry', icon: 'document-search-outline', screen: 'HCMDVRInquiry' },
     { label: 'Local Purchase', icon: 'cart-outline', screen: 'HCMLocalPurchase' },
   ];

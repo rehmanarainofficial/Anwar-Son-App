@@ -6,18 +6,19 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Image,
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown } from '@components/common';
+import { CustomButton, CustomDatePicker, SearchableDropdown } from '@components/common';
 import {
   useGetHospitalMutation,
   useGetHospitalContactsMutation,
   useGetCityDropdownMutation,
-  useGetStockMasterMainDropdownMutation,
 } from '@api/baseApi';
 
 const parseDate = dateStr => {
@@ -44,7 +45,21 @@ const formatToYYYYMMDD = date => {
   return `${year}-${month}-${day}`;
 };
 
-const CRMGiveawayRequestScreen = ({ navigation }) => {
+const ACTIVITY_TYPES = [
+  { id: 'Refreshment', name: 'Refreshment' },
+  { id: 'Get-together', name: 'Get-together' },
+  { id: 'Meeting', name: 'Meeting' },
+  { id: 'Gift', name: 'Gift' },
+];
+
+const PURPOSES = [
+  { id: 'Product Discussion', name: 'Product Discussion' },
+  { id: 'Relationship Building', name: 'Relationship Building' },
+  { id: 'Follow-up', name: 'Follow-up' },
+  { id: 'Other', name: 'Other' },
+];
+
+const CRMPromotionalRequestScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
@@ -57,11 +72,11 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
   const [selectedCommunity, setSelectedCommunity] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null);
 
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [quantity, setQuantity] = useState('');
+  const [activityType, setActivityType] = useState(null);
+  const [purpose, setPurpose] = useState(null);
   const [remarks, setRemarks] = useState('');
-  const [price, setPrice] = useState('');
   const [amount, setAmount] = useState('');
+  const [receiptUri, setReceiptUri] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -70,13 +85,11 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
   const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
   const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] = useGetHospitalContactsMutation();
   const [getCityDropdown, { data: cityRes, isLoading: cityLoading }] = useGetCityDropdownMutation();
-  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] = useGetStockMasterMainDropdownMutation();
 
   useEffect(() => {
     getHospital({ id: user?.id });
     getCityDropdown({ id: user?.id });
-    getStockMasterMain({});
-  }, [user?.id, getHospital, getCityDropdown, getStockMasterMain]);
+  }, [user?.id, getHospital, getCityDropdown]);
 
   // When Hospital changes, fetch its contacts
   const handleHospitalChange = item => {
@@ -87,23 +100,13 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
     }
   };
 
-  // Auto calculate amount when quantity or price changes
-  const handleQuantityChange = val => {
-    setQuantity(val);
-    const q = parseFloat(val) || 0;
-    const p = parseFloat(price) || 0;
-    if (q > 0 && p > 0) {
-      setAmount((q * p).toString());
-    }
-  };
-
-  const handlePriceChange = val => {
-    setPrice(val);
-    const q = parseFloat(quantity) || 0;
-    const p = parseFloat(val) || 0;
-    if (q > 0 && p > 0) {
-      setAmount((q * p).toString());
-    }
+  const handlePickReceipt = () => {
+    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, response => {
+      if (response.didCancel) return;
+      if (response.assets && response.assets.length > 0) {
+        setReceiptUri(response.assets[0].uri);
+      }
+    });
   };
 
   const handleSaveDraft = async () => {
@@ -113,7 +116,7 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
       Toast.show({
         type: 'info',
         text1: 'Draft Saved',
-        text2: 'Giveaway request saved as draft locally.',
+        text2: 'Promotional activity saved as draft locally.',
       });
     } catch (error) {
       console.log('Error saving draft:', error);
@@ -131,19 +134,27 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
       });
       return;
     }
-    if (!selectedItem) {
+    if (!activityType) {
       Toast.show({
         type: 'error',
         text1: 'Validation Error',
-        text2: 'Please select an Item from Giveaway list.',
+        text2: 'Please select Activity Type.',
       });
       return;
     }
-    if (!quantity.trim() || parseFloat(quantity) <= 0) {
+    if (!purpose) {
       Toast.show({
         type: 'error',
         text1: 'Validation Error',
-        text2: 'Please enter a valid requested quantity.',
+        text2: 'Please select Purpose.',
+      });
+      return;
+    }
+    if (!amount.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter Amount.',
       });
       return;
     }
@@ -156,72 +167,67 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
         hospital_name: selectedHospital?.name,
         community_id: selectedCommunity?.id,
         contact_id: selectedContact?.id,
-        item_id: selectedItem?.id,
-        item_name: selectedItem?.name,
-        quantity_requested: quantity,
+        activity_type: activityType?.id,
+        purpose: purpose?.id,
         remarks: remarks,
-        price: price,
         amount: amount,
+        receipt: receiptUri,
         user_id: user?.id,
       };
 
-      console.log('Giveaway Request Payload:', payload);
+      console.log('Promotional Request Payload:', payload);
       await new Promise(resolve => setTimeout(resolve, 1200));
 
       Toast.show({
         type: 'success',
         text1: 'Request Submitted',
-        text2: 'Giveaway request submitted for manager approval.',
+        text2: 'Promotional request submitted for manager approval.',
       });
 
       setTimeout(() => {
         navigation.goBack();
       }, 1500);
     } catch (error) {
-      console.log('Error submitting giveaway request:', error);
+      console.log('Error submitting promotional request:', error);
       Toast.show({
         type: 'error',
         text1: 'Submission Failed',
-        text2: 'Failed to submit giveaway request.',
+        text2: 'Failed to submit promotional request.',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Dropdown options
+  // Hospital options
   const hospitalList = Array.isArray(hospRes) ? hospRes : hospRes?.data || [];
   const hospitalOptions = hospitalList.map(h => ({
     id: h.id || h.hospital_id,
     name: h.name || h.hospital_name || h.title || 'Hospital',
   }));
 
+  // City / Community options
   const cityList = Array.isArray(cityRes) ? cityRes : cityRes?.data || [];
   const communityOptions = cityList.map(c => ({
     id: c.id || c.city_id,
     name: c.name || c.city_name || c.title || 'City',
   }));
 
+  // Contact options
   const contactList = Array.isArray(contactRes) ? contactRes : contactRes?.data || [];
   const contactOptions = contactList.map(ct => ({
     id: ct.id || ct.contact_id,
     name: ct.name || ct.contact_name || ct.person_name || 'Contact Person',
   }));
 
-  const stockList = Array.isArray(stockRes) ? stockRes : stockRes?.data || [];
-  const itemOptions = stockList.map(st => ({
-    id: st.id || st.stock_id,
-    name: st.description || st.name || st.title || 'Giveaway Item',
-  }));
-
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header Banner */}
+        {/* Banner / Title Header */}
         <View style={styles.headerBanner}>
           <View style={styles.headerTitleRow}>
-            <Icon name="gift-outline" size={24} color="#ffffff" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>GIVEAWAY</Text>
+            <Icon name="megaphone-outline" size={24} color="#ffffff" style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>PROMOTIONAL</Text>
           </View>
           <View style={styles.workflowBadge}>
             <Text style={styles.workflowText}>
@@ -232,7 +238,7 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
 
         {/* Section 1: General Info Card */}
         <View style={styles.card}>
-          {/* Date Selector */}
+          {/* Date Row */}
           <Text style={styles.fieldLabel}>
             Date <Text style={styles.required}>*</Text>
           </Text>
@@ -290,37 +296,35 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
         <View style={styles.card}>
           <Text style={styles.sectionHeaderTitle}>Details</Text>
 
-          {/* Select Item (Item List: Giveaway) */}
+          {/* Activity Type Dropdown */}
           <View style={{ marginTop: 8 }}>
             <SearchableDropdown
-              label="Select Item [Item List: Giveaway]"
-              placeholder="Select Giveaway Item..."
-              data={itemOptions}
-              selectedId={selectedItem?.id}
-              onSelect={item => setSelectedItem(item)}
-              isLoading={stockLoading}
-              iconName="cube-outline"
+              label="Activity Type [Drop Down]"
+              placeholder="Select Activity (Refreshment, Meeting, Gift...)"
+              data={ACTIVITY_TYPES}
+              selectedId={activityType?.id}
+              onSelect={item => setActivityType(item)}
+              iconName="sparkles-outline"
             />
           </View>
 
-          {/* Quantity Requested */}
-          <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-            Quantity Requested <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Input quantity"
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="numeric"
-            value={quantity}
-            onChangeText={handleQuantityChange}
-          />
+          {/* Purpose Dropdown */}
+          <View style={{ marginTop: 12 }}>
+            <SearchableDropdown
+              label="Purpose [Drop Down]"
+              placeholder="Select Purpose (Product Discussion, Follow-up...)"
+              data={PURPOSES}
+              selectedId={purpose?.id}
+              onSelect={item => setPurpose(item)}
+              iconName="disc-outline"
+            />
+          </View>
 
-          {/* Remarks */}
+          {/* Remarks Text Input */}
           <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Remarks</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Text Input remarks..."
+            placeholder="Text remarks or activity details..."
             placeholderTextColor={theme.colors.textSecondary}
             value={remarks}
             onChangeText={setRemarks}
@@ -329,31 +333,43 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
             textAlignVertical="top"
           />
 
-          {/* Price & Amount Row */}
-          <View style={styles.priceRow}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.fieldLabel}>Price [ERP]</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="ERP Price"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="numeric"
-                value={price}
-                onChangeText={handlePriceChange}
-              />
-            </View>
+          {/* Amount Numeric Input */}
+          <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+            Amount (Rs.) <Text style={styles.required}>*</Text>
+          </Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="ERP / Amount e.g. 5000"
+            placeholderTextColor={theme.colors.textSecondary}
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
 
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Text style={styles.fieldLabel}>Amount [ERP]</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="ERP Amount"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="numeric"
-                value={amount}
-                onChangeText={setAmount}
-              />
-            </View>
+          {/* Upload Receipt */}
+          <View style={{ marginTop: 18 }}>
+            <TouchableOpacity
+              style={styles.uploadBtn}
+              onPress={handlePickReceipt}
+              activeOpacity={0.8}
+            >
+              <Icon name="cloud-upload-outline" size={20} color="#854D0E" style={{ marginRight: 8 }} />
+              <Text style={styles.uploadBtnText}>
+                {receiptUri ? 'Change Uploaded Receipt' : 'Upload Receipt'}
+              </Text>
+            </TouchableOpacity>
+
+            {receiptUri && (
+              <View style={styles.receiptPreviewRow}>
+                <Image source={{ uri: receiptUri }} style={styles.receiptImage} />
+                <TouchableOpacity
+                  onPress={() => setReceiptUri(null)}
+                  style={styles.removeReceiptBtn}
+                >
+                  <Icon name="close-circle" size={22} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
@@ -419,7 +435,7 @@ const getStyles = theme =>
       paddingBottom: 40,
     },
     headerBanner: {
-      backgroundColor: '#1E40AF',
+      backgroundColor: '#0369A1',
       borderRadius: 12,
       padding: 16,
       marginBottom: 14,
@@ -444,7 +460,7 @@ const getStyles = theme =>
     },
     workflowText: {
       fontSize: 12,
-      color: '#E0E7FF',
+      color: '#E0F2FE',
       fontWeight: '500',
     },
     card: {
@@ -510,10 +526,35 @@ const getStyles = theme =>
       backgroundColor: theme.colors.background,
       minHeight: 80,
     },
-    priceRow: {
+    uploadBtn: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: '#CA8A04',
+      borderStyle: 'dashed',
+      borderRadius: 8,
+      paddingVertical: 12,
+      backgroundColor: '#FEF9C3',
+    },
+    uploadBtnText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#854D0E',
+    },
+    receiptPreviewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    receiptImage: {
+      width: 70,
+      height: 70,
+      borderRadius: 8,
+      marginRight: 10,
+    },
+    removeReceiptBtn: {
+      padding: 4,
     },
     actionRow: {
       flexDirection: 'row',
@@ -551,4 +592,4 @@ const getStyles = theme =>
     },
   });
 
-export default CRMGiveawayRequestScreen;
+export default CRMPromotionalRequestScreen;

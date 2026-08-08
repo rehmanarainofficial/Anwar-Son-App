@@ -280,6 +280,9 @@ const SalesCRMScreen = ({ navigation }) => {
             <>
               <Text style={styles.sectionSubtitle}>PROMOTIONAL CAMPAIGNS</Text>
               <View style={styles.pillContainer}>
+                {renderPillButton('Promotional', 'megaphone-outline', false, () =>
+                  navigation.navigate('CRMPromotionalRequest'),
+                )}
                 {renderPillButton('Samples', 'flask-outline', false, () =>
                   navigation.navigate('CRMSampleRequest'),
                 )}
@@ -289,7 +292,9 @@ const SalesCRMScreen = ({ navigation }) => {
                 {renderPillButton('Workshop', 'easel-outline', false, () =>
                   navigation.navigate('CRMWorkshopRequest'),
                 )}
-                {renderPillButton('Conference', 'mic-outline', false)}
+                {renderPillButton('Conference', 'mic-outline', false, () =>
+                  navigation.navigate('CRMConferenceRequest'),
+                )}
               </View>
             </>
           )}
