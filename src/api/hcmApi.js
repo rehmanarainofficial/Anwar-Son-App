@@ -104,6 +104,101 @@ export const hcmApi = baseApi.injectEndpoints({
         return result.data ? { data: result.data } : { error: result.error };
       },
     }),
+
+    // --- Leave Management APIs ---
+    getEmployeeLeaveHistory: builder.mutation({
+      queryFn: async (body, api, extraOptions, baseQuery) => {
+        const formData = new FormData();
+        formData.append('emp_id', String(body.emp_id || ''));
+        formData.append('company', 'CRM');
+
+        const result = await baseQuery({
+          url: 'leave/get_employee_leave_history.php',
+          method: 'POST',
+          body: formData,
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
+    postEmployeeLeave: builder.mutation({
+      queryFn: async (body, api, extraOptions, baseQuery) => {
+        const formData = new FormData();
+        formData.append('from_date', String(body.from_date || ''));
+        formData.append('to_date', String(body.to_date || ''));
+        formData.append('emp_id', String(body.emp_id || ''));
+        formData.append('reason', String(body.reason || ''));
+        formData.append('leave_type', String(body.leave_type || ''));
+        formData.append('company', 'CRM');
+
+        const result = await baseQuery({
+          url: 'leave/post_employee_leave.php',
+          method: 'POST',
+          body: formData,
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
+    getEmpSelfLeaves: builder.mutation({
+      queryFn: async (body, api, extraOptions, baseQuery) => {
+        const formData = new FormData();
+        formData.append('emp_id', String(body.emp_id || ''));
+        formData.append('company', 'CRM');
+
+        const result = await baseQuery({
+          url: 'leave/get_emp_self_leaves.php',
+          method: 'POST',
+          body: formData,
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
+    getDeptLeaveApproval: builder.mutation({
+      queryFn: async (body, api, extraOptions, baseQuery) => {
+        const formData = new FormData();
+        formData.append('head_id', String(body.head_id || ''));
+        formData.append('employee_id', String(body.employee_id || ''));
+        formData.append('from_date', String(body.from_date || ''));
+        formData.append('to_date', String(body.to_date || ''));
+        formData.append('company', 'CRM');
+
+        const result = await baseQuery({
+          url: 'leave/dept_leave_approval.php',
+          method: 'POST',
+          body: formData,
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
+    postLeaveApprovalManager: builder.mutation({
+      queryFn: async (body, api, extraOptions, baseQuery) => {
+        const formData = new FormData();
+        formData.append('emp_id', String(body.emp_id || ''));
+        formData.append('approve', String(body.approve || ''));
+        formData.append('company', 'CRM');
+
+        const result = await baseQuery({
+          url: 'leave/post_leave_approval_manager.php',
+          method: 'POST',
+          body: formData,
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
+    getAllEmployees: builder.query({
+      queryFn: async (arg, api, extraOptions, baseQuery) => {
+        const result = await baseQuery({
+          url: 'leave/get_all_employees.php?company=CRM',
+          method: 'GET',
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
   }),
   overrideExisting: true,
 });
@@ -116,4 +211,10 @@ export const {
   usePostServiceExpenseClaimMutation,
   useGetViewGLMutation,
   useGetViewDataMutation,
+  useGetEmployeeLeaveHistoryMutation,
+  usePostEmployeeLeaveMutation,
+  useGetEmpSelfLeavesMutation,
+  useGetDeptLeaveApprovalMutation,
+  usePostLeaveApprovalManagerMutation,
+  useGetAllEmployeesQuery,
 } = hcmApi;

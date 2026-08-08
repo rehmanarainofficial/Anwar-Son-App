@@ -67,12 +67,28 @@ const CustomDatePicker = ({
   const isLandscape = width > height;
   const activeWidth = isLandscape ? Math.min(width, 340) : width;
   const today = new Date();
-  const initial = selectedDate || today;
+  
+  const validSelectedDate =
+    selectedDate && selectedDate instanceof Date && !isNaN(selectedDate.getTime())
+      ? selectedDate
+      : today;
 
-  const [viewYear, setViewYear] = useState(initial.getFullYear());
-  const [viewMonth, setViewMonth] = useState(initial.getMonth());
+  const [viewYear, setViewYear] = useState(validSelectedDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(validSelectedDate.getMonth());
   // 'calendar' | 'month' | 'year'
   const [viewMode, setViewMode] = useState('calendar');
+
+  React.useEffect(() => {
+    if (visible) {
+      const d =
+        selectedDate && selectedDate instanceof Date && !isNaN(selectedDate.getTime())
+          ? selectedDate
+          : new Date();
+      setViewYear(d.getFullYear());
+      setViewMonth(d.getMonth());
+      setViewMode('calendar');
+    }
+  }, [visible, selectedDate]);
 
   const daysInMonth = useMemo(() => {
     return new Date(viewYear, viewMonth + 1, 0).getDate();

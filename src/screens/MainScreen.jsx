@@ -38,7 +38,10 @@ const MainScreen = ({ navigation }) => {
   React.useEffect(() => {
     const empCode = user?.emp_code || user?.id || '';
     if (empCode) {
-      startBackgroundTracking(empCode);
+      const timer = setTimeout(() => {
+        startBackgroundTracking(empCode);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 
@@ -172,6 +175,19 @@ const MainScreen = ({ navigation }) => {
     },
   ];
 
+  const leaveRequests = [
+    {
+      id: 'apply_leave',
+      title: 'Apply Leave',
+      icon: 'calendar-number-outline',
+    },
+    {
+      id: 'leave_status',
+      title: 'Leave Status',
+      icon: 'time-outline',
+    },
+  ];
+
   const handleToggleSystem = async () => {
     const newState = !systemEnabled;
     const activateValue = newState ? 0 : 1;
@@ -219,6 +235,10 @@ const MainScreen = ({ navigation }) => {
       navigation.navigate('CRMMonthlyExpense');
     } else if (item.id === 'outstation_expense') {
       navigation.navigate('EmptyPlaceholder', { title: 'Outstation Expense' });
+    } else if (item.id === 'apply_leave') {
+      navigation.navigate('Leave');
+    } else if (item.id === 'leave_status') {
+      navigation.navigate('LeaveStatus');
     }
   };
 
@@ -430,6 +450,34 @@ const MainScreen = ({ navigation }) => {
                       />
                     </View>
                     <Text style={dynamicStyles.gridItemText}>{exp.title}</Text>
+                  </View>
+                  <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* LEAVE REQUESTS SECTION */}
+            <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
+              <View style={dynamicStyles.accentBar} />
+              <Text style={dynamicStyles.sectionHeader}>LEAVE REQUESTS</Text>
+            </View>
+
+            <View style={dynamicStyles.gridContainer}>
+              {leaveRequests.map(leave => (
+                <TouchableOpacity
+                  key={leave.id}
+                  style={dynamicStyles.gridItem}
+                  onPress={() => handleActionPress(leave)}
+                >
+                  <View style={dynamicStyles.gridItemLeft}>
+                    <View style={dynamicStyles.gridIconWrap}>
+                      <Icon
+                        name={leave.icon}
+                        size={18}
+                        color={theme.colors.primary}
+                      />
+                    </View>
+                    <Text style={dynamicStyles.gridItemText}>{leave.title}</Text>
                   </View>
                   <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
                 </TouchableOpacity>

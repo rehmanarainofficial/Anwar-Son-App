@@ -10,6 +10,9 @@ const HCMScreen = ({ navigation }) => {
 
   const actions = [
     { label: 'Attendance', icon: 'calendar-outline', screen: 'HCMAttendance' },
+    { label: 'Leave Apply', icon: 'calendar-number-outline', screen: 'Leave' },
+    { label: 'Leave Status', icon: 'time-outline', screen: 'LeaveStatus' },
+    { label: 'Leave Approval', icon: 'checkmark-done-circle-outline', screen: 'LeaveApproval' },
     { label: 'Expense Claim', icon: 'cash-outline', screen: 'HCMExpenseClaim' },
     { label: 'DVR Inquiry', icon: 'document-search-outline', screen: 'HCMDVRInquiry' },
     { label: 'Local Purchase', icon: 'cart-outline', screen: 'HCMLocalPurchase' },

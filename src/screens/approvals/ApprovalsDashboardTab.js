@@ -30,6 +30,14 @@ const ApprovalsDashboardTab = ({ navigation }) => {
 
   const pendingItems = [
     {
+      id: 'leave_approval_pending',
+      title: 'Leave Approval',
+      subtext: 'Department & Manager Leave Approvals',
+      date: 'Active',
+      icon: 'calendar-outline',
+      screen: 'LeaveApproval',
+    },
+    {
       id: 'field_expense',
       title: 'Field expense',
       subtext: 'Rs 2,400',
@@ -52,11 +60,10 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     {
       id: 'leave_request',
       title: 'Leave request',
-      subtext: 'Jun 28 - Jun 29 · 2 days',
-      date: 'Raised Jun 20, 9:00 AM',
+      subtext: 'Leave Approvals Inquiry',
+      date: 'Latest',
       icon: 'calendar-outline',
-      screen: 'EmptyPlaceholder',
-      params: { title: 'Leave Request Detail' },
+      screen: 'LeaveApproval',
     },
   ];
 

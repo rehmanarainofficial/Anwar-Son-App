@@ -20,43 +20,50 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const approvalGroups = [
   {
+    id: 'hcm',
+    title: 'HCM Approval',
+    icon: 'people-outline',
+    color: '#EC4899',
+    items: [{ title: 'Leave Approval', screen: 'LeaveApproval' }],
+  },
+  {
     id: 'sale',
     title: 'Sale Approval',
     icon: 'cart-outline',
     color: '#3B82F6',
-    items: ['Sale Quotation', 'Sale Order', 'Delivery Note'],
+    items: [{ title: 'Sale Quotation' }, { title: 'Sale Order' }, { title: 'Delivery Note' }],
   },
   {
     id: 'purchase',
     title: 'Purchase Approval',
     icon: 'bag-handle-outline',
     color: '#10B981',
-    items: ['Purchase Order', 'GRN Approval'],
+    items: [{ title: 'Purchase Order' }, { title: 'GRN Approval' }],
   },
   {
     id: 'inventory',
     title: 'Inventory Approval',
     icon: 'cube-outline',
     color: '#F59E0B',
-    items: ['Location Transfer'],
+    items: [{ title: 'Location Transfer' }],
   },
   {
     id: 'account',
     title: 'Account Approval',
     icon: 'cash-outline',
     color: '#8B5CF6',
-    items: ['Voucher Approval'],
+    items: [{ title: 'Voucher Approval' }],
   },
   {
     id: 'jobcard',
     title: 'Job Card Approval',
     icon: 'construct-outline',
     color: '#EF4444',
-    items: ['Electrical Approval', 'Mechanical Approval'],
+    items: [{ title: 'Electrical Approval' }, { title: 'Mechanical Approval' }],
   },
 ];
 
-const AccordionItem = ({ group, theme }) => {
+const AccordionItem = ({ group, theme, navigation }) => {
   const [expanded, setExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -111,25 +118,35 @@ const AccordionItem = ({ group, theme }) => {
 
       {expanded && (
         <View style={[styles.itemsContainer, { borderTopColor: theme.colors.border }]}>
-          {group.items.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.subItem,
-                index < group.items.length - 1 && {
-                  borderBottomColor: theme.colors.border,
-                  borderBottomWidth: 1,
-                },
-              ]}
-              activeOpacity={0.6}
-            >
-              <View style={[styles.subItemDot, { backgroundColor: group.color }]} />
-              <Text style={[styles.subItemText, { color: theme.colors.text }]}>
-                {item}
-              </Text>
-              <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
+          {group.items.map((item, index) => {
+            const itemTitle = typeof item === 'string' ? item : item.title;
+            const itemScreen = typeof item === 'object' ? item.screen : null;
+
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.subItem,
+                  index < group.items.length - 1 && {
+                    borderBottomColor: theme.colors.border,
+                    borderBottomWidth: 1,
+                  },
+                ]}
+                activeOpacity={0.6}
+                onPress={() => {
+                  if (itemScreen) {
+                    navigation.navigate(itemScreen);
+                  }
+                }}
+              >
+                <View style={[styles.subItemDot, { backgroundColor: group.color }]} />
+                <Text style={[styles.subItemText, { color: theme.colors.text }]}>
+                  {itemTitle}
+                </Text>
+                <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>
@@ -146,7 +163,7 @@ const ApprovalsScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {approvalGroups.map(group => (
-          <AccordionItem key={group.id} group={group} theme={theme} />
+          <AccordionItem key={group.id} group={group} theme={theme} navigation={navigation} />
         ))}
       </ScrollView>
     </View>

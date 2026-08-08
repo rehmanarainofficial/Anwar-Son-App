@@ -61,6 +61,9 @@ import BalanceSheetReportScreen from '@screens/reporting/BalanceSheetReportScree
 import AttendanceScreen from '@screens/hcm/AttendanceScreen';
 import ExpenseClaimInquiryScreen from '@screens/hcm/ExpenseClaimInquiryScreen';
 import ExpenseClaimScreen from '@screens/hcm/ExpenseClaimScreen';
+import LeaveScreen from '@screens/hcm/LeaveScreen';
+import LeaveStatusScreen from '@screens/hcm/LeaveStatusScreen';
+import LeaveApprovalScreen from '@screens/approvals/LeaveApprovalScreen';
 import { LoadingSpinner, CustomHeader } from '@components/common';
 
 const Stack = createNativeStackNavigator();
@@ -284,6 +287,21 @@ const AppNavigator = () => {
             <Stack.Screen name="ExpenseClaim" component={ExpenseClaimScreen} />
             <Stack.Screen name="HCMDVRInquiry" component={FinanceScreen} />
             <Stack.Screen name="HCMLocalPurchase" component={FinanceScreen} />
+            <Stack.Screen
+              name="Leave"
+              component={LeaveScreen}
+              options={{ title: 'Apply Leave' }}
+            />
+            <Stack.Screen
+              name="LeaveStatus"
+              component={LeaveStatusScreen}
+              options={{ title: 'Leave Status' }}
+            />
+            <Stack.Screen
+              name="LeaveApproval"
+              component={LeaveApprovalScreen}
+              options={{ title: 'Leave Approval' }}
+            />
 
             <Stack.Screen
               name="MfgElectricalJobCards"
