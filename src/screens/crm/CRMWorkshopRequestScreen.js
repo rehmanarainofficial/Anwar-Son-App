@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  FlatList,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
@@ -15,8 +18,9 @@ import { useTheme } from '@config/useTheme';
 import { CustomDatePicker, SearchableDropdown } from '@components/common';
 import {
   useGetHospitalMutation,
-  useGetDepartmentDropdownMutation,
-  useGetStockMasterMainDropdownMutation,
+  useGetStockCategoryMutation,
+  useGetWorkshopDataMutation,
+  usePostWorkshopDataMutation,
 } from '@api/baseApi';
 
 const parseDate = dateStr => {
@@ -43,19 +47,58 @@ const formatToYYYYMMDD = date => {
   return `${year}-${month}-${day}`;
 };
 
+// Workshop Options
 const WORKSHOP_TYPES = [
-  { id: 'Educational', name: 'Educational' },
-  { id: 'Product Demonstration', name: 'Product Demonstration' },
-  { id: 'Hands-on Training', name: 'Hands-on Training' },
-  { id: 'Other', name: 'Other' },
+  { id: '1', name: 'Educational' },
+  { id: '2', name: 'Product Demonstration' },
+  { id: '3', name: 'Hands-on Training' },
+  { id: '4', name: 'Other' },
 ];
 
 const PRODUCT_SEGMENTS = [
-  { id: 'Sutures', name: 'Sutures' },
-  { id: 'Airway Management', name: 'Airway Management' },
-  { id: 'Haemostats', name: 'Haemostats' },
-  { id: 'Mesh', name: 'Mesh' },
-  { id: 'Other', name: 'Other' },
+  { id: '1', name: 'Sutures' },
+  { id: '2', name: 'Airway Management' },
+  { id: '3', name: 'Haemostats' },
+  { id: '4', name: 'Mesh' },
+  { id: '5', name: 'Other' },
+];
+
+// Status Definitions
+const STATUS_OPTIONS_ROLE_3 = [
+  { id: '1', name: 'Draft' },
+  { id: '2', name: 'Submit for Approval' },
+  { id: '5', name: 'Resubmit' },
+];
+
+const STATUS_OPTIONS_MANAGER = [
+  { id: '3', name: 'Approved' },
+  { id: '4', name: 'Rejected' },
+  { id: '5', name: 'Resubmit' },
+  { id: '6', name: 'Completed' },
+];
+
+const STATUS_MAP = {
+  '1': { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
+  '2': { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
+  '3': { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
+  '4': { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
+  '5': { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
+  '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
+};
+
+const DEFAULT_AUDIENCE = [
+  { audience: 'HOD / KOLs', expected: '0' },
+  { audience: 'APs / SRs', expected: '0' },
+  { audience: 'OT / Nurses', expected: '0' },
+  { audience: 'Interns / Students', expected: '0' },
+  { audience: 'Other', expected: '0' },
+];
+
+const DEFAULT_BUDGET = [
+  { budget_item: 'Refreshment', unit_cost: '0', qty: '0' },
+  { budget_item: 'Hands-on Material', unit_cost: '0', qty: '0' },
+  { budget_item: 'Equipment Rental', unit_cost: '0', qty: '0' },
+  { budget_item: 'Other', unit_cost: '0', qty: '0' },
 ];
 
 const CRMWorkshopRequestScreen = ({ navigation }) => {
@@ -63,723 +106,984 @@ const CRMWorkshopRequestScreen = ({ navigation }) => {
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
 
-  // Section 1: Workshop Info State
+  const isRole3 = String(user?.role_id) === '3';
+
+  // List Data State
+  const [workshopList, setWorkshopList] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Main Form Modal State
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [formMode, setFormMode] = useState('add');
+  const [formId, setFormId] = useState(0);
+
+  // Form Fields
   const [title, setTitle] = useState('');
-  const [workshopDate, setWorkshopDate] = useState(formatToYYYYMMDD(new Date()));
+  const [requestDate, setRequestDate] = useState(formatToYYYYMMDD(new Date()));
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedHospital, setSelectedHospital] = useState(null);
+  const [selectedHospitalId, setSelectedHospitalId] = useState(null);
   const [venue, setVenue] = useState('');
-  const [selectedDept, setSelectedDept] = useState(null);
-  const [workshopType, setWorkshopType] = useState(null);
-  const [otherTypeDetail, setOtherTypeDetail] = useState('');
-  const [productSegment, setProductSegment] = useState(null);
+  const [hospitalDepart, setHospitalDepart] = useState('');
+  const [workshopType, setWorkshopType] = useState('1');
+  const [productSegment, setProductSegment] = useState('1');
+  const [objectives, setObjectives] = useState('');
+  const [selectedStatusId, setSelectedStatusId] = useState(isRole3 ? '1' : '3');
+  const [managerRemarks, setManagerRemarks] = useState('');
 
-  // Section 2: Objective State
-  const [objective, setObjective] = useState('');
-
-  // Section 3: Key Products State
+  // Dynamic Array States
   const [keyProducts, setKeyProducts] = useState([
-    { id: 1, product: '', sizeCode: '', purpose: '', qty: '' },
+    { prod_category: '', size_code: '', purpose: '', qty: '1' },
   ]);
-
-  // Section 4: Audience Breakdown State
-  const [audience, setAudience] = useState({
-    hodKols: '0',
-    apsSrs: '0',
-    otNurses: '0',
-    internsStudents: '0',
-    other: '0',
-  });
-
-  // Section 5: Materials & Agenda State
-  const [materials, setMaterials] = useState([
-    { id: 1, material: '', sizeQty: '', agenda: '', time: '' },
+  const [audienceList, setAudienceList] = useState(DEFAULT_AUDIENCE);
+  const [materialsList, setMaterialsList] = useState([
+    { material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' },
   ]);
-
-  // Section 6: Samples Required State
-  const [samplesRequired, setSamplesRequired] = useState('');
-
-  // Section 7: Budget & Approval State
-  const [budget, setBudget] = useState({
-    refreshment: { unitCost: '', qty: '' },
-    handsOnMaterial: { unitCost: '', qty: '' },
-    equipmentRental: { unitCost: '', qty: '' },
-    other: { unitCost: '', qty: '' },
-  });
+  const [budgetList, setBudgetList] = useState(DEFAULT_BUDGET);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  // Manager Status Modal State
+  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] = useState(false);
+  const [selectedManagerItem, setSelectedManagerItem] = useState(null);
+  const [managerStatusId, setManagerStatusId] = useState('3');
+  const [managerRemarksText, setManagerRemarksText] = useState('');
+  const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
   // API Hooks
+  const [getWorkshopData, { isLoading: dataLoading }] = useGetWorkshopDataMutation();
   const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
-  const [getDepartment, { data: deptRes, isLoading: deptLoading }] = useGetDepartmentDropdownMutation();
-  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] = useGetStockMasterMainDropdownMutation();
+  const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] = useGetStockCategoryMutation();
+  const [postWorkshopData] = usePostWorkshopDataMutation();
+
+  // Header options with (+) button on the right
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Workshop Request',
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => openFormModal('add')}
+          style={{ marginRight: 12, padding: 4 }}
+          activeOpacity={0.7}
+        >
+          <Icon name="add-circle" size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, theme]);
+
+  // Load Workshop List Data
+  const loadWorkshopData = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await getWorkshopData({
+        user_id: user.id,
+        role_id: user?.role_id || '2',
+      }).unwrap();
+
+      let list = [];
+      if (res && (res.status === 'true' || res.status === true)) {
+        if (res.data && Array.isArray(res.data.workshops)) {
+          list = res.data.workshops;
+        } else if (Array.isArray(res.data)) {
+          list = res.data;
+        }
+      }
+      setWorkshopList(list);
+    } catch (error) {
+      console.log('Error loading workshop data:', error);
+      setWorkshopList([]);
+    }
+  }, [user?.id, user?.role_id, getWorkshopData]);
 
   useEffect(() => {
-    getHospital({ id: user?.id });
-    getDepartment({});
-    getStockMasterMain({});
-  }, [user?.id, getHospital, getDepartment, getStockMasterMain]);
+    loadWorkshopData();
+  }, [loadWorkshopData]);
 
-  // Key Products Helpers
+  useEffect(() => {
+    if (user?.id) {
+      getHospital({ id: user.id });
+      getStockCategory({ user_id: user.id });
+    }
+  }, [user?.id, getHospital, getStockCategory]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadWorkshopData();
+    setIsRefreshing(false);
+  };
+
+  // Open Main Form Modal
+  const openFormModal = async (mode, item = null) => {
+    setFormMode(mode);
+    if (mode === 'update' && item) {
+      setFormId(item.id || 0);
+      setTitle(item.title || '');
+      setRequestDate(formatToYYYYMMDD(item.date || item.tran_date || new Date()));
+      setSelectedHospitalId(item.hospital_id || null);
+      setVenue(item.venue || '');
+      setHospitalDepart(item.hospital_depart || '');
+      setWorkshopType(String(item.workshop_type || '1'));
+      setProductSegment(String(item.product_segment || '1'));
+      setObjectives(item.objectives || '');
+      setSelectedStatusId(String(item.status_id || (isRole3 ? '1' : '3')));
+      setManagerRemarks(item.manager_remarks || '');
+
+      setIsModalVisible(true);
+
+      // Fetch detail record by id
+      try {
+        const detailRes = await getWorkshopData({
+          user_id: user?.id,
+          role_id: user?.role_id || '2',
+          id: item.id,
+        }).unwrap();
+
+        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+          let d = detailRes.data;
+          if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+            d = d.workshops[0];
+          }
+          setFormId(d.id || item.id);
+          if (d.title !== undefined) setTitle(d.title);
+          if (d.date) setRequestDate(formatToYYYYMMDD(d.date));
+          if (d.hospital_id) setSelectedHospitalId(d.hospital_id);
+          if (d.venue !== undefined) setVenue(d.venue);
+          if (d.hospital_depart !== undefined) setHospitalDepart(d.hospital_depart);
+          if (d.workshop_type !== undefined) setWorkshopType(String(d.workshop_type));
+          if (d.product_segment !== undefined) setProductSegment(String(d.product_segment));
+          if (d.objectives !== undefined) setObjectives(d.objectives);
+          if (d.status_id !== undefined) setSelectedStatusId(String(d.status_id));
+          if (d.manager_remarks !== undefined) setManagerRemarks(d.manager_remarks || '');
+
+          if (Array.isArray(d.key_products)) {
+            setKeyProducts(d.key_products.map((kp, i) => ({ ...kp, id: kp.id || (Date.now() + i) })));
+          } else if (typeof d.key_products === 'string') {
+            try { setKeyProducts(JSON.parse(d.key_products).map((kp, i) => ({ ...kp, id: kp.id || (Date.now() + i) }))); } catch (e) {}
+          }
+
+          if (Array.isArray(d.audience)) {
+            setAudienceList(d.audience);
+          } else if (typeof d.audience === 'string') {
+            try { setAudienceList(JSON.parse(d.audience)); } catch (e) {}
+          }
+
+          const mats = d.material_agenda || d.materials;
+          if (Array.isArray(mats)) {
+            setMaterialsList(mats.map((mat, i) => ({ ...mat, id: mat.id || (Date.now() + i + 100) })));
+          } else if (typeof mats === 'string') {
+            try { setMaterialsList(JSON.parse(mats).map((mat, i) => ({ ...mat, id: mat.id || (Date.now() + i + 100) }))); } catch (e) {}
+          }
+
+          if (Array.isArray(d.budget)) {
+            setBudgetList(d.budget);
+          } else if (typeof d.budget === 'string') {
+            try { setBudgetList(JSON.parse(d.budget)); } catch (e) {}
+          }
+        }
+      } catch (err) {
+        console.log('Error fetching workshop details:', err);
+      }
+    } else {
+      // New Add
+      setFormId(0);
+      setTitle('');
+      setRequestDate(formatToYYYYMMDD(new Date()));
+      setSelectedHospitalId(null);
+      setVenue('');
+      setHospitalDepart('');
+      setWorkshopType('1');
+      setProductSegment('1');
+      setObjectives('');
+      setSelectedStatusId(isRole3 ? '1' : '3');
+      setManagerRemarks('');
+      setKeyProducts([{ id: Date.now(), prod_category: '', size_code: '', purpose: '', qty: '1' }]);
+      setAudienceList(DEFAULT_AUDIENCE);
+      setMaterialsList([{ id: Date.now() + 100, material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' }]);
+      setBudgetList(DEFAULT_BUDGET);
+      setIsModalVisible(true);
+    }
+  };
+
+  // Open Dedicated Manager Status Modal
+  const openManagerStatusModal = item => {
+    setSelectedManagerItem(item);
+    setManagerStatusId(String(item.status_id || '3'));
+    setManagerRemarksText(item.manager_remarks || '');
+    setIsManagerStatusModalVisible(true);
+  };
+
+  // Dynamic Handlers
   const addKeyProductRow = () => {
     setKeyProducts(prev => [
       ...prev,
-      { id: Date.now(), product: '', sizeCode: '', purpose: '', qty: '' },
+      { id: Date.now() + Math.random(), prod_category: '', size_code: '', purpose: '', qty: '1' },
     ]);
   };
+
   const removeKeyProductRow = index => {
     if (keyProducts.length <= 1) return;
     setKeyProducts(prev => prev.filter((_, i) => i !== index));
   };
+
   const updateKeyProduct = (index, field, value) => {
     setKeyProducts(prev => {
       const updated = [...prev];
-      updated[index][field] = value;
+      updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   };
 
-  // Materials & Agenda Helpers
   const addMaterialRow = () => {
-    setMaterials(prev => [
+    setMaterialsList(prev => [
       ...prev,
-      { id: Date.now(), material: '', sizeQty: '', agenda: '', time: '' },
+      { id: Date.now() + Math.random(), material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' },
     ]);
   };
+
   const removeMaterialRow = index => {
-    if (materials.length <= 1) return;
-    setMaterials(prev => prev.filter((_, i) => i !== index));
+    if (materialsList.length <= 1) return;
+    setMaterialsList(prev => prev.filter((_, i) => i !== index));
   };
+
   const updateMaterial = (index, field, value) => {
-    setMaterials(prev => {
+    setMaterialsList(prev => {
       const updated = [...prev];
-      updated[index][field] = value;
+      updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   };
 
-  // Calculations
-  const totalAudience =
-    (parseInt(audience.hodKols, 10) || 0) +
-    (parseInt(audience.apsSrs, 10) || 0) +
-    (parseInt(audience.otNurses, 10) || 0) +
-    (parseInt(audience.internsStudents, 10) || 0) +
-    (parseInt(audience.other, 10) || 0);
-
-  const calcRowTotal = item => {
-    const cost = parseFloat(item.unitCost) || 0;
-    const q = parseFloat(item.qty) || 0;
-    return cost * q;
+  const updateAudience = (index, expected) => {
+    setAudienceList(prev => {
+      const updated = [...prev];
+      updated[index].expected = expected;
+      return updated;
+    });
   };
 
-  const totalBudget =
-    calcRowTotal(budget.refreshment) +
-    calcRowTotal(budget.handsOnMaterial) +
-    calcRowTotal(budget.equipmentRental) +
-    calcRowTotal(budget.other);
-
-  const updateBudgetItem = (category, field, val) => {
-    setBudget(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [field]: val,
-      },
-    }));
+  const updateBudget = (index, field, val) => {
+    setBudgetList(prev => {
+      const updated = [...prev];
+      updated[index][field] = val;
+      return updated;
+    });
   };
 
-  const handleSaveDraft = async () => {
-    setIsSavingDraft(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      Toast.show({
-        type: 'info',
-        text1: 'Draft Saved',
-        text2: 'Workshop request saved as draft locally.',
-      });
-    } catch (error) {
-      console.log('Error saving draft:', error);
-    } finally {
-      setIsSavingDraft(false);
-    }
-  };
-
-  const handleSubmit = async () => {
+  // Save Form Handler
+  const handleSaveForm = async () => {
     if (!title.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter Workshop Title.',
-      });
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter Workshop Title.' });
       return;
     }
-    if (!selectedHospital) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please select a Hospital.',
-      });
+    if (!selectedHospitalId) {
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a Hospital.' });
       return;
     }
 
     setIsSubmitting(true);
+
     try {
       const payload = {
-        title,
-        date: workshopDate,
-        hospital_id: selectedHospital?.id,
-        hospital_name: selectedHospital?.name,
-        venue,
-        department_id: selectedDept?.id,
-        workshop_type: workshopType?.id,
-        other_type_detail: otherTypeDetail,
-        product_segment: productSegment?.id,
-        objective,
+        company: 'CRM',
+        id: formId,
+        title: title,
+        date: requestDate,
+        hospital_id: selectedHospitalId || '',
+        venue: venue,
+        hospital_depart: hospitalDepart,
+        workshop_type: workshopType,
+        product_segment: productSegment,
+        objectives: objectives,
         key_products: keyProducts,
-        audience_breakdown: { ...audience, total_audience: totalAudience },
-        materials_agenda: materials,
-        samples_required: samplesRequired,
-        budget_breakdown: { ...budget, total_budget: totalBudget },
-        user_id: user?.id,
+        audience: audienceList,
+        materials: materialsList,
+        budget: budgetList,
+        status_id: selectedStatusId || (isRole3 ? '1' : '3'),
+        user_id: user?.id || '',
+        role_id: user?.role_id || '2',
+        manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
-      console.log('Company Workshop Payload:', payload);
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      const response = await postWorkshopData(payload).unwrap();
 
-      Toast.show({
-        type: 'success',
-        text1: 'Request Submitted',
-        text2: 'Company Workshop request submitted for manager approval.',
-      });
-
-      setTimeout(() => {
-        navigation.goBack();
-      }, 1500);
+      if (response && (response.status === 'true' || response.status === true)) {
+        Toast.show({
+          type: 'success',
+          text1: formMode === 'update' ? 'Workshop Updated' : 'Workshop Saved',
+          text2: response.message || 'Workshop request processed successfully.',
+        });
+        setIsModalVisible(false);
+        loadWorkshopData();
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Action Failed',
+          text2: response?.message || 'Failed to save workshop request.',
+        });
+      }
     } catch (error) {
-      console.log('Error submitting workshop request:', error);
+      console.log('Error posting workshop data:', error);
       Toast.show({
         type: 'error',
-        text1: 'Submission Failed',
-        text2: 'Failed to submit workshop request.',
+        text1: 'Error',
+        text2: 'An error occurred while communicating with the server.',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Dropdown options
-  const hospitalList = Array.isArray(hospRes) ? hospRes : hospRes?.data || [];
+  // Submit Handler for Manager Status Modal
+  const handleSaveManagerStatus = async () => {
+    if (!selectedManagerItem) return;
+    setIsManagerSubmitting(true);
+
+    try {
+      const payload = {
+        company: 'CRM',
+        id: selectedManagerItem.id,
+        title: selectedManagerItem.title || '',
+        date: selectedManagerItem.date || selectedManagerItem.tran_date || '',
+        hospital_id: selectedManagerItem.hospital_id || '',
+        venue: selectedManagerItem.venue || '',
+        hospital_depart: selectedManagerItem.hospital_depart || '',
+        workshop_type: selectedManagerItem.workshop_type || '',
+        product_segment: selectedManagerItem.product_segment || '',
+        objectives: selectedManagerItem.objectives || '',
+        key_products: selectedManagerItem.key_products || [],
+        audience: selectedManagerItem.audience || [],
+        materials: selectedManagerItem.materials || [],
+        budget: selectedManagerItem.budget || [],
+        status_id: managerStatusId,
+        user_id: user?.id || '',
+        role_id: user?.role_id || '2',
+        manager_remarks: managerRemarksText,
+      };
+
+      const response = await postWorkshopData(payload).unwrap();
+
+      if (response && (response.status === 'true' || response.status === true)) {
+        Toast.show({
+          type: 'success',
+          text1: 'Status Updated',
+          text2: response.message || 'Workshop status updated successfully.',
+        });
+        setIsManagerStatusModalVisible(false);
+        loadWorkshopData();
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Update Failed',
+          text2: response?.message || 'Failed to update status.',
+        });
+      }
+    } catch (error) {
+      console.log('Error updating manager status:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An error occurred while updating status.',
+      });
+    } finally {
+      setIsManagerSubmitting(false);
+    }
+  };
+
+  // Options
+  const hospitalList = (hospRes && (hospRes.data || Array.isArray(hospRes))) ? (Array.isArray(hospRes) ? hospRes : hospRes.data) : [];
   const hospitalOptions = hospitalList.map(h => ({
-    id: h.id || h.hospital_id,
+    id: String(h.id || h.debtor_no || h.hospital_id || ''),
     name: h.name || h.hospital_name || h.title || 'Hospital',
   }));
 
-  const deptList = Array.isArray(deptRes) ? deptRes : deptRes?.data || [];
-  const deptOptions = deptList.map(d => ({
-    id: d.id || d.department_id,
-    name: d.name || d.department_name || d.title || 'Department',
+  const stockCategoryList = (stockCatRes && (stockCatRes.data || Array.isArray(stockCatRes))) ? (Array.isArray(stockCatRes) ? stockCatRes : stockCatRes.data) : [];
+  const productCategoryOptions = stockCategoryList.map(c => ({
+    id: String(c.category_id || c.id || ''),
+    name: c.description || c.name || 'Category',
   }));
 
-  const stockList = Array.isArray(stockRes) ? stockRes : stockRes?.data || [];
-  const stockOptions = stockList.map(s => ({
-    id: s.id || s.stock_id,
-    name: s.description || s.name || s.title || 'Product',
-  }));
+  const renderStatusBadge = statusId => {
+    const info = STATUS_MAP[String(statusId)] || { label: 'Draft', bg: '#FEF3C7', text: '#92400E' };
+    return (
+      <View style={[styles.statusBadge, { backgroundColor: info.bg }]}>
+        <Text style={[styles.statusText, { color: info.text }]}>{info.label}</Text>
+      </View>
+    );
+  };
+
+  const renderCardItem = ({ item }) => {
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.referenceContainer}>
+            <Icon name="easel-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
+            <Text style={styles.referenceText}>{item.reference || `WS-${item.id}`}</Text>
+          </View>
+          <View style={styles.headerRightRow}>
+            {renderStatusBadge(item.status_id)}
+            <Text style={styles.cardDateText}>{item.date || item.tran_date}</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        {item.title ? <Text style={styles.cardTitleText}>{item.title}</Text> : null}
+
+        <View style={styles.infoRow}>
+          <Icon name="business-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Text style={styles.infoLabel}>Hospital:</Text>
+          <Text style={styles.infoValue}>{item.hospital_name || 'N/A'}</Text>
+        </View>
+
+        {item.venue ? (
+          <View style={styles.infoRow}>
+            <Icon name="location-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Text style={styles.infoLabel}>Venue:</Text>
+            <Text style={styles.infoValue}>{item.venue}</Text>
+          </View>
+        ) : null}
+
+        {item.hospital_depart ? (
+          <View style={styles.infoRow}>
+            <Icon name="git-network-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Text style={styles.infoLabel}>Department:</Text>
+            <Text style={styles.infoValue}>{item.hospital_depart}</Text>
+          </View>
+        ) : null}
+
+        {item.objectives ? (
+          <View style={styles.remarksBox}>
+            <Text style={styles.remarksLabel}>Objectives:</Text>
+            <Text style={styles.remarksText}>{item.objectives}</Text>
+          </View>
+        ) : null}
+
+        {item.manager_remarks ? (
+          <View style={styles.managerRemarksBox}>
+            <Text style={styles.managerRemarksLabel}>Manager Remarks:</Text>
+            <Text style={styles.managerRemarksText}>{item.manager_remarks}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.cardActionsRow}>
+          {isRole3 ? (
+            <TouchableOpacity
+              style={styles.updateCardBtn}
+              onPress={() => openFormModal('update', item)}
+              activeOpacity={0.7}
+            >
+              <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.updateCardBtnText}>Update</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.statusManagerCardBtn}
+              onPress={() => openManagerStatusModal(item)}
+              activeOpacity={0.7}
+            >
+              <Icon name="options-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.statusManagerCardBtnText}>Status</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header Banner */}
-        <View style={styles.headerBanner}>
-          <View style={styles.headerTitleRow}>
-            <Icon name="easel-outline" size={24} color="#ffffff" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>COMPANY WORKSHOP</Text>
-          </View>
-          <View style={styles.workflowBadge}>
-            <Text style={styles.workflowText}>
-              Workflow: Draft ➔ Submit ➔ Manager Approval ➔ Progress Update ➔ Completed
-            </Text>
-          </View>
+      {dataLoading && !isRefreshing ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loaderText}>Loading workshop requests...</Text>
         </View>
-
-        {/* Section 1: Workshop Info */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>1. Workshop Info</Text>
-
-          <Text style={styles.fieldLabel}>
-            Workshop Title <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Enter Workshop Title"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={title}
-            onChangeText={setTitle}
-          />
-
-          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
-            Date <Text style={styles.required}>*</Text>
-          </Text>
-          <TouchableOpacity
-            style={styles.dateSelector}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.dateText}>{workshopDate ? workshopDate : 'Select Date'}</Text>
-            <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
-          </TouchableOpacity>
-
-          <View style={{ marginTop: 12 }}>
-            <SearchableDropdown
-              label="Hospital [CRM Hospital]"
-              placeholder="Select Hospital..."
-              data={hospitalOptions}
-              selectedId={selectedHospital?.id}
-              onSelect={item => setSelectedHospital(item)}
-              isLoading={hospLoading}
-              iconName="business-outline"
+      ) : (
+        <FlatList
+          data={workshopList}
+          keyExtractor={item => String(item.id)}
+          renderItem={renderCardItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.colors.primary]}
             />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Icon name="easel-outline" size={48} color={theme.colors.textSecondary} />
+              <Text style={styles.emptyTitle}>No Workshop Requests</Text>
+              <Text style={styles.emptySubtext}>
+                Tap the (+) icon in the top right header to add a new workshop request.
+              </Text>
+              <TouchableOpacity
+                style={styles.addFirstBtn}
+                onPress={() => openFormModal('add')}
+                activeOpacity={0.8}
+              >
+                <Icon name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.addFirstBtnText}>Add Workshop Request</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
+      )}
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => openFormModal('add')}
+        activeOpacity={0.85}
+      >
+        <Icon name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* Main Form Modal */}
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalHeaderTitle}>
+              {formMode === 'update' ? 'Update Workshop Request' : 'Add Workshop Request'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setIsModalVisible(false)}
+              style={styles.closeModalBtn}
+              activeOpacity={0.7}
+            >
+              <Icon name="close" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
           </View>
 
-          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Venue</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="e.g. Main Auditorium, Conference Room"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={venue}
-            onChangeText={setVenue}
-          />
-
-          <View style={{ marginTop: 12 }}>
-            <SearchableDropdown
-              label="Department / Specialty"
-              placeholder="Select Department / Specialty..."
-              data={deptOptions}
-              selectedId={selectedDept?.id}
-              onSelect={item => setSelectedDept(item)}
-              isLoading={deptLoading}
-              iconName="medkit-outline"
-            />
-          </View>
-
-          <View style={{ marginTop: 12 }}>
-            <SearchableDropdown
-              label="Workshop Type [Dropdown]"
-              placeholder="Select Workshop Type..."
-              data={WORKSHOP_TYPES}
-              selectedId={workshopType?.id}
-              onSelect={item => setWorkshopType(item)}
-              iconName="school-outline"
-            />
-          </View>
-
-          {workshopType?.id === 'Other' && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={styles.fieldLabel}>Provide details if Other</Text>
+          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.modalCard}>
+              {/* Workshop Title */}
+              <Text style={styles.fieldLabel}>
+                Workshop Title <Text style={styles.required}>*</Text>
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Enter workshop type details..."
+                placeholder="Title e.g. New Product Introduction"
                 placeholderTextColor={theme.colors.textSecondary}
-                value={otherTypeDetail}
-                onChangeText={setOtherTypeDetail}
+                value={title}
+                onChangeText={setTitle}
               />
-            </View>
-          )}
 
-          <View style={{ marginTop: 12 }}>
-            <SearchableDropdown
-              label="Product Segment [Dropdown]"
-              placeholder="Select Product Segment..."
-              data={PRODUCT_SEGMENTS}
-              selectedId={productSegment?.id}
-              onSelect={item => setProductSegment(item)}
-              iconName="shapes-outline"
-            />
-          </View>
-        </View>
+              {/* Date */}
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Date <Text style={styles.required}>*</Text>
+              </Text>
+              <TouchableOpacity
+                style={styles.dateSelector}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dateText}>{requestDate || 'Select Date'}</Text>
+                <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+              </TouchableOpacity>
 
-        {/* Section 2: Objective */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>2. Objective</Text>
-          <Text style={styles.fieldLabel}>Brief purpose / expected outcome of the workshop</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Enter brief purpose or expected outcome..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={objective}
-            onChangeText={setObjective}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* Section 3: Key Products */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>3. Key Products</Text>
-
-          {keyProducts.map((item, index) => (
-            <View key={item.id} style={styles.tableBlock}>
-              <View style={styles.blockHeader}>
-                <Text style={styles.blockTitle}>Product #{index + 1}</Text>
-                {keyProducts.length > 1 && (
-                  <TouchableOpacity onPress={() => removeKeyProductRow(index)}>
-                    <Icon name="trash-outline" size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                )}
+              {/* Hospital Dropdown */}
+              <View style={{ marginTop: 12 }}>
+                <SearchableDropdown
+                  label="Hospital"
+                  placeholder="Select Hospital..."
+                  data={hospitalOptions}
+                  selectedId={selectedHospitalId}
+                  onSelect={item => setSelectedHospitalId(item.id || item.debtor_no)}
+                  isLoading={hospLoading}
+                  iconName="business-outline"
+                />
               </View>
 
-              <SearchableDropdown
-                label="Product Name"
-                placeholder="Select or enter product..."
-                data={stockOptions}
-                selectedId={item.productId}
-                onSelect={s => {
-                  updateKeyProduct(index, 'productId', s.id);
-                  updateKeyProduct(index, 'product', s.name);
-                }}
-                isLoading={stockLoading}
-                iconName="cube-outline"
+              {/* Venue */}
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Venue</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Venue e.g. Karachi"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={venue}
+                onChangeText={setVenue}
               />
 
-              <View style={styles.rowTwoCols}>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={styles.fieldLabel}>Size/Code</Text>
+              {/* Department / Specialty Text Input */}
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Department / Specialty</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Department e.g. Cardio / Surgery"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={hospitalDepart}
+                onChangeText={setHospitalDepart}
+              />
+
+              {/* Workshop Type Dropdown */}
+              <View style={{ marginTop: 12 }}>
+                <SearchableDropdown
+                  label="Workshop Type"
+                  placeholder="Select Workshop Type..."
+                  data={WORKSHOP_TYPES}
+                  selectedId={workshopType}
+                  onSelect={item => setWorkshopType(item.id)}
+                  iconName="easel-outline"
+                />
+              </View>
+
+              {/* Product Segment Dropdown */}
+              <View style={{ marginTop: 12 }}>
+                <SearchableDropdown
+                  label="Product Segment"
+                  placeholder="Select Product Segment..."
+                  data={PRODUCT_SEGMENTS}
+                  selectedId={productSegment}
+                  onSelect={item => setProductSegment(item.id)}
+                  iconName="grid-outline"
+                />
+              </View>
+
+              {/* Status Selector Dropdown */}
+              <View style={{ marginTop: 12 }}>
+                <SearchableDropdown
+                  label="Status"
+                  placeholder="Select Status..."
+                  data={isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER}
+                  idKey="id"
+                  labelKey="name"
+                  selectedId={selectedStatusId}
+                  onSelect={item => setSelectedStatusId(item.id)}
+                  iconName="flag-outline"
+                />
+              </View>
+
+              {/* Objectives */}
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Objectives</Text>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Objectives or goals..."
+                placeholderTextColor={theme.colors.textSecondary}
+                value={objectives}
+                onChangeText={setObjectives}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              {/* Section: Key Products */}
+              <View style={styles.sectionHeaderBox}>
+                <Text style={styles.sectionHeaderTitle}>Key Products</Text>
+                <TouchableOpacity onPress={addKeyProductRow} style={styles.addRowBtn}>
+                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                  <Text style={styles.addRowBtnText}>Add Product</Text>
+                </TouchableOpacity>
+              </View>
+
+              {keyProducts.map((kp, idx) => (
+                <View key={kp.id || `kp_${idx}`} style={styles.dynamicRowCard}>
+                  <View style={styles.dynamicRowHeader}>
+                    <Text style={styles.dynamicRowTitle}>Product #{idx + 1}</Text>
+                    {keyProducts.length > 1 && (
+                      <TouchableOpacity onPress={() => removeKeyProductRow(idx)}>
+                        <Icon name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <SearchableDropdown
+                    label="Product Category"
+                    placeholder="Select Product Category..."
+                    data={productCategoryOptions}
+                    idKey="id"
+                    labelKey="name"
+                    selectedId={kp.prod_category}
+                    onSelect={item => updateKeyProduct(idx, 'prod_category', item.id)}
+                    isLoading={stockCatLoading}
+                    iconName="cube-outline"
+                  />
+
+                  <View style={styles.inlineInputsRow}>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <Text style={styles.subLabel}>Size Code</Text>
+                      <TextInput
+                        style={styles.textInputSmall}
+                        placeholder="e.g. 2-0"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        value={kp.size_code}
+                        onChangeText={v => updateKeyProduct(idx, 'size_code', v)}
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 6 }}>
+                      <Text style={styles.subLabel}>Qty</Text>
+                      <TextInput
+                        style={styles.textInputSmall}
+                        placeholder="Qty"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        keyboardType="numeric"
+                        value={String(kp.qty)}
+                        onChangeText={v => updateKeyProduct(idx, 'qty', v)}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={[styles.subLabel, { marginTop: 6 }]}>Purpose</Text>
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="Size/Code"
+                    style={styles.textInputSmall}
+                    placeholder="Purpose e.g. Product Demonstration"
                     placeholderTextColor={theme.colors.textSecondary}
-                    value={item.sizeCode}
-                    onChangeText={val => updateKeyProduct(index, 'sizeCode', val)}
+                    value={kp.purpose}
+                    onChangeText={v => updateKeyProduct(idx, 'purpose', v)}
                   />
                 </View>
+              ))}
 
-                <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={styles.fieldLabel}>Qty</Text>
+              {/* Section: Audience */}
+              <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
+                <Text style={styles.sectionHeaderTitle}>Audience Breakdown</Text>
+              </View>
+              {audienceList.map((aud, idx) => (
+                <View key={idx} style={styles.audienceRow}>
+                  <Text style={styles.audienceLabel}>{aud.audience}</Text>
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="0"
+                    style={styles.audienceInput}
+                    placeholder="Expected"
                     placeholderTextColor={theme.colors.textSecondary}
                     keyboardType="numeric"
-                    value={item.qty}
-                    onChangeText={val => updateKeyProduct(index, 'qty', val)}
+                    value={String(aud.expected)}
+                    onChangeText={v => updateAudience(idx, v)}
                   />
                 </View>
+              ))}
+
+              {/* Section: Materials & Agenda */}
+              <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
+                <Text style={styles.sectionHeaderTitle}>Materials & Agenda</Text>
+                <TouchableOpacity onPress={addMaterialRow} style={styles.addRowBtn}>
+                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                  <Text style={styles.addRowBtnText}>Add Material</Text>
+                </TouchableOpacity>
               </View>
 
-              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Purpose</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Product purpose in workshop"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={item.purpose}
-                onChangeText={val => updateKeyProduct(index, 'purpose', val)}
-              />
-            </View>
-          ))}
+              {materialsList.map((mat, idx) => (
+                <View key={mat.id || `mat_${idx}`} style={styles.dynamicRowCard}>
+                  <View style={styles.dynamicRowHeader}>
+                    <Text style={styles.dynamicRowTitle}>Material #{idx + 1}</Text>
+                    {materialsList.length > 1 && (
+                      <TouchableOpacity onPress={() => removeMaterialRow(idx)}>
+                        <Icon name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
-          <TouchableOpacity style={styles.addBtn} onPress={addKeyProductRow} activeOpacity={0.8}>
-            <Icon name="add-circle-outline" size={18} color="#059669" style={{ marginRight: 6 }} />
-            <Text style={styles.addBtnText}>+ Add Key Product</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Section 4: Audience */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>4. Audience Breakdown</Text>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.tableColHeader, { flex: 2 }]}>Category</Text>
-            <Text style={[styles.tableColHeader, { flex: 1, textAlign: 'right' }]}>Expected</Text>
-          </View>
-
-          <View style={styles.tableBodyRow}>
-            <Text style={styles.tableRowLabel}>HOD / KOLs</Text>
-            <TextInput
-              style={styles.tableNumInput}
-              keyboardType="numeric"
-              value={audience.hodKols}
-              onChangeText={val => setAudience(prev => ({ ...prev, hodKols: val }))}
-            />
-          </View>
-
-          <View style={styles.tableBodyRow}>
-            <Text style={styles.tableRowLabel}>APs / SRs</Text>
-            <TextInput
-              style={styles.tableNumInput}
-              keyboardType="numeric"
-              value={audience.apsSrs}
-              onChangeText={val => setAudience(prev => ({ ...prev, apsSrs: val }))}
-            />
-          </View>
-
-          <View style={styles.tableBodyRow}>
-            <Text style={styles.tableRowLabel}>OT / Nurses</Text>
-            <TextInput
-              style={styles.tableNumInput}
-              keyboardType="numeric"
-              value={audience.otNurses}
-              onChangeText={val => setAudience(prev => ({ ...prev, otNurses: val }))}
-            />
-          </View>
-
-          <View style={styles.tableBodyRow}>
-            <Text style={styles.tableRowLabel}>Interns / Students</Text>
-            <TextInput
-              style={styles.tableNumInput}
-              keyboardType="numeric"
-              value={audience.internsStudents}
-              onChangeText={val => setAudience(prev => ({ ...prev, internsStudents: val }))}
-            />
-          </View>
-
-          <View style={styles.tableBodyRow}>
-            <Text style={styles.tableRowLabel}>Other</Text>
-            <TextInput
-              style={styles.tableNumInput}
-              keyboardType="numeric"
-              value={audience.other}
-              onChangeText={val => setAudience(prev => ({ ...prev, other: val }))}
-            />
-          </View>
-
-          <View style={styles.tableTotalRow}>
-            <Text style={styles.totalLabel}>Total Audience</Text>
-            <Text style={styles.totalValue}>{totalAudience}</Text>
-          </View>
-        </View>
-
-        {/* Section 5: Materials & Agenda */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>5. Materials & Agenda</Text>
-
-          {materials.map((item, index) => (
-            <View key={item.id} style={styles.tableBlock}>
-              <View style={styles.blockHeader}>
-                <Text style={styles.blockTitle}>Item #{index + 1}</Text>
-                {materials.length > 1 && (
-                  <TouchableOpacity onPress={() => removeMaterialRow(index)}>
-                    <Icon name="trash-outline" size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <Text style={styles.fieldLabel}>Material / Equipment</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. Suture pads, Instruments"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={item.material}
-                onChangeText={val => updateMaterial(index, 'material', val)}
-              />
-
-              <View style={styles.rowTwoCols}>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={styles.fieldLabel}>Size/Qty</Text>
+                  <Text style={styles.subLabel}>Material / Equipment</Text>
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="Size or Qty"
+                    style={styles.textInputSmall}
+                    placeholder="e.g. Projector / Demo Kit"
                     placeholderTextColor={theme.colors.textSecondary}
-                    value={item.sizeQty}
-                    onChangeText={val => updateMaterial(index, 'sizeQty', val)}
+                    value={mat.material_agenda}
+                    onChangeText={v => updateMaterial(idx, 'material_agenda', v)}
                   />
-                </View>
 
-                <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={styles.fieldLabel}>Time</Text>
+                  <View style={styles.inlineInputsRow}>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <Text style={styles.subLabel}>Qty / Size</Text>
+                      <TextInput
+                        style={styles.textInputSmall}
+                        placeholder="e.g. 1"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        value={mat.size_qty}
+                        onChangeText={v => updateMaterial(idx, 'size_qty', v)}
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 6 }}>
+                      <Text style={styles.subLabel}>Time</Text>
+                      <TextInput
+                        style={styles.textInputSmall}
+                        placeholder="e.g. 10:00:00"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        value={mat.time}
+                        onChangeText={v => updateMaterial(idx, 'time', v)}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={[styles.subLabel, { marginTop: 6 }]}>Agenda Item</Text>
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="e.g. 10:00 AM"
+                    style={styles.textInputSmall}
+                    placeholder="Agenda e.g. Introduction / Demonstration"
                     placeholderTextColor={theme.colors.textSecondary}
-                    value={item.time}
-                    onChangeText={val => updateMaterial(index, 'time', val)}
+                    value={mat.agenda}
+                    onChangeText={v => updateMaterial(idx, 'agenda', v)}
                   />
                 </View>
+              ))}
+
+              {/* Section: Budget Breakdown */}
+              <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
+                <Text style={styles.sectionHeaderTitle}>Budget Breakdown</Text>
               </View>
 
-              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Agenda</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Agenda description"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={item.agenda}
-                onChangeText={val => updateMaterial(index, 'agenda', val)}
-              />
+              {budgetList.map((bgItem, idx) => (
+                <View key={idx} style={styles.budgetRow}>
+                  <Text style={styles.budgetLabel}>{bgItem.budget_item}</Text>
+                  <View style={styles.budgetInputsRow}>
+                    <TextInput
+                      style={styles.budgetInputSmall}
+                      placeholder="Unit Cost"
+                      placeholderTextColor={theme.colors.textSecondary}
+                      keyboardType="numeric"
+                      value={String(bgItem.unit_cost)}
+                      onChangeText={v => updateBudget(idx, 'unit_cost', v)}
+                    />
+                    <TextInput
+                      style={styles.budgetInputSmall}
+                      placeholder="Qty"
+                      placeholderTextColor={theme.colors.textSecondary}
+                      keyboardType="numeric"
+                      value={String(bgItem.qty)}
+                      onChangeText={v => updateBudget(idx, 'qty', v)}
+                    />
+                  </View>
+                </View>
+              ))}
+
+              {/* Manager Remarks Input / Readonly View */}
+              {isRole3 ? (
+                formMode === 'update' && managerRemarks ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={styles.fieldLabel}>Manager Remarks</Text>
+                    <View style={styles.readOnlyBox}>
+                      <Text style={styles.readOnlyText}>{managerRemarks}</Text>
+                    </View>
+                  </View>
+                ) : null
+              ) : (
+                <View style={{ marginTop: 14 }}>
+                  <Text style={styles.fieldLabel}>Manager Remarks</Text>
+                  <TextInput
+                    style={styles.textArea}
+                    placeholder="Enter manager remarks..."
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={managerRemarks}
+                    onChangeText={setManagerRemarks}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              )}
+
+              {/* Modal Save Action Button */}
+              <View style={styles.modalActionRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.submitBtn]}
+                  onPress={handleSaveForm}
+                  disabled={isSubmitting}
+                  activeOpacity={0.8}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Icon name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.submitText}>
+                        {formMode === 'update' ? 'Update Workshop Request' : 'Save Workshop Request'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          ))}
-
-          <TouchableOpacity style={styles.addBtn} onPress={addMaterialRow} activeOpacity={0.8}>
-            <Icon name="add-circle-outline" size={18} color="#059669" style={{ marginRight: 6 }} />
-            <Text style={styles.addBtnText}>+ Add Material / Agenda</Text>
-          </TouchableOpacity>
+          </ScrollView>
         </View>
+      </Modal>
 
-        {/* Section 6: Samples Required */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>6. Samples Required</Text>
-          <Text style={styles.fieldLabel}>Specify required samples / items</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="List required samples or items..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={samplesRequired}
-            onChangeText={setSamplesRequired}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
+      {/* Dedicated Manager Status Modal */}
+      <Modal
+        visible={isManagerStatusModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsManagerStatusModalVisible(false)}
+      >
+        <View style={styles.statusModalOverlay}>
+          <TouchableOpacity
+            style={styles.statusModalBg}
+            onPress={() => setIsManagerStatusModalVisible(false)}
           />
-        </View>
+          <View style={[styles.statusModalSheet, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.modalSheetHandle, { backgroundColor: theme.colors.border }]} />
+            <Text style={[styles.statusModalTitle, { color: theme.colors.text }]}>
+              Update Workshop Status
+            </Text>
 
-        {/* Section 7: Budget & Approval */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>7. Budget & Approval</Text>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.tableColHeader, { flex: 2 }]}>Budget Item</Text>
-            <Text style={[styles.tableColHeader, { flex: 1 }]}>Unit Cost</Text>
-            <Text style={[styles.tableColHeader, { flex: 1 }]}>Qty</Text>
-            <Text style={[styles.tableColHeader, { flex: 1, textAlign: 'right' }]}>Total</Text>
-          </View>
+            {selectedManagerItem ? (
+              <View style={styles.managerSummaryBox}>
+                <Text style={styles.summaryRefText}>
+                  {selectedManagerItem.reference || `WS-${selectedManagerItem.id}`} - {selectedManagerItem.title || selectedManagerItem.hospital_name || 'Workshop'}
+                </Text>
+                {selectedManagerItem.venue ? (
+                  <Text style={styles.summaryAmountText}>Venue: {selectedManagerItem.venue}</Text>
+                ) : null}
+              </View>
+            ) : null}
 
-          {/* Refreshment */}
-          <View style={styles.budgetRow}>
-            <Text style={styles.budgetCategoryLabel}>Refreshment</Text>
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Cost"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.refreshment.unitCost}
-              onChangeText={val => updateBudgetItem('refreshment', 'unitCost', val)}
-            />
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Qty"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.refreshment.qty}
-              onChangeText={val => updateBudgetItem('refreshment', 'qty', val)}
-            />
-            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.refreshment)}</Text>
-          </View>
+            {/* Manager Status Selection Dropdown */}
+            <View style={{ marginTop: 8 }}>
+              <SearchableDropdown
+                label="Select New Status"
+                placeholder="Choose Status..."
+                data={STATUS_OPTIONS_MANAGER}
+                idKey="id"
+                labelKey="name"
+                selectedId={managerStatusId}
+                onSelect={item => setManagerStatusId(item.id)}
+                iconName="flag-outline"
+              />
+            </View>
 
-          {/* Hands-on Material */}
-          <View style={styles.budgetRow}>
-            <Text style={styles.budgetCategoryLabel}>Hands-on Material</Text>
+            {/* Manager Remarks Input */}
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Manager Remarks</Text>
             <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Cost"
+              style={styles.textArea}
+              placeholder="Enter remarks for status change..."
               placeholderTextColor={theme.colors.textSecondary}
-              value={budget.handsOnMaterial.unitCost}
-              onChangeText={val => updateBudgetItem('handsOnMaterial', 'unitCost', val)}
+              value={managerRemarksText}
+              onChangeText={setManagerRemarksText}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
             />
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Qty"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.handsOnMaterial.qty}
-              onChangeText={val => updateBudgetItem('handsOnMaterial', 'qty', val)}
-            />
-            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.handsOnMaterial)}</Text>
-          </View>
 
-          {/* Equipment Rental */}
-          <View style={styles.budgetRow}>
-            <Text style={styles.budgetCategoryLabel}>Equipment Rental</Text>
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Cost"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.equipmentRental.unitCost}
-              onChangeText={val => updateBudgetItem('equipmentRental', 'unitCost', val)}
-            />
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Qty"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.equipmentRental.qty}
-              onChangeText={val => updateBudgetItem('equipmentRental', 'qty', val)}
-            />
-            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.equipmentRental)}</Text>
-          </View>
-
-          {/* Other */}
-          <View style={styles.budgetRow}>
-            <Text style={styles.budgetCategoryLabel}>Other</Text>
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Cost"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.other.unitCost}
-              onChangeText={val => updateBudgetItem('other', 'unitCost', val)}
-            />
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="numeric"
-              placeholder="Qty"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={budget.other.qty}
-              onChangeText={val => updateBudgetItem('other', 'qty', val)}
-            />
-            <Text style={styles.budgetTotalText}>{calcRowTotal(budget.other)}</Text>
-          </View>
-
-          <View style={styles.tableTotalRow}>
-            <Text style={styles.totalLabel}>Total Budget (PKR)</Text>
-            <Text style={[styles.totalValue, { color: theme.colors.primary }]}>Rs. {totalBudget}</Text>
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={styles.saveManagerStatusBtn}
+              onPress={handleSaveManagerStatus}
+              disabled={isManagerSubmitting}
+              activeOpacity={0.8}
+            >
+              {isManagerSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Icon name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.saveManagerStatusBtnText}>Update Status</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
+      </Modal>
 
-        {/* Action Buttons Row */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.saveDraftBtn]}
-            onPress={handleSaveDraft}
-            disabled={isSavingDraft || isSubmitting}
-            activeOpacity={0.8}
-          >
-            {isSavingDraft ? (
-              <ActivityIndicator size="small" color="#854D0E" />
-            ) : (
-              <>
-                <Icon name="save-outline" size={18} color="#854D0E" style={{ marginRight: 6 }} />
-                <Text style={styles.saveDraftText}>Save Draft</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.submitBtn]}
-            onPress={handleSubmit}
-            disabled={isSavingDraft || isSubmitting}
-            activeOpacity={0.8}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <>
-                <Icon name="checkmark-done-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
-                <Text style={styles.submitText}>Submit for Approval</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      {/* Date Picker Modal */}
+      {/* Date Picker Component */}
       <CustomDatePicker
         visible={showDatePicker}
         onClose={() => setShowDatePicker(false)}
         onSelect={date => {
-          setWorkshopDate(formatToYYYYMMDD(date));
+          setRequestDate(formatToYYYYMMDD(date));
           setShowDatePicker(false);
         }}
-        selectedDate={parseDate(workshopDate)}
-        title="Select Workshop Date"
+        selectedDate={parseDate(requestDate)}
+        title="Select Date"
       />
     </View>
   );
@@ -791,62 +1095,258 @@ const getStyles = theme =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    scrollContent: {
+    listContent: {
       padding: 16,
-      paddingBottom: 40,
+      paddingBottom: 80,
     },
-    headerBanner: {
-      backgroundColor: '#0F766E',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 14,
-    },
-    headerTitleRow: {
-      flexDirection: 'row',
+    loaderContainer: {
+      flex: 1,
+      justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 6,
     },
-    headerTitle: {
+    loaderText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+      paddingHorizontal: 20,
+    },
+    emptyTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: '#ffffff',
-      letterSpacing: 0.5,
+      color: theme.colors.text,
+      marginTop: 12,
     },
-    workflowBadge: {
-      backgroundColor: 'rgba(255, 255, 255, 0.15)',
-      borderRadius: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      marginTop: 4,
+    emptySubtext: {
+      fontSize: 13,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 6,
+      marginBottom: 20,
     },
-    workflowText: {
-      fontSize: 11,
-      color: '#CCFBF1',
-      fontWeight: '500',
+    addFirstBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.primary,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      borderRadius: 10,
+    },
+    addFirstBtnText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 14,
     },
     card: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 12,
+      borderRadius: 14,
       padding: 16,
       marginBottom: 16,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
       elevation: 2,
     },
-    sectionHeading: {
+    cardHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    referenceContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    referenceText: {
       fontSize: 15,
       fontWeight: '700',
+      color: theme.colors.text,
+    },
+    headerRightRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    statusText: {
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    cardDateText: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+    },
+    cardTitleText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.text,
+      marginBottom: 8,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: 12,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    infoIcon: {
+      marginRight: 6,
+    },
+    infoLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+      marginRight: 6,
+    },
+    infoValue: {
+      fontSize: 13,
+      color: theme.colors.text,
+      flex: 1,
+    },
+    remarksBox: {
+      backgroundColor: theme.colors.background,
+      borderRadius: 8,
+      padding: 10,
+      marginTop: 6,
+      marginBottom: 6,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    remarksLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+      marginBottom: 2,
+    },
+    remarksText: {
+      fontSize: 13,
+      color: theme.colors.text,
+    },
+    managerRemarksBox: {
+      backgroundColor: '#FEF3C7',
+      borderRadius: 8,
+      padding: 10,
+      marginTop: 6,
+      marginBottom: 6,
+      borderWidth: 1,
+      borderColor: '#F59E0B',
+    },
+    managerRemarksLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#92400E',
+      marginBottom: 2,
+    },
+    managerRemarksText: {
+      fontSize: 13,
+      color: '#78350F',
+    },
+    cardActionsRow: {
+      marginTop: 12,
+    },
+    updateCardBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      borderRadius: 8,
+      paddingVertical: 9,
+      backgroundColor: theme.colors.primary + '10',
+    },
+    updateCardBtnText: {
+      fontSize: 13,
+      fontWeight: '700',
       color: theme.colors.primary,
-      marginBottom: 12,
+    },
+    statusManagerCardBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
+      paddingVertical: 10,
+      backgroundColor: theme.colors.primary,
+      elevation: 2,
+    },
+    statusManagerCardBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      backgroundColor: theme.colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
-      paddingBottom: 6,
+    },
+    modalHeaderTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    closeModalBtn: {
+      padding: 4,
+    },
+    modalScrollContent: {
+      padding: 16,
+      paddingBottom: 40,
+    },
+    modalCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     fieldLabel: {
       fontSize: 13,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.colors.text,
       marginBottom: 6,
+    },
+    subLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+      marginBottom: 4,
     },
     required: {
       color: theme.colors.error || '#EF4444',
@@ -857,9 +1357,9 @@ const getStyles = theme =>
       alignItems: 'center',
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: 8,
+      borderRadius: 10,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 11,
       backgroundColor: theme.colors.background,
     },
     dateText: {
@@ -870,180 +1370,229 @@ const getStyles = theme =>
     textInput: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: 8,
+      borderRadius: 10,
       paddingHorizontal: 12,
-      paddingVertical: 9,
+      paddingVertical: 10,
       fontSize: 14,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+    },
+    textInputSmall: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      fontSize: 13,
       color: theme.colors.text,
       backgroundColor: theme.colors.background,
     },
     textArea: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: 8,
+      borderRadius: 10,
       padding: 12,
       fontSize: 14,
       color: theme.colors.text,
       backgroundColor: theme.colors.background,
       minHeight: 80,
     },
-    tableBlock: {
-      backgroundColor: theme.colors.background,
-      borderRadius: 8,
-      padding: 12,
+    sectionHeaderBox: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
       marginBottom: 12,
+      marginTop: 14,
+    },
+    sectionHeaderTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    addRowBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    addRowBtnText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.primary,
+      marginLeft: 4,
+    },
+    dynamicRowCard: {
+      backgroundColor: theme.colors.background,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 10,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    blockHeader: {
+    dynamicRowHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 8,
     },
-    blockTitle: {
+    dynamicRowTitle: {
       fontSize: 13,
       fontWeight: '700',
       color: theme.colors.text,
     },
-    rowTwoCols: {
+    inlineInputsRow: {
       flexDirection: 'row',
+      justifyContent: 'space-between',
       marginTop: 8,
     },
-    addBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 10,
-      borderWidth: 1,
-      borderColor: '#059669',
-      borderRadius: 8,
-      backgroundColor: '#D1FAE5',
-      marginTop: 4,
-    },
-    addBtnText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#047857',
-    },
-    tableHeaderRow: {
-      flexDirection: 'row',
-      backgroundColor: theme.colors.background,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      borderRadius: 6,
-      marginBottom: 6,
-    },
-    tableColHeader: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: theme.colors.textSecondary,
-    },
-    tableBodyRow: {
+    audienceRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 6,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      marginBottom: 8,
+      paddingHorizontal: 4,
     },
-    tableRowLabel: {
+    audienceLabel: {
       fontSize: 13,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.colors.text,
     },
-    tableNumInput: {
+    audienceInput: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: 6,
-      width: 70,
-      height: 36,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      width: 90,
       textAlign: 'center',
       fontSize: 13,
       color: theme.colors.text,
       backgroundColor: theme.colors.background,
-    },
-    tableTotalRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingTop: 10,
-      marginTop: 6,
-    },
-    totalLabel: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.colors.text,
-    },
-    totalValue: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.colors.text,
     },
     budgetRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 6,
-      gap: 6,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      justifyContent: 'space-between',
+      marginBottom: 10,
     },
-    budgetCategoryLabel: {
-      flex: 2,
-      fontSize: 12,
-      fontWeight: '500',
+    budgetLabel: {
+      fontSize: 13,
+      fontWeight: '600',
       color: theme.colors.text,
-    },
-    budgetInput: {
       flex: 1,
+    },
+    budgetInputsRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    budgetInputSmall: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: 6,
-      height: 36,
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      width: 80,
       textAlign: 'center',
-      fontSize: 12,
+      fontSize: 13,
       color: theme.colors.text,
       backgroundColor: theme.colors.background,
     },
-    budgetTotalText: {
-      flex: 1,
-      textAlign: 'right',
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.colors.text,
+    readOnlyBox: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 10,
+      padding: 12,
+      backgroundColor: theme.colors.background + '80',
+      minHeight: 46,
+      justifyContent: 'center',
     },
-    actionRow: {
+    readOnlyText: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+    },
+    modalActionRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       gap: 12,
-      marginTop: 10,
-      marginBottom: 30,
+      marginTop: 20,
+      marginBottom: 10,
     },
     actionBtn: {
       flex: 1,
-      borderRadius: 8,
-      paddingVertical: 12,
+      borderRadius: 10,
+      paddingVertical: 13,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       elevation: 2,
     },
-    saveDraftBtn: {
-      backgroundColor: '#FEF08A',
-      borderWidth: 1,
-      borderColor: '#EAB308',
+    submitBtn: {
+      backgroundColor: theme.colors.primary,
     },
-    saveDraftText: {
-      color: '#854D0E',
+    submitText: {
+      color: '#FFFFFF',
       fontSize: 14,
       fontWeight: '700',
     },
-    submitBtn: {
-      backgroundColor: '#2563EB',
+    statusModalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
     },
-    submitText: {
-      color: '#ffffff',
+    statusModalBg: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    statusModalSheet: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 20,
+      paddingBottom: 34,
+    },
+    modalSheetHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 14,
+    },
+    statusModalTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      marginBottom: 14,
+    },
+    managerSummaryBox: {
+      backgroundColor: theme.colors.background,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    summaryRefText: {
       fontSize: 14,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    summaryAmountText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.primary,
+      marginTop: 4,
+    },
+    saveManagerStatusBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.primary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      marginTop: 18,
+      elevation: 3,
+    },
+    saveManagerStatusBtnText: {
+      color: '#FFFFFF',
+      fontSize: 15,
       fontWeight: '700',
     },
   });

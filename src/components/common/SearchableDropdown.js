@@ -39,7 +39,14 @@ const SearchableDropdown = ({
     return val.toString().toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const selectedItem = data.find(item => item[idKey]?.toString() === selectedId?.toString());
+  const checkIsSelected = item => {
+    if (selectedId === null || selectedId === undefined || selectedId === '') return false;
+    const itemId = item[idKey];
+    if (itemId === null || itemId === undefined || itemId === '') return false;
+    return String(selectedId) === String(itemId);
+  };
+
+  const selectedItem = data.find(item => checkIsSelected(item));
 
   const s = getStyles(theme, disabled);
 
@@ -125,38 +132,40 @@ const SearchableDropdown = ({
                   {isLoading ? 'Loading...' : 'No records found.'}
                 </Text>
               }
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    s.modalItem,
-                    {
-                      borderBottomColor: theme.colors.border,
-                      backgroundColor:
-                        selectedId?.toString() === item[idKey]?.toString()
+              renderItem={({ item }) => {
+                const itemIsSelected = checkIsSelected(item);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      s.modalItem,
+                      {
+                        borderBottomColor: theme.colors.border,
+                        backgroundColor: itemIsSelected
                           ? theme.colors.primary + '12'
                           : 'transparent',
-                    },
-                  ]}
-                  onPress={() => {
-                    onSelect(item);
-                    setDropdownOpen(false);
-                  }}
-                  activeOpacity={0.6}
-                >
-                  <View style={[s.modalItemDot, { backgroundColor: theme.colors.primary }]} />
-                  <Text style={[s.modalItemName, { color: theme.colors.text }]} numberOfLines={1}>
-                    {item[labelKey]}
-                  </Text>
-                  {selectedId?.toString() === item[idKey]?.toString() && (
-                    <Icon
-                      name="checkmark-circle"
-                      size={18}
-                      color={theme.colors.primary}
-                      style={{ marginLeft: 8 }}
-                    />
-                  )}
-                </TouchableOpacity>
-              )}
+                      },
+                    ]}
+                    onPress={() => {
+                      onSelect(item);
+                      setDropdownOpen(false);
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <View style={[s.modalItemDot, { backgroundColor: theme.colors.primary }]} />
+                    <Text style={[s.modalItemName, { color: theme.colors.text }]} numberOfLines={1}>
+                      {item[labelKey]}
+                    </Text>
+                    {itemIsSelected && (
+                      <Icon
+                        name="checkmark-circle"
+                        size={18}
+                        color={theme.colors.primary}
+                        style={{ marginLeft: 8 }}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
         </View>

@@ -122,13 +122,15 @@ const CRMSampleRequestScreen = ({ navigation }) => {
   // Handlers
 
   const updateProductField = (index, key, value) => {
-    const updated = [...products];
-    updated[index][key] = value;
-    setProducts(updated);
+    setProducts(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [key]: value };
+      return updated;
+    });
   };
 
   const addProduct = () => {
-    setProducts([...products, { ...emptyProduct }]);
+    setProducts(prev => [...prev, { ...emptyProduct, id: Date.now() + Math.random() }]);
   };
 
   const removeProduct = index => {
