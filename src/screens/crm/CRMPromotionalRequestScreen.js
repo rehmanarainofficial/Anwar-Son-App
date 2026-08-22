@@ -17,7 +17,7 @@ import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown } from '@components/common';
+import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
@@ -28,6 +28,13 @@ import {
   useGetPromotionalDataMutation,
   usePostPromotionalDataMutation,
 } from '@api/baseApi';
+
+const getInitialFilterDates = () => {
+  const to = new Date();
+  const from = new Date();
+  from.setMonth(from.getMonth() - 1);
+  return { from, to };
+};
 
 const parseDate = dateStr => {
   if (!dateStr) return new Date();
@@ -86,6 +93,11 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
   // List Data State
   const [promotionalList, setPromotionalList] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Date Filter State (Default 1 Month Range)
+  const initialDates = getInitialFilterDates();
+  const [fromDate, setFromDate] = useState(initialDates.from);
+  const [toDate, setToDate] = useState(initialDates.to);
 
   // Main Form Modal State (Add / Full Edit)
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -146,10 +158,18 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
   const loadPromotionalData = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await getPromotionalData({
+      const payload = {
         user_id: user.id,
         role_id: user?.role_id || '2',
-      }).unwrap();
+      };
+      if (fromDate) {
+        payload.from_date = formatToYYYYMMDD(fromDate);
+      }
+      if (toDate) {
+        payload.to_date = formatToYYYYMMDD(toDate);
+      }
+
+      const res = await getPromotionalData(payload).unwrap();
 
       if (res && (res.status === 'true' || res.status === true) && Array.isArray(res.data)) {
         setPromotionalList(res.data);
@@ -160,7 +180,7 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
       console.log('Error loading promotional data:', error);
       setPromotionalList([]);
     }
-  }, [user?.id, user?.role_id, getPromotionalData]);
+  }, [user?.id, user?.role_id, fromDate, toDate, getPromotionalData]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -531,8 +551,56 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
     );
   };
 
+  const filteredPromotionalList = promotionalList.filter(item => {
+    if (!fromDate && !toDate) return true;
+
+    const itemDate = parseDate(item.tran_date || item.date || item.created_at);
+    if (!itemDate || isNaN(itemDate.getTime())) return true;
+
+    const targetTime = new Date(
+      itemDate.getFullYear(),
+      itemDate.getMonth(),
+      itemDate.getDate(),
+    ).getTime();
+
+    if (fromDate) {
+      const fromTime = new Date(
+        fromDate.getFullYear(),
+        fromDate.getMonth(),
+        fromDate.getDate(),
+      ).getTime();
+      if (targetTime < fromTime) return false;
+    }
+
+    if (toDate) {
+      const toTime = new Date(
+        toDate.getFullYear(),
+        toDate.getMonth(),
+        toDate.getDate(),
+      ).getTime();
+      if (targetTime > toTime) return false;
+    }
+
+    return true;
+  });
+
   return (
     <View style={styles.container}>
+      {/* Date Range Filter */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+        <DateFilter
+          fromDate={fromDate}
+          toDate={toDate}
+          onFromDate={setFromDate}
+          onToDate={setToDate}
+          onClear={() => {
+            setFromDate(null);
+            setToDate(null);
+          }}
+          onFilter={() => {}}
+        />
+      </View>
+
       {/* Main Content: List of Promotional Cards */}
       {dataLoading && !isRefreshing ? (
         <View style={styles.loaderContainer}>
@@ -541,7 +609,7 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
-          data={promotionalList}
+          data={filteredPromotionalList}
           keyExtractor={item => String(item.id)}
           renderItem={renderCardItem}
           contentContainerStyle={styles.listContent}

@@ -137,6 +137,9 @@ const CRMDashboardTab = ({ navigation }) => {
   let doctorCount = 0;
   let nurseCount = 0;
   let adminCount = 0;
+  let tierACount = 0;
+  let tierBCount = 0;
+  let tierCCount = 0;
 
   contactsData.forEach(c => {
     const fullText = (
@@ -169,6 +172,41 @@ const CRMDashboardTab = ({ navigation }) => {
       nurseCount++;
     } else {
       adminCount++;
+    }
+
+    const tid = String(c.tier_id || c.contact_tier || '').toLowerCase().trim();
+    const tname = (c.tier || c.tier_name || '').toLowerCase().trim();
+
+    if (
+      tid === 'a' ||
+      tid === '1' ||
+      tname.includes('tier a') ||
+      tname.includes('tiera') ||
+      tname === 'tier a' ||
+      tname === 'tiera' ||
+      tname === 'a'
+    ) {
+      tierACount++;
+    } else if (
+      tid === 'b' ||
+      tid === '2' ||
+      tname.includes('tier b') ||
+      tname.includes('tierb') ||
+      tname === 'tier b' ||
+      tname === 'tierb' ||
+      tname === 'b'
+    ) {
+      tierBCount++;
+    } else if (
+      tid === 'c' ||
+      tid === '3' ||
+      tname.includes('tier c') ||
+      tname.includes('tierc') ||
+      tname === 'tier c' ||
+      tname === 'tierc' ||
+      tname === 'c'
+    ) {
+      tierCCount++;
     }
   });
 
@@ -303,6 +341,22 @@ const CRMDashboardTab = ({ navigation }) => {
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Admins</Text>
               <Text style={styles.tierVal}>{adminCount}</Text>
+            </View>
+          </View>
+
+          {/* Tiers Breakdown Row for Contacts */}
+          <View style={[styles.tierRow]}>
+            <View style={styles.tierBox}>
+              <Text style={styles.tierLabel}>Tier A</Text>
+              <Text style={styles.tierVal}>{tierACount}</Text>
+            </View>
+            <View style={styles.tierBox}>
+              <Text style={styles.tierLabel}>Tier B</Text>
+              <Text style={styles.tierVal}>{tierBCount}</Text>
+            </View>
+            <View style={styles.tierBox}>
+              <Text style={styles.tierLabel}>Tier C</Text>
+              <Text style={styles.tierVal}>{tierCCount}</Text>
             </View>
           </View>
 
@@ -462,7 +516,7 @@ const getStyles = theme =>
       backgroundColor: theme.colors.background,
       paddingVertical: 10,
       borderRadius: 10,
-      marginBottom: 16,
+      marginBottom: 10,
     },
     tierBox: {
       alignItems: 'center',

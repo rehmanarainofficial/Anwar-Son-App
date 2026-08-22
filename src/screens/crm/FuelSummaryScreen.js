@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -15,153 +16,142 @@ import { useSelector } from 'react-redux';
 import { Dropdown } from 'react-native-element-dropdown';
 import { useTheme } from '@config/useTheme';
 import { selectCurrentUser } from '@store/slices/authSlice';
-import { useGetMonthDropdownMutation } from '@api/portalApi';
+import {
+  useGetMonthDropdownMutation,
+  useGetSalesmanFuelSummaryMutation,
+} from '@api/portalApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const DEFAULT_MONTHS = [
+  { label: 'January', value: '1' },
+  { label: 'February', value: '2' },
+  { label: 'March', value: '3' },
+  { label: 'April', value: '4' },
+  { label: 'May', value: '5' },
+  { label: 'June', value: '6' },
+  { label: 'July', value: '7' },
+  { label: 'August', value: '8' },
+  { label: 'September', value: '9' },
+  { label: 'October', value: '10' },
+  { label: 'November', value: '11' },
+  { label: 'December', value: '12' },
+];
 
 const FuelSummaryScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const user = useSelector(selectCurrentUser);
+
   const [getMonthDropdown, { isLoading: isFetchingMonths }] =
     useGetMonthDropdownMutation();
+  const [getSalesmanFuelSummary, { isLoading: isFetchingSummary }] =
+    useGetSalesmanFuelSummaryMutation();
 
-  const [monthsList, setMonthsList] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [tableData, setTableData] = useState([]);
+  // Current Date Initializers
+  const currentDate = new Date();
+  const currentYearStr = String(currentDate.getFullYear());
+  const currentMonthStr = String(currentDate.getMonth() + 1);
 
+  // Filter States
+  const [selectedYear, setSelectedYear] = useState(currentYearStr);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+  const [monthsList, setMonthsList] = useState(DEFAULT_MONTHS);
+  const [yearsList, setYearsList] = useState([]);
+
+  // Data States
+  const [fuelSummary, setFuelSummary] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Generate 10 Years List starting from current year (e.g. 2026 to 2035, no previous years)
   useEffect(() => {
-    fetchMonths();
+    const years = [];
+    const curY = new Date().getFullYear();
+    for (let y = curY; y < curY + 10; y++) {
+      years.push({ label: String(y), value: String(y) });
+    }
+    setYearsList(years);
   }, []);
 
-  const fetchMonths = async () => {
+  // Fetch Month Dropdown API
+  useEffect(() => {
+    fetchMonthsDropdown();
+  }, []);
+
+  const fetchMonthsDropdown = async () => {
     try {
       const res = await getMonthDropdown({
         company: 'CRM',
-        user_id: user?.id || user?.user_id || '',
       }).unwrap();
 
-      let list = [];
+      let rawArr = [];
       if (Array.isArray(res)) {
-        list = res.map(m => ({
-          label: m.month_name || m.name || m.title || `Month ${m.month_id}`,
-          value: String(m.month_id || m.id || m.value),
-        }));
+        rawArr = res;
       } else if (res && Array.isArray(res.data)) {
-        list = res.data.map(m => ({
-          label: m.month_name || m.name || m.title || `Month ${m.month_id}`,
-          value: String(m.month_id || m.id || m.value),
+        rawArr = res.data;
+      }
+
+      if (rawArr.length > 0) {
+        const list = rawArr.map(m => ({
+          label: m.description || m.month_name || m.name || m.title || `Month ${m.id || m.month_id}`,
+          value: String(m.id || m.month_id || m.value),
         }));
-      }
-
-      // Fallback default months if API response is empty
-      if (list.length === 0) {
-        list = [
-          { label: 'August 2026', value: '8' },
-          { label: 'July 2026', value: '7' },
-          { label: 'June 2026', value: '6' },
-          { label: 'May 2026', value: '5' },
-          { label: 'April 2026', value: '4' },
-        ];
-      }
-
-      setMonthsList(list);
-      if (list.length > 0) {
-        setSelectedMonth(list[0].value);
-        generateMockTableData(list[0].value);
+        setMonthsList(list);
       }
     } catch (error) {
       console.log('Error fetching months dropdown:', error);
-      const fallbackList = [
-        { label: 'August 2026', value: '8' },
-        { label: 'July 2026', value: '7' },
-        { label: 'June 2026', value: '6' },
-        { label: 'May 2026', value: '5' },
-      ];
-      setMonthsList(fallbackList);
-      setSelectedMonth('8');
-      generateMockTableData('8');
     }
+  };
+
+  // Fetch Fuel Summary Data
+  const fetchFuelSummary = useCallback(
+    async (yearVal = selectedYear, monthVal = selectedMonth) => {
+      if (!yearVal || !monthVal) return;
+      try {
+        const response = await getSalesmanFuelSummary({
+          company: 'CRM',
+          emp_code: user?.emp_code || '',
+          user_id: user?.id || user?.user_id || '',
+          role_id: user?.role_id,
+          year: String(yearVal),
+          month: String(monthVal),
+        }).unwrap();
+
+        if (response?.status === 'true') {
+          setFuelSummary(response);
+        } else {
+          setFuelSummary(response || null);
+        }
+      } catch (error) {
+        console.log('Error fetching salesman fuel summary:', error);
+      }
+    },
+    [getSalesmanFuelSummary, user?.emp_code, user?.id, user?.user_id, user?.role_id, selectedYear, selectedMonth],
+  );
+
+  useEffect(() => {
+    fetchFuelSummary(selectedYear, selectedMonth);
+  }, [selectedYear, selectedMonth, fetchFuelSummary]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchFuelSummary(selectedYear, selectedMonth);
+    setRefreshing(false);
   };
 
   const handleMonthChange = item => {
     setSelectedMonth(item.value);
-    generateMockTableData(item.value);
   };
 
-  const generateMockTableData = monthVal => {
-    const daysInMonth = 30;
-    const daysOfWeek = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
-    const data = [];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateObj = new Date(2026, parseInt(monthVal || '8', 10) - 1, day);
-      const dayName = daysOfWeek[dateObj.getDay()];
-      const isSunday = dayName === 'Sunday';
-
-      let attendance = 'Present';
-      let progressUpdate = '5 Visits Completed';
-      let fuelAllow = 1200;
-
-      if (isSunday) {
-        attendance = 'Off Day';
-        progressUpdate = 'Weekly Off';
-        fuelAllow = 0;
-      } else if (day % 7 === 3) {
-        attendance = 'Half Day';
-        progressUpdate = '2 Visits Done';
-        fuelAllow = 600;
-      } else if (day % 11 === 0) {
-        attendance = 'Absent';
-        progressUpdate = 'No Activity';
-        fuelAllow = 0;
-      } else {
-        fuelAllow = 1000 + (day % 5) * 150;
-        progressUpdate = `${3 + (day % 4)} Tasks Completed`;
-      }
-
-      const formattedDay = String(day).padStart(2, '0');
-      const formattedMonth = String(monthVal || '08').padStart(2, '0');
-
-      data.push({
-        id: String(day),
-        date: `2026-${formattedMonth}-${formattedDay}`,
-        dayName,
-        attendance,
-        progressUpdate,
-        fuelAllow,
-      });
-    }
-
-    setTableData(data);
-  };
-
-  const totalFuelAllow = tableData.reduce((acc, curr) => acc + curr.fuelAllow, 0);
-  const totalPresent = tableData.filter(
-    d => d.attendance === 'Present' || d.attendance === 'Half Day',
-  ).length;
-
-  const getAttendanceBadgeStyle = att => {
-    if (att === 'Present') {
-      return { bg: theme.colors.success + '20', text: theme.colors.success };
-    }
-    if (att === 'Half Day') {
-      return { bg: theme.colors.warning + '20', text: theme.colors.warning };
-    }
-    if (att === 'Absent') {
-      return { bg: theme.colors.error + '20', text: theme.colors.error };
-    }
-    return { bg: theme.colors.border, text: theme.colors.textSecondary };
+  const handleYearChange = item => {
+    setSelectedYear(item.value);
   };
 
   const styles = getStyles(theme);
+
+  const rules = fuelSummary?.rules || {};
+  const summary = fuelSummary?.summary || {};
+  const monthData = fuelSummary?.month || {};
+  const dailyList = fuelSummary?.data || [];
 
   return (
     <View style={styles.container}>
@@ -191,121 +181,240 @@ const FuelSummaryScreen = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
       >
-        {/* Month Filter Section */}
+        {/* Month & Year Dropdown Filters in 1 Row */}
         <View style={styles.filterCard}>
-          <Text style={styles.filterLabel}>Select Month</Text>
-          {isFetchingMonths ? (
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-          ) : (
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.dropdownPlaceholder}
-              selectedTextStyle={styles.dropdownSelectedText}
-              iconStyle={styles.dropdownIcon}
-              data={monthsList}
-              maxHeight={300}
-              labelField="label"
-              valueField="value"
-              placeholder="Select Month"
-              value={selectedMonth}
-              onChange={handleMonthChange}
-            />
-          )}
-        </View>
-
-        {/* Summary Overview Cards */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryBox}>
-            <View style={[styles.summaryIconWrap, { backgroundColor: theme.colors.primary + '18' }]}>
-              <Icon name="color-fill-outline" size={20} color={theme.colors.primary} />
+          <Text style={styles.filterTitle}>Filter Period</Text>
+          <View style={styles.filterRow}>
+            {/* Month Dropdown */}
+            <View style={styles.dropdownCol}>
+              <Text style={styles.filterLabel}>Month</Text>
+              {isFetchingMonths ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <Dropdown
+                  style={styles.dropdown}
+                  placeholderStyle={styles.dropdownPlaceholder}
+                  selectedTextStyle={styles.dropdownSelectedText}
+                  iconStyle={styles.dropdownIcon}
+                  data={monthsList}
+                  maxHeight={300}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Select Month"
+                  value={selectedMonth}
+                  onChange={handleMonthChange}
+                />
+              )}
             </View>
-            <Text style={styles.summaryVal}>Rs. {totalFuelAllow.toLocaleString()}</Text>
-            <Text style={styles.summaryLabel}>Total Fuel Allowed</Text>
-          </View>
 
-          <View style={styles.summaryBox}>
-            <View style={[styles.summaryIconWrap, { backgroundColor: theme.colors.success + '18' }]}>
-              <Icon name="checkmark-done-circle-outline" size={20} color={theme.colors.success} />
+            {/* Year Dropdown */}
+            <View style={styles.dropdownCol}>
+              <Text style={styles.filterLabel}>Year</Text>
+              <Dropdown
+                style={styles.dropdown}
+                placeholderStyle={styles.dropdownPlaceholder}
+                selectedTextStyle={styles.dropdownSelectedText}
+                iconStyle={styles.dropdownIcon}
+                data={yearsList}
+                maxHeight={300}
+                labelField="label"
+                valueField="value"
+                placeholder="Select Year"
+                value={selectedYear}
+                onChange={handleYearChange}
+              />
             </View>
-            <Text style={styles.summaryVal}>{totalPresent} Days</Text>
-            <Text style={styles.summaryLabel}>Attendance Count</Text>
           </View>
         </View>
 
-        {/* Table Title */}
-        <View style={styles.tableTitleWrap}>
-          <View style={styles.accentBar} />
-          <Text style={styles.tableTitleText}>DAILY FUEL ALLOWANCE BREAKDOWN</Text>
-        </View>
+        {isFetchingSummary ? (
+          <View style={styles.loaderWrap}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loaderText}>Fetching fuel summary...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Rules Banner Card */}
+            {rules && (
+              <View style={styles.rulesCard}>
+                <View style={styles.rulesHeader}>
+                  <Icon name="information-circle" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.rulesTitle}>Fuel Rules & Criteria</Text>
+                </View>
+                <View style={styles.rulesRow}>
+                  <View style={styles.ruleBadge}>
+                    <Text style={styles.ruleBadgeLabel}>Attendance</Text>
+                    <Text style={styles.ruleBadgeVal}>≤ {rules.attendance_before_or_at || '09:05:00'}</Text>
+                  </View>
+                  <View style={styles.ruleBadge}>
+                    <Text style={styles.ruleBadgeLabel}>Progress Update</Text>
+                    <Text style={styles.ruleBadgeVal}>≤ {rules.progress_before || '12:00:00'}</Text>
+                  </View>
+                  <View style={styles.ruleBadgePrimary}>
+                    <Text style={styles.ruleBadgeLabelPrimary}>Allowance</Text>
+                    <Text style={styles.ruleBadgeValPrimary}>{rules.fuel_if_both_valid || '3L'}/day</Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
-        {/* Horizontal Scrollable Table */}
-        <View style={styles.tableCard}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-            <View>
-              {/* Table Header Row */}
-              <View style={styles.tableHeaderRow}>
-                <Text style={[styles.thCell, { width: 100 }]}>Date</Text>
-                <Text style={[styles.thCell, { width: 100 }]}>Day Name</Text>
-                <Text style={[styles.thCell, { width: 110 }]}>Attendance</Text>
-                <Text style={[styles.thCell, { width: 170 }]}>Progress Update</Text>
-                <Text style={[styles.thCell, { width: 120, textAlign: 'right' }]}>Fuel Allow</Text>
+            {/* Summary Overview Grid */}
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryCard}>
+                <View style={[styles.summaryIconWrap, { backgroundColor: theme.colors.primary + '18' }]}>
+                  <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.summaryVal}>{summary.attendance_days || 0}</Text>
+                <Text style={styles.summaryLabel}>Attendance Days</Text>
               </View>
 
-              {/* Table Body Rows */}
-              {tableData.map((row, index) => {
-                const badge = getAttendanceBadgeStyle(row.attendance);
-                return (
-                  <View
-                    key={row.id}
-                    style={[
-                      styles.tableBodyRow,
-                      index % 2 === 1 && { backgroundColor: theme.colors.background + '80' },
-                    ]}
-                  >
-                    <Text style={[styles.tdCell, styles.dateText, { width: 100 }]}>
-                      {row.date}
-                    </Text>
+              <View style={styles.summaryCard}>
+                <View style={[styles.summaryIconWrap, { backgroundColor: '#3B82F618' }]}>
+                  <Icon name="trending-up-outline" size={20} color="#3B82F6" />
+                </View>
+                <Text style={styles.summaryVal}>{summary.progress_days || 0}</Text>
+                <Text style={styles.summaryLabel}>Progress Days</Text>
+              </View>
 
-                    <Text style={[styles.tdCell, { width: 100 }]}>
-                      {row.dayName}
-                    </Text>
+              <View style={styles.summaryCard}>
+                <View style={[styles.summaryIconWrap, { backgroundColor: '#10B98118' }]}>
+                  <Icon name="checkmark-done-circle-outline" size={20} color="#10B981" />
+                </View>
+                <Text style={styles.summaryVal}>{summary.fuel_days || 0}</Text>
+                <Text style={styles.summaryLabel}>Fuel Days</Text>
+              </View>
 
-                    <View style={{ width: 110, justifyContent: 'center' }}>
-                      <View style={[styles.attBadge, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.attBadgeText, { color: badge.text }]}>
-                          {row.attendance}
-                        </Text>
-                      </View>
+              <View style={styles.summaryCard}>
+                <View style={[styles.summaryIconWrap, { backgroundColor: '#F59E0B18' }]}>
+                  <Icon name="color-fill-outline" size={20} color="#F59E0B" />
+                </View>
+                <Text style={[styles.summaryVal, { color: '#F59E0B' }]}>{summary.total_fuel || '0L'}</Text>
+                <Text style={styles.summaryLabel}>Total Fuel</Text>
+              </View>
+            </View>
+
+            {/* Table Section */}
+            <View style={styles.tableTitleWrap}>
+              <View style={styles.accentBar} />
+              <Text style={styles.tableTitleText}>
+                {monthData.name ? `${monthData.name.toUpperCase()} BREAKDOWN` : 'DAILY FUEL BREAKDOWN'}
+              </Text>
+            </View>
+
+            {dailyList.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Icon name="file-tray-outline" size={40} color={theme.colors.textSecondary} />
+                <Text style={styles.emptyText}>No fuel record found for selected period.</Text>
+              </View>
+            ) : (
+              <View style={styles.tableCard}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                  <View>
+                    {/* Table Header */}
+                    <View style={styles.tableHeaderRow}>
+                      <Text style={[styles.thCell, { width: 95 }]}>Date</Text>
+                      <Text style={[styles.thCell, { width: 55 }]}>Day</Text>
+                      <Text style={[styles.thCell, { width: 125 }]}>Attendance</Text>
+                      <Text style={[styles.thCell, { width: 125 }]}>Progress</Text>
+                      <Text style={[styles.thCell, { width: 85, textAlign: 'right' }]}>Fuel Allowed</Text>
                     </View>
 
-                    <Text style={[styles.tdCell, { width: 170 }]} numberOfLines={1}>
-                      {row.progressUpdate}
-                    </Text>
+                    {/* Table Body */}
+                    {dailyList.map((row, index) => {
+                      const isAttYes = row.attendance === 'Yes';
+                      const isProgYes = row.progress_update === 'Yes';
+                      const hasFuel = row.fuel_allowed && row.fuel_allowed !== '0L';
 
-                    <Text
-                      style={[
-                        styles.tdCell,
-                        styles.fuelValText,
-                        { width: 120, textAlign: 'right' },
-                      ]}
-                    >
-                      {row.fuelAllow > 0 ? `Rs. ${row.fuelAllow.toLocaleString()}` : '-'}
-                    </Text>
+                      return (
+                        <View
+                          key={index}
+                          style={[
+                            styles.tableBodyRow,
+                            index % 2 === 1 && { backgroundColor: theme.colors.background + '60' },
+                          ]}
+                        >
+                          <Text style={[styles.tdCell, styles.dateText, { width: 95 }]}>
+                            {row.date}
+                          </Text>
+
+                          <Text style={[styles.tdCell, { width: 55 }]}>
+                            {row.day}
+                          </Text>
+
+                          <View style={{ width: 125, justifyContent: 'center' }}>
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: isAttYes ? '#10B98118' : '#EF444418' },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.badgeText,
+                                  { color: isAttYes ? '#10B981' : '#EF4444' },
+                                ]}
+                              >
+                                {isAttYes ? `Yes (${row.attendance_time})` : 'No'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={{ width: 125, justifyContent: 'center' }}>
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: isProgYes ? '#10B98118' : '#EF444418' },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.badgeText,
+                                  { color: isProgYes ? '#10B981' : '#EF4444' },
+                                ]}
+                              >
+                                {isProgYes ? `Yes (${row.progress_time || 'Done'})` : 'No'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text
+                            style={[
+                              styles.tdCell,
+                              styles.fuelValText,
+                              {
+                                width: 85,
+                                textAlign: 'right',
+                                color: hasFuel ? theme.colors.primary : theme.colors.textSecondary,
+                              },
+                            ]}
+                          >
+                            {row.fuel_allowed || '0L'}
+                          </Text>
+                        </View>
+                      );
+                    })}
+
+                    {/* Table Footer */}
+                    <View style={styles.tableFooterRow}>
+                      <Text style={[styles.tfCell, { width: 400 }]}>Total Fuel Allowance</Text>
+                      <Text style={[styles.tfCell, { width: 85, textAlign: 'right', color: theme.colors.primary }]}>
+                        {summary.total_fuel || '0L'}
+                      </Text>
+                    </View>
                   </View>
-                );
-              })}
-
-              {/* Table Total Summary Row */}
-              <View style={styles.tableFooterRow}>
-                <Text style={[styles.tfCell, { width: 480 }]}>Total Allowance</Text>
-                <Text style={[styles.tfCell, { width: 120, textAlign: 'right', color: theme.colors.primary }]}>
-                  Rs. {totalFuelAllow.toLocaleString()}
-                </Text>
+                </ScrollView>
               </View>
-            </View>
-          </ScrollView>
-        </View>
+            )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -360,59 +469,145 @@ const getStyles = theme =>
       shadowOpacity: 0.06,
       shadowRadius: 3,
     },
-    filterLabel: {
+    filterTitle: {
       fontSize: 13,
       fontWeight: '800',
       color: theme.colors.text,
-      marginBottom: 8,
+      marginBottom: 12,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    dropdownCol: {
+      flex: 1,
+      marginHorizontal: 4,
+    },
+    filterLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+      marginBottom: 6,
+      textTransform: 'uppercase',
     },
     dropdown: {
-      height: 48,
+      height: 44,
       borderColor: theme.colors.border,
       borderWidth: 1,
       borderRadius: 12,
-      paddingHorizontal: 12,
+      paddingHorizontal: 10,
       backgroundColor: theme.colors.background,
     },
     dropdownPlaceholder: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.colors.textSecondary,
     },
     dropdownSelectedText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '700',
       color: theme.colors.text,
     },
     dropdownIcon: {
-      width: 20,
-      height: 20,
+      width: 18,
+      height: 18,
     },
-    summaryRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 20,
-      gap: 12,
+    loaderWrap: {
+      paddingVertical: 40,
+      alignItems: 'center',
     },
-    summaryBox: {
-      flex: 1,
+    loaderText: {
+      marginTop: 12,
+      fontSize: 13,
+      color: theme.colors.textSecondary,
+    },
+    rulesCard: {
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.border,
       borderWidth: 1,
       borderRadius: 16,
       padding: 14,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 3,
+      marginBottom: 16,
+    },
+    rulesHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    rulesTitle: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: theme.colors.text,
+    },
+    rulesRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 6,
+    },
+    ruleBadge: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: 10,
+      padding: 8,
+      alignItems: 'center',
+    },
+    ruleBadgeLabel: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 2,
+    },
+    ruleBadgeVal: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: theme.colors.text,
+    },
+    ruleBadgePrimary: {
+      flex: 1,
+      backgroundColor: theme.colors.primary + '15',
+      borderColor: theme.colors.primary + '30',
+      borderWidth: 1,
+      borderRadius: 10,
+      padding: 8,
+      alignItems: 'center',
+    },
+    ruleBadgeLabelPrimary: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: theme.colors.primary,
+      textTransform: 'uppercase',
+      marginBottom: 2,
+    },
+    ruleBadgeValPrimary: {
+      fontSize: 12,
+      fontWeight: '900',
+      color: theme.colors.primary,
+    },
+    summaryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+      rowGap: 10,
+    },
+    summaryCard: {
+      width: (SCREEN_WIDTH - 42) / 2,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: 14,
+      padding: 12,
     },
     summaryIconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
+      width: 32,
+      height: 32,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
     },
     summaryVal: {
       fontSize: 16,
@@ -443,6 +638,20 @@ const getStyles = theme =>
       color: theme.colors.primary,
       letterSpacing: 0.5,
     },
+    emptyCard: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: 16,
+      padding: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyText: {
+      marginTop: 10,
+      fontSize: 13,
+      color: theme.colors.textSecondary,
+    },
     tableCard: {
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.border,
@@ -465,7 +674,7 @@ const getStyles = theme =>
       borderBottomColor: theme.colors.border,
     },
     thCell: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '900',
       color: theme.colors.primary,
       textTransform: 'uppercase',
@@ -473,7 +682,7 @@ const getStyles = theme =>
     tableBodyRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: 10,
       paddingHorizontal: 12,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border + '50',
@@ -486,31 +695,30 @@ const getStyles = theme =>
     dateText: {
       fontWeight: '700',
     },
-    attBadge: {
+    badge: {
       alignSelf: 'flex-start',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 8,
     },
-    attBadgeText: {
+    badgeText: {
       fontSize: 10,
       fontWeight: '800',
     },
     fuelValText: {
-      fontWeight: '800',
-      color: theme.colors.text,
+      fontWeight: '900',
     },
     tableFooterRow: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.colors.primary + '10',
-      paddingVertical: 14,
+      paddingVertical: 12,
       paddingHorizontal: 12,
       borderTopWidth: 1.5,
       borderTopColor: theme.colors.primary + '30',
     },
     tfCell: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '900',
       color: theme.colors.text,
     },

@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useEffect } from 'react';
+import { useState, useLayoutEffect, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -50,7 +50,6 @@ const CRMAddHospitalScreen = ({ navigation, route }) => {
     other: null,
   });
 
-  // API Hooks
   const [getCityDropdown, { data: cityRes, isLoading: cityLoading }] =
     useGetCityDropdownMutation();
   const [

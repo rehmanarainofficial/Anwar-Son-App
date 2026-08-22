@@ -266,11 +266,7 @@ export const portalApi = baseApi.injectEndpoints({
     getMonthDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', body.company || '');
-        formData.append('user_id', body.user_id || '');
-        if (body?.role_id !== undefined && body?.role_id !== null) {
-          formData.append('role_id', String(body.role_id));
-        }
+        formData.append('company', body?.company || 'CRM');
         return {
           url: 'dropdown/month.php',
           method: 'POST',
@@ -381,6 +377,31 @@ export const portalApi = baseApi.injectEndpoints({
         };
       },
     }),
+    getSalesmanFuelSummary: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('emp_code', body.emp_code || '');
+        formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
+        if (body.year !== undefined && body.year !== null) {
+          formData.append('year', String(body.year));
+        }
+        if (body.month !== undefined && body.month !== null) {
+          formData.append('month', String(body.month));
+        }
+        return {
+          url: 'portal/get_salesman_fuel_summary.php',
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+      },
+    }),
   }),
   overrideExisting: true,
 });
@@ -405,4 +426,5 @@ export const {
   useGetSalesmanProductSalesAverageCustomerMutation,
   useGetLiveTrackingMutation,
   useUpdateLiveTrackingPostMutation,
+  useGetSalesmanFuelSummaryMutation,
 } = portalApi;

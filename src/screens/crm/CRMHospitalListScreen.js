@@ -121,6 +121,13 @@ const CRMHospitalListScreen = ({ navigation }) => {
     const contact = (item.person_name || '').toLowerCase();
     const cell = (item.cell_no || '').toLowerCase();
     const custType = (item.cust_type || '').toLowerCase();
+    const salesPerson = (
+      item.sales_person ||
+      item.sales_person_name ||
+      item.salesman_name ||
+      item.salesman ||
+      ''
+    ).toLowerCase();
 
     return (
       name.includes(q) ||
@@ -128,7 +135,8 @@ const CRMHospitalListScreen = ({ navigation }) => {
       segment.includes(q) ||
       contact.includes(q) ||
       cell.includes(q) ||
-      custType.includes(q)
+      custType.includes(q) ||
+      salesPerson.includes(q)
     );
   });
 
@@ -205,6 +213,14 @@ const CRMHospitalListScreen = ({ navigation }) => {
                 </View>
               ) : null}
             </View>
+            {(item.sales_person || item.sales_person_name || item.salesman_name || item.salesman) ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Icon name="person-outline" size={12} color={theme.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={[styles.cityText, { color: theme.colors.primary, fontWeight: '600' }]}>
+                  {cleanText(item.sales_person || item.sales_person_name || item.salesman_name || item.salesman)}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.collapsedSubMeta}>
               {item.customer_status ? (
                 <View style={[styles.statusBadge, { backgroundColor: '#10B98110' }]}>
@@ -258,7 +274,10 @@ const CRMHospitalListScreen = ({ navigation }) => {
               </View>
 
               <View style={styles.row}>
-                {renderKeyValue('Sales Person', item.sales_person || 'N/A')}
+                {renderKeyValue(
+                  'Sales Person',
+                  item.sales_person || item.sales_person_name || item.salesman_name || item.salesman || 'N/A'
+                )}
                 {renderKeyValue('Payment Terms', item.payment_terms || 'N/A')}
               </View>
 

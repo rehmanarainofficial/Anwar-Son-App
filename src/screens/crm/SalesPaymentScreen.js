@@ -143,7 +143,33 @@ const SalesPaymentScreen = ({ navigation, route }) => {
     });
   };
 
-  const handleCaptureImage = () => {
+  const handleCaptureImage = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Camera Permission',
+            message: 'App needs camera permission to capture receipt photos.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Toast.show({
+            type: 'error',
+            text1: 'Permission Denied',
+            text2: 'Camera permission is required to capture photos.',
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+        return;
+      }
+    }
+
     const options = {
       mediaType: 'photo',
       quality: 0.7,
