@@ -15,7 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown } from '@components/common';
+import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
@@ -25,6 +25,13 @@ import {
   useGetGiveawayDataMutation,
   usePostGiveawayDataMutation,
 } from '@api/baseApi';
+
+const getInitialFilterDates = () => {
+  const to = new Date();
+  const from = new Date();
+  from.setMonth(from.getMonth() - 1);
+  return { from, to };
+};
 
 const parseDate = dateStr => {
   if (!dateStr) return new Date();
@@ -73,16 +80,33 @@ const STATUS_MAP = {
   '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
 };
 
-const CRMGiveawayRequestScreen = ({ navigation }) => {
+const CRMGiveawayRequestScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
 
   const isRole3 = String(user?.role_id) === '3';
 
+  // Route Status Filter Initializer
+  const routeStatusId = route?.params?.statusId;
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState(
+    routeStatusId ? String(routeStatusId) : 'all',
+  );
+
+  useEffect(() => {
+    if (route?.params?.statusId) {
+      setSelectedStatusFilter(String(route.params.statusId));
+    }
+  }, [route?.params?.statusId]);
+
   // List Data State
   const [giveawayList, setGiveawayList] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Date Filter State (Default 1 Month Range)
+  const initialDates = getInitialFilterDates();
+  const [fromDate, setFromDate] = useState(initialDates.from);
+  const [toDate, setToDate] = useState(initialDates.to);
 
   // Main Form Modal State (Add / Full Edit)
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -142,10 +166,18 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
   const loadGiveawayData = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await getGiveawayData({
+      const payload = {
         user_id: user.id,
         role_id: user?.role_id || '2',
-      }).unwrap();
+      };
+      if (fromDate) {
+        payload.from_date = formatToYYYYMMDD(fromDate);
+      }
+      if (toDate) {
+        payload.to_date = formatToYYYYMMDD(toDate);
+      }
+
+      const res = await getGiveawayData(payload).unwrap();
 
       if (res && (res.status === 'true' || res.status === true) && Array.isArray(res.data)) {
         setGiveawayList(res.data);
@@ -156,7 +188,7 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
       console.log('Error loading giveaway data:', error);
       setGiveawayList([]);
     }
-  }, [user?.id, user?.role_id, getGiveawayData]);
+  }, [user?.id, user?.role_id, fromDate, toDate, getGiveawayData]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -476,6 +508,14 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
           </Text>
         </View>
 
+        {(item.created_by_name || item.created_by) ? (
+          <View style={styles.infoRow}>
+            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Text style={styles.infoLabel}>Created By:</Text>
+            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.created_by}</Text>
+          </View>
+        ) : null}
+
         {item.remarks ? (
           <View style={styles.remarksBox}>
             <Text style={styles.remarksLabel}>Remarks:</Text>
@@ -518,8 +558,40 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
     );
   };
 
+  const filteredGiveawayList = giveawayList.filter(item => {
+    if (selectedStatusFilter && selectedStatusFilter !== 'all') {
+      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
+      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
+
+      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
+      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
+      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
+      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
+      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
+      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
+
+      return sId === String(selectedStatusFilter);
+    }
+    return true;
+  });
+
   return (
     <View style={styles.container}>
+      {/* Date Range Filter */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+        <DateFilter
+          fromDate={fromDate}
+          toDate={toDate}
+          onFromDate={setFromDate}
+          onToDate={setToDate}
+          onClear={() => {
+            setFromDate(null);
+            setToDate(null);
+          }}
+          onFilter={loadGiveawayData}
+        />
+      </View>
+
       {/* Main Content: List of Giveaway Cards */}
       {dataLoading && !isRefreshing ? (
         <View style={styles.loaderContainer}>
@@ -528,7 +600,7 @@ const CRMGiveawayRequestScreen = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
-          data={giveawayList}
+          data={filteredGiveawayList}
           keyExtractor={item => String(item.id)}
           renderItem={renderCardItem}
           contentContainerStyle={styles.listContent}
@@ -1250,6 +1322,20 @@ const getStyles = theme =>
       color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '700',
+    },
+    statusTabPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      marginRight: 6,
+    },
+    statusTabPillText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
     },
   });
 

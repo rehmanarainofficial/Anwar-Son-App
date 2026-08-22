@@ -1,7 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '@config/useTheme';
+import { DateFilter } from '@components/common';
+
+const getInitialFilterDates = () => {
+  const to = new Date();
+  const from = new Date();
+  from.setMonth(from.getMonth() - 1);
+  return { from, to };
+};
 
 const mockData = [
   {
@@ -65,6 +73,10 @@ const mockData = [
 const CRMSampleApprovalScreen = () => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
+
+  const initialDates = getInitialFilterDates();
+  const [fromDate, setFromDate] = useState(initialDates.from);
+  const [toDate, setToDate] = useState(initialDates.to);
 
   const getStatusColor = status => {
     switch (status) {
@@ -146,10 +158,10 @@ const CRMSampleApprovalScreen = () => {
             <Text
               style={[
                 styles.salesmanName,
-                { color: theme.colors.textSecondary },
+                { color: theme.colors.textSecondary, fontWeight: '700' },
               ]}
             >
-              Rep: {item.salesman} ({item.salesRegion})
+              Created By: {item.created_by_name || item.salesman} ({item.salesRegion})
             </Text>
           </View>
         </View>
@@ -228,6 +240,19 @@ const CRMSampleApprovalScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+          <DateFilter
+            fromDate={fromDate}
+            toDate={toDate}
+            onFromDate={setFromDate}
+            onToDate={setToDate}
+            onClear={() => {
+              setFromDate(null);
+              setToDate(null);
+            }}
+            onFilter={() => {}}
+          />
+        </View>
         <FlatList
           data={mockData}
           keyExtractor={item => item.id}

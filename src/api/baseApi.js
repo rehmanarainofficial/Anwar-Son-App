@@ -641,6 +641,26 @@ export const baseApi = createApi({
         };
       },
     }),
+    getSampleData: builder.mutation({
+      query: body => {
+        const formData = new FormData();
+        formData.append('company', 'CRM');
+        formData.append('user_id', body.user_id || '');
+        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        if (body?.from_date) {
+          formData.append('from_date', String(body.from_date));
+        }
+        if (body?.to_date) {
+          formData.append('to_date', String(body.to_date));
+        }
+        return {
+          url: 'portal/get_sample_data.php',
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        };
+      },
+    }),
     postSampleData: builder.mutation({
       query: body => {
         const formData = new FormData();
@@ -873,7 +893,13 @@ export const baseApi = createApi({
         const formData = new FormData();
         formData.append('company', 'CRM');
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '');
+        if (body?.from_date) {
+          formData.append('from_date', String(body.from_date));
+        }
+        if (body?.to_date) {
+          formData.append('to_date', String(body.to_date));
+        }
         return {
           url: 'field_activity/giveaway_data_api.php',
           method: 'POST',
@@ -929,8 +955,14 @@ export const baseApi = createApi({
         formData.append('company', 'CRM');
         formData.append('user_id', body.user_id || '');
         formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
-        if (body.id !== undefined && body.id !== null) {
+        if (body.id !== undefined && body.id !== null && String(body.id) !== '0' && String(body.id) !== '') {
           formData.append('id', String(body.id));
+        }
+        if (body?.from_date) {
+          formData.append('from_date', String(body.from_date));
+        }
+        if (body?.to_date) {
+          formData.append('to_date', String(body.to_date));
         }
         return {
           url: 'field_activity/workshop_get_api.php',
@@ -944,7 +976,7 @@ export const baseApi = createApi({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
-        formData.append('id', body.id !== undefined ? String(body.id) : '0');
+        formData.append('id', body.id !== undefined && body.id !== null && String(body.id) !== '' ? String(body.id) : '0');
         formData.append('title', body.title || '');
         formData.append('date', body.date || '');
         formData.append('hospital_id', body.hospital_id || '');
@@ -979,12 +1011,12 @@ export const baseApi = createApi({
             : JSON.stringify(body.budget || []),
         );
 
-        formData.append('status_id', body.status_id !== undefined ? String(body.status_id) : '1');
-        formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        formData.append('status_id', body.status_id !== undefined && body.status_id !== null && String(body.status_id) !== '' ? String(body.status_id) : '1');
+        formData.append('user_id', body.user_id ? String(body.user_id) : '');
+        formData.append('role_id', body.role_id !== undefined && body.role_id !== null && String(body.role_id) !== '' ? String(body.role_id) : '2');
 
         if (body.manager_remarks !== undefined && body.manager_remarks !== null) {
-          formData.append('manager_remarks', body.manager_remarks);
+          formData.append('manager_remarks', String(body.manager_remarks));
         }
 
         return {
@@ -1001,8 +1033,14 @@ export const baseApi = createApi({
         formData.append('company', 'CRM');
         formData.append('user_id', body.user_id || '');
         formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
-        if (body.id !== undefined && body.id !== null) {
+        if (body.id !== undefined && body.id !== null && String(body.id) !== '0' && String(body.id) !== '') {
           formData.append('id', String(body.id));
+        }
+        if (body?.from_date) {
+          formData.append('from_date', String(body.from_date));
+        }
+        if (body?.to_date) {
+          formData.append('to_date', String(body.to_date));
         }
         return {
           url: 'field_activity/conference_get_api.php',
@@ -1024,7 +1062,7 @@ export const baseApi = createApi({
         formData.append('venue', body.venue || '');
         formData.append('organized_by', body.organized_by || '');
         formData.append('lead_organiser_name', body.lead_organiser_name || '');
-        formData.append('mode', body.mode || '1');
+        formData.append('mode', body.mode || '');
         formData.append('web_link', body.web_link || '');
         formData.append('purpose', body.purpose || '');
         formData.append('benefits', body.benefits || '');
@@ -1106,6 +1144,7 @@ export const {
   useGetHospitalCategoryDropdownMutation,
   useGetProductPlanCategoryDropdownMutation,
   useGetSurgicalSpecialityDropdownMutation,
+  useGetSampleDataMutation,
   usePostSampleDataMutation,
   useGetPaymentTermsDropdownMutation,
   useGetCustomerTypeDropdownMutation,

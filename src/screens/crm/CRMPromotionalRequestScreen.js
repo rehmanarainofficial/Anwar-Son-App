@@ -83,12 +83,24 @@ const STATUS_MAP = {
   '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
 };
 
-const CRMPromotionalRequestScreen = ({ navigation }) => {
+const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
 
   const isRole3 = String(user?.role_id) === '3';
+
+  // Route Status Filter Initializer
+  const routeStatusId = route?.params?.statusId;
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState(
+    routeStatusId ? String(routeStatusId) : 'all',
+  );
+
+  useEffect(() => {
+    if (route?.params?.statusId) {
+      setSelectedStatusFilter(String(route.params.statusId));
+    }
+  }, [route?.params?.statusId]);
 
   // List Data State
   const [promotionalList, setPromotionalList] = useState([]);
@@ -500,6 +512,14 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
           </Text>
         </View>
 
+        {(item.created_by_name || item.created_by) ? (
+          <View style={styles.infoRow}>
+            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Text style={styles.infoLabel}>Created By:</Text>
+            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.created_by}</Text>
+          </View>
+        ) : null}
+
         {item.remarks ? (
           <View style={styles.remarksBox}>
             <Text style={styles.remarksLabel}>Remarks:</Text>
@@ -552,35 +572,19 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
   };
 
   const filteredPromotionalList = promotionalList.filter(item => {
-    if (!fromDate && !toDate) return true;
+    if (selectedStatusFilter && selectedStatusFilter !== 'all') {
+      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
+      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
 
-    const itemDate = parseDate(item.tran_date || item.date || item.created_at);
-    if (!itemDate || isNaN(itemDate.getTime())) return true;
+      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
+      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
+      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
+      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
+      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
+      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
 
-    const targetTime = new Date(
-      itemDate.getFullYear(),
-      itemDate.getMonth(),
-      itemDate.getDate(),
-    ).getTime();
-
-    if (fromDate) {
-      const fromTime = new Date(
-        fromDate.getFullYear(),
-        fromDate.getMonth(),
-        fromDate.getDate(),
-      ).getTime();
-      if (targetTime < fromTime) return false;
+      return sId === String(selectedStatusFilter);
     }
-
-    if (toDate) {
-      const toTime = new Date(
-        toDate.getFullYear(),
-        toDate.getMonth(),
-        toDate.getDate(),
-      ).getTime();
-      if (targetTime > toTime) return false;
-    }
-
     return true;
   });
 
@@ -597,7 +601,7 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
             setFromDate(null);
             setToDate(null);
           }}
-          onFilter={() => {}}
+          onFilter={loadPromotionalData}
         />
       </View>
 
@@ -1410,6 +1414,20 @@ const getStyles = theme =>
       color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '700',
+    },
+    statusTabPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      marginRight: 6,
+    },
+    statusTabPillText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
     },
   });
 
