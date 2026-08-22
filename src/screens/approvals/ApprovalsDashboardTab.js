@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -39,6 +40,24 @@ const STATUS_CONFIG = [
   { id: '6', name: 'Completed', bg: '#E0E7FF', text: '#3730A3', icon: 'ribbon-outline' },
 ];
 
+const extractList = (val, keys = []) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (Array.isArray(val.data)) return val.data;
+
+  for (const key of keys) {
+    if (val[key] && Array.isArray(val[key])) return val[key];
+    if (val.data && val.data[key] && Array.isArray(val.data[key])) return val.data[key];
+  }
+
+  if (val.data && typeof val.data === 'object') {
+    for (const k in val.data) {
+      if (Array.isArray(val.data[k])) return val.data[k];
+    }
+  }
+  return [];
+};
+
 const ApprovalsDashboardTab = ({ navigation }) => {
   const { theme } = useTheme();
   const dispatch = useDispatch();
@@ -66,13 +85,22 @@ const ApprovalsDashboardTab = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Modal State for Selected Activity Status Popup
-  const [selectedActivityModal, setSelectedActivityModal] = useState(null);
+  const [selectedActivityModalId, setSelectedActivityModalId] = useState(null);
 
   const fetchAllActivities = useCallback(async () => {
     if (!user?.id) return;
+
+    const to = new Date();
+    const from = new Date();
+    from.setMonth(from.getMonth() - 1);
+    const formatToYYYYMMDD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
     const payload = {
       user_id: user.id,
-      role_id: user?.role_id || '2',
+      role_id: user?.role_id !== undefined ? String(user.role_id) : '2',
+      company: 'CRM',
+      from_date: formatToYYYYMMDD(from),
+      to_date: formatToYYYYMMDD(to),
     };
 
     try {
@@ -86,50 +114,23 @@ const ApprovalsDashboardTab = ({ navigation }) => {
         ]);
 
       if (resPromo.status === 'fulfilled' && resPromo.value) {
-        const val = resPromo.value;
-        if (Array.isArray(val.data)) {
-          setPromoList(val.data);
-        } else if (val.data && Array.isArray(val.data.promotional)) {
-          setPromoList(val.data.promotional);
-        }
+        setPromoList(extractList(resPromo.value, ['promotional', 'promotional_data', 'promotions']));
       }
 
       if (resGiveaway.status === 'fulfilled' && resGiveaway.value) {
-        const val = resGiveaway.value;
-        if (Array.isArray(val.data)) {
-          setGiveawayList(val.data);
-        } else if (val.data && Array.isArray(val.data.giveaways)) {
-          setGiveawayList(val.data.giveaways);
-        }
+        setGiveawayList(extractList(resGiveaway.value, ['giveaways', 'giveaway_data', 'giveaway']));
       }
 
       if (resWorkshop.status === 'fulfilled' && resWorkshop.value) {
-        const val = resWorkshop.value;
-        if (val.data && Array.isArray(val.data.workshops)) {
-          setWorkshopList(val.data.workshops);
-        } else if (Array.isArray(val.data)) {
-          setWorkshopList(val.data);
-        }
+        setWorkshopList(extractList(resWorkshop.value, ['workshops', 'workshop_data', 'workshop']));
       }
 
       if (resConference.status === 'fulfilled' && resConference.value) {
-        const val = resConference.value;
-        if (val.data && Array.isArray(val.data.conferences)) {
-          setConferenceList(val.data.conferences);
-        } else if (val.data && Array.isArray(val.data.workshops)) {
-          setConferenceList(val.data.workshops);
-        } else if (Array.isArray(val.data)) {
-          setConferenceList(val.data);
-        }
+        setConferenceList(extractList(resConference.value, ['conferences', 'conference_data', 'conference']));
       }
 
       if (resSample.status === 'fulfilled' && resSample.value) {
-        const val = resSample.value;
-        if (Array.isArray(val.data)) {
-          setSampleList(val.data);
-        } else if (val.data && Array.isArray(val.data.samples)) {
-          setSampleList(val.data.samples);
-        }
+        setSampleList(extractList(resSample.value, ['samples', 'sample_data', 'sample']));
       }
     } catch (error) {
       console.log('Error fetching field activity approvals data:', error);
@@ -144,9 +145,11 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     getSampleData,
   ]);
 
-  useEffect(() => {
-    fetchAllActivities();
-  }, [fetchAllActivities]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchAllActivities();
+    }, [fetchAllActivities])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -235,9 +238,13 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     },
   ];
 
+  const selectedActivityModal = activityItems.find(a => a.id === selectedActivityModalId);
+
   const handleSelectStatusChoice = (act, statusId) => {
-    setSelectedActivityModal(null);
-    navigation.navigate(act.screen, { statusId });
+    setSelectedActivityModalId(null);
+    if (act?.screen) {
+      navigation.navigate(act.screen, { statusId });
+    }
   };
 
   const pendingItems = [
@@ -390,7 +397,7 @@ const ApprovalsDashboardTab = ({ navigation }) => {
               <TouchableOpacity
                 key={act.id}
                 style={styles.fieldReqItem}
-                onPress={() => setSelectedActivityModal(act)}
+                onPress={() => setSelectedActivityModalId(act.id)}
                 activeOpacity={0.75}
               >
                 <View style={styles.circleWrap}>
@@ -446,15 +453,15 @@ const ApprovalsDashboardTab = ({ navigation }) => {
 
       {/* STATUS SELECTION MODAL POPUP */}
       <Modal
-        visible={!!selectedActivityModal}
+        visible={!!selectedActivityModalId}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setSelectedActivityModal(null)}
+        onRequestClose={() => setSelectedActivityModalId(null)}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setSelectedActivityModal(null)}
+          onPress={() => setSelectedActivityModalId(null)}
         >
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeaderRow}>
@@ -481,7 +488,7 @@ const ApprovalsDashboardTab = ({ navigation }) => {
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => setSelectedActivityModal(null)}
+                onPress={() => setSelectedActivityModalId(null)}
                 style={styles.closeBtn}
               >
                 <Icon name="close" size={20} color={theme.colors.textSecondary} />
