@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '@config/useTheme';
 import { SearchableDropdown, CustomButton } from '@components/common';
 import { useSelector } from 'react-redux';
+import { formatToAsiaDateTime, getAsiaCurrentDate } from '../../utils/dateUtils';
 import {
   useGetSalesCategoryMutation,
   useGetSalesActivityMutation,
@@ -51,7 +52,7 @@ const SaleTaskScreen = ({ navigation, route }) => {
   // Dropdown States
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
-  const [selectedProductCategory, setSelectedProductCategory] = useState(null);
+  const [selectedProductCategories, setSelectedProductCategories] = useState([]);
   const [selectedHospital, setSelectedHospital] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null);
 
@@ -88,10 +89,10 @@ const SaleTaskScreen = ({ navigation, route }) => {
 
   const [dailyPlans, setDailyPlans] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const hasFetchedInitialDataRef = useRef(false);
 
   const getCurrentDate = () => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
+    return getAsiaCurrentDate();
   };
 
   const fetchDailyPlan = useCallback(async () => {
@@ -99,6 +100,7 @@ const SaleTaskScreen = ({ navigation, route }) => {
     try {
       const response = await getDailyWorkingPlan({
         user_id: user?.id,
+        role_id: user?.role_id,
         date: getCurrentDate(),
       }).unwrap();
       if (response.status === 'true') {
@@ -107,16 +109,32 @@ const SaleTaskScreen = ({ navigation, route }) => {
     } catch (error) {
       console.error('Fetch Plan Error:', error);
     }
-  }, [user?.id, getDailyWorkingPlan]);
+  }, [user?.id, user?.role_id, getDailyWorkingPlan]);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !hasFetchedInitialDataRef.current) {
+      hasFetchedInitialDataRef.current = true;
       getSalesCategory({});
-      getHospital({ id: user?.id });
-      getProductPlanCategory({ user_id: user?.id });
+      getHospital({ id: user?.id, role_id: user?.role_id });
+      getProductPlanCategory({ user_id: user?.id, role_id: user?.role_id });
       fetchDailyPlan();
     }
-  }, [user?.id, getSalesCategory, getHospital, getProductPlanCategory, fetchDailyPlan]);
+  }, [user?.id, user?.role_id, getSalesCategory, getHospital, getProductPlanCategory, fetchDailyPlan]);
+
+  const selectedCategoryObj = catRes?.data?.find(
+    c => String(c.id) === String(selectedCategory),
+  );
+
+  const selectedCategoryName = (
+    selectedCategoryObj?.description ||
+    selectedCategoryObj?.name ||
+    ''
+  ).toLowerCase().trim();
+
+  const isExtraFieldsDisabled =
+    selectedCategoryName.includes('joint field') ||
+    selectedCategoryName.includes('meeting') ||
+    selectedCategoryName.includes('training');
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -128,26 +146,39 @@ const SaleTaskScreen = ({ navigation, route }) => {
     setSelectedCategory(item.id);
     setSelectedActivity(null);
     getSalesActivity({ sales_category: item.id });
+
+    const name = (item.description || item.name || '').toLowerCase().trim();
+    if (
+      name.includes('joint field') ||
+      name.includes('meeting') ||
+      name.includes('training')
+    ) {
+      setSelectedHospital(null);
+      setSelectedContact(null);
+      setSelectedProductCategories([]);
+    }
   };
 
   const handleHospitalSelect = item => {
     setSelectedHospital(item.debtor_no);
     setSelectedContact(null);
-    getHospitalContacts({ hospital_id: item.debtor_no, user_id: user?.id });
+    getHospitalContacts({ hospital_id: item.debtor_no, user_id: user?.id, role_id: user?.role_id });
   };
 
   const handleAddTask = async () => {
     if (
       !selectedCategory ||
       !selectedActivity ||
-      !selectedProductCategory ||
-      !selectedHospital ||
-      !selectedContact
+      (!isExtraFieldsDisabled &&
+        (!selectedProductCategories ||
+          selectedProductCategories.length === 0 ||
+          !selectedHospital ||
+          !selectedContact))
     ) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Please select all fields.',
+        text2: 'Please select all required fields.',
       });
       return;
     }
@@ -156,13 +187,14 @@ const SaleTaskScreen = ({ navigation, route }) => {
       const response = await addDailyWorkingPlan({
         id: '0',
         user_id: user?.id,
+        role_id: user?.role_id,
         code: user?.emp_code,
         activity_date: getCurrentDate(),
         category: selectedCategory,
         activity: selectedActivity,
-        product_category: selectedProductCategory,
-        hospital_name: selectedHospital,
-        contact_person: selectedContact,
+        product_category: isExtraFieldsDisabled ? [] : selectedProductCategories,
+        hospital_name: isExtraFieldsDisabled ? '' : (selectedHospital || ''),
+        contact_person: isExtraFieldsDisabled ? '' : (selectedContact || ''),
         created_by: user?.id,
         progress_status: '0',
       }).unwrap();
@@ -175,7 +207,7 @@ const SaleTaskScreen = ({ navigation, route }) => {
         });
         setSelectedCategory(null);
         setSelectedActivity(null);
-        setSelectedProductCategory(null);
+        setSelectedProductCategories([]);
         setSelectedHospital(null);
         setSelectedContact(null);
         fetchDailyPlan();
@@ -318,6 +350,7 @@ const SaleTaskScreen = ({ navigation, route }) => {
       const response = await addDailyWorkingPlan({
         id: selectedTask.id,
         user_id: user?.id,
+        role_id: user?.role_id,
         emp_code: user?.emp_code,
         activity: selectedStatusObj?.description || '',
         activity_id: selectedProgressStatusId,
@@ -408,9 +441,88 @@ const SaleTaskScreen = ({ navigation, route }) => {
         .replace(/&gt;/g, '>');
     };
 
-    const productCategoryName = prodCatRes?.data?.find(
-      c => c.category_id === item.product_category
-    )?.description || item.product_category_name || item.product_category;
+    const getProductCategoryNames = () => {
+      let raw = item.product_category_name || item.product_category || item.product_categories || item.key_products;
+      if (!raw) return '';
+
+      let categoriesArray = [];
+      if (Array.isArray(raw)) {
+        categoriesArray = raw;
+      } else if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            categoriesArray = JSON.parse(trimmed);
+          } catch (e) {
+            categoriesArray = trimmed.split(',').map(s => s.trim());
+          }
+        } else if (trimmed.includes(',')) {
+          categoriesArray = trimmed.split(',').map(s => s.trim());
+        } else {
+          categoriesArray = [trimmed];
+        }
+      }
+
+      if (!Array.isArray(categoriesArray) || categoriesArray.length === 0) {
+        return cleanText(String(raw));
+      }
+
+      const names = categoriesArray
+        .map(cat => {
+          if (cat && typeof cat === 'object') {
+            return cat.description || cat.name || cat.category_id || cat.prod_category || '';
+          }
+          const catId = String(cat);
+          const found = prodCatRes?.data?.find(
+            c => String(c.category_id) === catId || String(c.id) === catId
+          );
+          return found ? found.description : catId;
+        })
+        .filter(Boolean);
+
+      return cleanText(names.join(', '));
+    };
+
+    const productCategoryName = getProductCategoryNames();
+
+    const formatCustomDateTime = dateStr => {
+      if (
+        !dateStr ||
+        dateStr === '0000-00-00 00:00:00' ||
+        dateStr === '0000-00-00' ||
+        dateStr === 'null' ||
+        dateStr === '0'
+      ) {
+        return 'N/A';
+      }
+
+      const str = String(dateStr).trim();
+      const match = str.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const [, year, month, day, hours, minutes, seconds] = match;
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+      }
+
+      const dateOnlyMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch;
+        return `${day}/${month}/${year}`;
+      }
+
+      try {
+        const d = new Date(str);
+        if (isNaN(d.getTime())) return cleanText(str);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+      } catch (e) {
+        return cleanText(str);
+      }
+    };
 
     return (
       <View style={styles.card}>
@@ -500,6 +612,28 @@ const SaleTaskScreen = ({ navigation, route }) => {
             </Text>
           </View>
 
+          <View style={styles.infoRow}>
+            <Icon
+              name="time-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.infoText}>
+              Created At: {formatToAsiaDateTime(item.created_at)}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Icon
+              name="create-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.infoText}>
+              Updated At: {formatToAsiaDateTime(item.updated_at)}
+            </Text>
+          </View>
+
           {isProgress && (
             <>
               <View style={styles.cardDivider} />
@@ -547,19 +681,29 @@ const SaleTaskScreen = ({ navigation, route }) => {
 
           <SearchableDropdown
             label="Product Category"
-            placeholder="Select Product Category"
+            placeholder={
+              isExtraFieldsDisabled
+                ? 'Not required for this category'
+                : 'Select Product Category'
+            }
             data={prodCatRes?.data || []}
-            selectedId={selectedProductCategory}
-            onSelect={item => setSelectedProductCategory(item.category_id)}
+            isMultiSelect={true}
+            selectedIds={selectedProductCategories}
+            onSelectMulti={selectedArray => setSelectedProductCategories(selectedArray)}
             isLoading={prodCatLoading}
             idKey="category_id"
             labelKey="description"
             iconName="cube-outline"
+            disabled={isExtraFieldsDisabled}
           />
 
           <SearchableDropdown
             label="Hospital"
-            placeholder="Select Hospital"
+            placeholder={
+              isExtraFieldsDisabled
+                ? 'Not required for this category'
+                : 'Select Hospital'
+            }
             data={hospRes?.data || []}
             selectedId={selectedHospital}
             onSelect={handleHospitalSelect}
@@ -567,12 +711,17 @@ const SaleTaskScreen = ({ navigation, route }) => {
             idKey="debtor_no"
             labelKey="name"
             iconName="business-outline"
+            disabled={isExtraFieldsDisabled}
           />
 
           <SearchableDropdown
             label="Hospital Contact"
             placeholder={
-              selectedHospital ? 'Select Contact' : 'First select hospital'
+              isExtraFieldsDisabled
+                ? 'Not required for this category'
+                : selectedHospital
+                ? 'Select Contact'
+                : 'First select hospital'
             }
             data={contactRes?.data || []}
             selectedId={selectedContact}
@@ -580,7 +729,7 @@ const SaleTaskScreen = ({ navigation, route }) => {
             isLoading={contactLoading}
             labelKey="person_name"
             iconName="people-outline"
-            disabled={!selectedHospital}
+            disabled={isExtraFieldsDisabled || !selectedHospital}
           />
 
           <View style={styles.buttonContainer}>

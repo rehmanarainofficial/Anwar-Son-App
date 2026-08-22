@@ -15,7 +15,7 @@ import { useTheme } from '@config/useTheme';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
 import {
-  useGetStockCategoryMutation,
+  useGetSalesTargetCategoryMutation,
   useGetStockMasterCodeMutation,
 } from '@api/baseApi';
 import {
@@ -87,14 +87,13 @@ const CRMProductSalesScreen = () => {
 
   // Mutations
   const [getSalesman] = useGetSalesmanDropdownMutation();
-  const [getStockCategory] = useGetStockCategoryMutation();
+  const [getSalesTargetCategory] = useGetSalesTargetCategoryMutation();
   const [getStockMasterCode] = useGetStockMasterCodeMutation();
   const [getAverageSales] = useGetSalesmanProductSalesAverageMutation();
 
   // Fetch initial filters on mount
   useEffect(() => {
     fetchInitialDropdowns();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchInitialDropdowns = async () => {
@@ -102,9 +101,8 @@ const CRMProductSalesScreen = () => {
     try {
       const companyCode = user?.company_user_code || '';
       const userId = user?.company_user_id || '';
-      const roleId = user?.role_id || '2';
+      const roleId = user?.role_id || '';
 
-      // 1. Salesman (only fetch if allowed)
       if (showSalesman) {
         const salesmanRes = await getSalesman({
           user_id: userId,
@@ -116,8 +114,7 @@ const CRMProductSalesScreen = () => {
         }
       }
 
-      // 2. Stock Category (Category API: company CRM, user_id: login user)
-      const categoryRes = await getStockCategory({
+      const categoryRes = await getSalesTargetCategory({
         company: 'CRM',
         user_id: userId,
       }).unwrap();
@@ -136,7 +133,6 @@ const CRMProductSalesScreen = () => {
     }
   };
 
-  // Fetch product codes cascadingly when selectedCategory changes
   useEffect(() => {
     const fetchCodes = async () => {
       if (!selectedCategory) {
@@ -164,7 +160,6 @@ const CRMProductSalesScreen = () => {
     fetchCodes();
   }, [selectedCategory, getStockMasterCode, user]);
 
-  // Fetch average sales analysis data based on selected filter values
   const fetchAnalysisData = useCallback(async () => {
     if (initialLoading) return;
     setSubmitting(true);
@@ -190,7 +185,6 @@ const CRMProductSalesScreen = () => {
     }
   }, [selectedCategory, selectedProduct, selectedSalesman, getAverageSales, user, initialLoading]);
 
-  // Automatically trigger fetch on initial load and when any filter selection changes
   useEffect(() => {
     fetchAnalysisData();
   }, [fetchAnalysisData]);
@@ -203,7 +197,6 @@ const CRMProductSalesScreen = () => {
 
   const formatMonthName = (name) => {
     if (!name) return '';
-    // e.g. "Aug-2025" -> "Aug 25"
     const parts = name.split('-');
     if (parts.length === 2) {
       const month = parts[0];
@@ -217,7 +210,7 @@ const CRMProductSalesScreen = () => {
     if (val === undefined || val === null || val === '' || parseFloat(val) === 0) {
       return '-';
     }
-    return parseFloat(val).toFixed(0); // Displaying whole number or 2 decimal as requested: ".toFixed(0) or .toFixed(2)"
+    return parseFloat(val).toFixed(0);
   };
 
   const renderSummaryCards = (list) => {

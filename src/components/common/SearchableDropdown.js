@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { useTheme } from '@config/useTheme';
 
 /**
  * SearchableDropdown
- * A reusable, premium searchable dropdown component.
+ * Reusable searchable dropdown supporting both single-select and multi-select modes.
  */
 const SearchableDropdown = ({
   label,
@@ -23,6 +23,9 @@ const SearchableDropdown = ({
   data = [],
   selectedId,
   onSelect,
+  isMultiSelect = false,
+  selectedIds = [],
+  onSelectMulti,
   isLoading = false,
   iconName = 'list-outline',
   idKey = 'id',
@@ -40,13 +43,46 @@ const SearchableDropdown = ({
   });
 
   const checkIsSelected = item => {
-    if (selectedId === null || selectedId === undefined || selectedId === '') return false;
     const itemId = item[idKey];
     if (itemId === null || itemId === undefined || itemId === '') return false;
+
+    if (isMultiSelect) {
+      return (selectedIds || []).some(id => String(id) === String(itemId));
+    }
+
+    if (selectedId === null || selectedId === undefined || selectedId === '') return false;
     return String(selectedId) === String(itemId);
   };
 
-  const selectedItem = data.find(item => checkIsSelected(item));
+  const selectedItem = !isMultiSelect ? data.find(item => checkIsSelected(item)) : null;
+
+  const selectedMultiItems = isMultiSelect
+    ? data.filter(item => checkIsSelected(item))
+    : [];
+
+  const getDisplayText = () => {
+    if (isMultiSelect) {
+      if (selectedMultiItems.length === 0) return placeholder;
+      return selectedMultiItems.map(item => item[labelKey]).join(', ');
+    }
+    return selectedItem ? selectedItem[labelKey] : placeholder;
+  };
+
+  const hasSelection = isMultiSelect ? selectedMultiItems.length > 0 : !!selectedItem;
+
+  const handleToggleMulti = item => {
+    const itemId = item[idKey];
+    const current = Array.isArray(selectedIds) ? [...selectedIds] : [];
+    const existsIndex = current.findIndex(id => String(id) === String(itemId));
+    if (existsIndex > -1) {
+      current.splice(existsIndex, 1);
+    } else {
+      current.push(itemId);
+    }
+    if (onSelectMulti) {
+      onSelectMulti(current);
+    }
+  };
 
   const s = getStyles(theme, disabled);
 
@@ -80,11 +116,11 @@ const SearchableDropdown = ({
             <Text
               style={[
                 s.dropdownText,
-                { color: selectedItem ? theme.colors.text : theme.colors.textSecondary },
+                { color: hasSelection ? theme.colors.text : theme.colors.textSecondary },
               ]}
               numberOfLines={1}
             >
-              {selectedItem ? selectedItem[labelKey] : placeholder}
+              {getDisplayText()}
             </Text>
             <Icon name="chevron-down" size={18} color={theme.colors.textSecondary} />
           </>
@@ -146,8 +182,12 @@ const SearchableDropdown = ({
                       },
                     ]}
                     onPress={() => {
-                      onSelect(item);
-                      setDropdownOpen(false);
+                      if (isMultiSelect) {
+                        handleToggleMulti(item);
+                      } else {
+                        onSelect(item);
+                        setDropdownOpen(false);
+                      }
                     }}
                     activeOpacity={0.6}
                   >
@@ -155,18 +195,38 @@ const SearchableDropdown = ({
                     <Text style={[s.modalItemName, { color: theme.colors.text }]} numberOfLines={1}>
                       {item[labelKey]}
                     </Text>
-                    {itemIsSelected && (
+                    {isMultiSelect ? (
                       <Icon
-                        name="checkmark-circle"
-                        size={18}
-                        color={theme.colors.primary}
+                        name={itemIsSelected ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={itemIsSelected ? theme.colors.primary : theme.colors.textSecondary}
                         style={{ marginLeft: 8 }}
                       />
+                    ) : (
+                      itemIsSelected && (
+                        <Icon
+                          name="checkmark-circle"
+                          size={18}
+                          color={theme.colors.primary}
+                          style={{ marginLeft: 8 }}
+                        />
+                      )
                     )}
                   </TouchableOpacity>
                 );
               }}
             />
+
+            {isMultiSelect && (
+              <TouchableOpacity
+                style={[s.doneBtn, { backgroundColor: theme.colors.primary }]}
+                onPress={() => setDropdownOpen(false)}
+              >
+                <Text style={s.doneBtnText}>
+                  DONE ({selectedMultiItems.length} selected)
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -239,6 +299,17 @@ const getStyles = (theme, disabled) =>
     modalItemDot: { width: 8, height: 8, borderRadius: 4 },
     modalItemName: { flex: 1, fontSize: 14, fontWeight: '600' },
     emptyText: { textAlign: 'center', padding: 30, color: theme.colors.textSecondary },
+    doneBtn: {
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    doneBtnText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '800',
+    },
   });
 
 export default SearchableDropdown;

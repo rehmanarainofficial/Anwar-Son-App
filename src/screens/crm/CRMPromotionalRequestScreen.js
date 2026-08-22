@@ -18,6 +18,7 @@ import Toast from 'react-native-toast-message';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '@config/useTheme';
 import { CustomDatePicker, SearchableDropdown } from '@components/common';
+import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
   useGetCommunityDropdownMutation,
@@ -430,7 +431,7 @@ const CRMPromotionalRequestScreen = ({ navigation }) => {
           </View>
           <View style={styles.headerRightRow}>
             {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{item.tran_date}</Text>
+            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.tran_date, false)}</Text>
           </View>
         </View>
 

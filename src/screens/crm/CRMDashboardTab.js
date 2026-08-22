@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,6 +15,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout, selectCurrentUser } from '@store/slices/authSlice';
 import { useTheme } from '@config/useTheme';
 import { ThemeDropdown } from '@components/common';
+import { useGetHospitalDataMutation, useGetContactsDataMutation } from '@api/portalApi';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT =
@@ -24,6 +27,103 @@ const CRMDashboardTab = ({ navigation }) => {
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   const styles = getStyles(theme);
+
+  const [hospitalsData, setHospitalsData] = useState([]);
+  const [contactsData, setContactsData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [getHospitalData] = useGetHospitalDataMutation();
+  const [getContactsData] = useGetContactsDataMutation();
+
+  const loadDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const uId = user?.id || user?.company_user_id || '';
+      const rId = user?.role_id;
+
+      const [hospRes, contactRes] = await Promise.all([
+        getHospitalData({ user_id: uId, role_id: rId, company: 'CRM' })
+          .unwrap()
+          .catch(() => ({ status: 'false', data: [] })),
+        getContactsData({ user_id: uId, role_id: rId, company: 'CRM' })
+          .unwrap()
+          .catch(() => ({ status: 'false', data: [] })),
+      ]);
+
+      if (hospRes?.status === 'true' && Array.isArray(hospRes.data)) {
+        setHospitalsData(hospRes.data);
+      } else {
+        setHospitalsData([]);
+      }
+
+      if (contactRes?.status === 'true' && Array.isArray(contactRes.data)) {
+        setContactsData(contactRes.data);
+      } else {
+        setContactsData([]);
+      }
+    } catch (e) {
+      console.log('Error loading CRM Dashboard counts:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, user?.company_user_id, user?.role_id, getHospitalData, getContactsData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboardData();
+    }, [loadDashboardData])
+  );
+
+  // Hospital Dynamic Counts
+  const totalHospitals = hospitalsData.length;
+  const activeHospitalsCount = hospitalsData.filter(h => {
+    const s = (h.customer_status || h.status || '').toLowerCase();
+    return s === 'active' || s === '1' || s === '';
+  }).length;
+  const activeHospitals = totalHospitals > 0 ? (activeHospitalsCount || totalHospitals) : 0;
+  const hospitalPct = totalHospitals > 0 ? Math.round((activeHospitals / totalHospitals) * 100) : 0;
+
+  const tier1Count = hospitalsData.filter(h => {
+    const tid = String(h.tier_id || '').toLowerCase();
+    const tname = (h.tier || '').toLowerCase();
+    return tid === '1' || tname.includes('tier 1') || tname === '1';
+  }).length;
+
+  const tier2Count = hospitalsData.filter(h => {
+    const tid = String(h.tier_id || '').toLowerCase();
+    const tname = (h.tier || '').toLowerCase();
+    return tid === '2' || tname.includes('tier 2') || tname === '2';
+  }).length;
+
+  const tier3Count = hospitalsData.filter(h => {
+    const tid = String(h.tier_id || '').toLowerCase();
+    const tname = (h.tier || '').toLowerCase();
+    return tid === '3' || tname.includes('tier 3') || tname === '3';
+  }).length;
+
+  // Contact Dynamic Counts
+  const totalContacts = contactsData.length;
+  const activeContactsCount = contactsData.filter(c => {
+    const s = (c.status || '').toLowerCase();
+    return s === 'active' || s === '1' || s === '';
+  }).length;
+  const activeContacts = totalContacts > 0 ? (activeContactsCount || totalContacts) : 0;
+  const contactPct = totalContacts > 0 ? Math.round((activeContacts / totalContacts) * 100) : 0;
+
+  const doctorCount = contactsData.filter(c => {
+    const title = (c.title_name || c.designation || c.role || '').toLowerCase();
+    return title.includes('doc') || title.includes('dr');
+  }).length;
+
+  const nurseCount = contactsData.filter(c => {
+    const title = (c.title_name || c.designation || c.role || '').toLowerCase();
+    return title.includes('nurse');
+  }).length;
+
+  const adminCount = contactsData.filter(c => {
+    const title = (c.title_name || c.designation || c.role || '').toLowerCase();
+    return title.includes('admin') || title.includes('manager') || title.includes('head');
+  }).length;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -66,35 +166,34 @@ const CRMDashboardTab = ({ navigation }) => {
               <Text style={styles.cardTitle}>Hospitals</Text>
             </View>
             <View style={styles.badgeWrap}>
-              <Text style={styles.badgeNumber}>48</Text>
-              <Text style={styles.badgeSub}>+5 new</Text>
+              <Text style={styles.badgeNumber}>{totalHospitals}</Text>
             </View>
           </View>
 
           {/* Active Accounts SubHeader */}
           <View style={styles.subInfoRow}>
             <Text style={styles.subInfoLabel}>Active accounts</Text>
-            <Text style={styles.subInfoVal}>32/48</Text>
+            <Text style={styles.subInfoVal}>{`${activeHospitals}/${totalHospitals}`}</Text>
           </View>
 
           {/* Progress Bar */}
           <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: '66%' }]} />
+            <View style={[styles.progressBarFill, { width: `${hospitalPct}%` }]} />
           </View>
 
           {/* Tier Counts */}
           <View style={styles.tierRow}>
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Tier 1</Text>
-              <Text style={styles.tierVal}>12</Text>
+              <Text style={styles.tierVal}>{tier1Count}</Text>
             </View>
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Tier 2</Text>
-              <Text style={styles.tierVal}>24</Text>
+              <Text style={styles.tierVal}>{tier2Count}</Text>
             </View>
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Tier 3</Text>
-              <Text style={styles.tierVal}>12</Text>
+              <Text style={styles.tierVal}>{tier3Count}</Text>
             </View>
           </View>
 
@@ -129,35 +228,34 @@ const CRMDashboardTab = ({ navigation }) => {
               <Text style={styles.cardTitle}>Contacts</Text>
             </View>
             <View style={styles.badgeWrap}>
-              <Text style={styles.badgeNumber}>120</Text>
-              <Text style={styles.badgeSub}>+12 new</Text>
+              <Text style={styles.badgeNumber}>{totalContacts}</Text>
             </View>
           </View>
 
           {/* Active Contacts SubHeader */}
           <View style={styles.subInfoRow}>
             <Text style={styles.subInfoLabel}>Active contacts</Text>
-            <Text style={styles.subInfoVal}>92/120</Text>
+            <Text style={styles.subInfoVal}>{`${activeContacts}/${totalContacts}`}</Text>
           </View>
 
           {/* Progress Bar */}
           <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: '76%' }]} />
+            <View style={[styles.progressBarFill, { width: `${contactPct}%` }]} />
           </View>
 
           {/* Roles Counts */}
           <View style={styles.tierRow}>
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Doctors</Text>
-              <Text style={styles.tierVal}>78</Text>
+              <Text style={styles.tierVal}>{doctorCount}</Text>
             </View>
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Nurses</Text>
-              <Text style={styles.tierVal}>30</Text>
+              <Text style={styles.tierVal}>{nurseCount}</Text>
             </View>
             <View style={styles.tierBox}>
               <Text style={styles.tierLabel}>Admins</Text>
-              <Text style={styles.tierVal}>12</Text>
+              <Text style={styles.tierVal}>{adminCount}</Text>
             </View>
           </View>
 

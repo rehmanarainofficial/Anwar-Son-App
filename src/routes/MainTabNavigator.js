@@ -1,33 +1,65 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import MainScreen from '@screens/MainScreen';
 import CRMDashboardTab from '@screens/crm/CRMDashboardTab';
 import ReportsDashboardTab from '@screens/reporting/ReportsDashboardTab';
 import ApprovalsDashboardTab from '@screens/approvals/ApprovalsDashboardTab';
 import CustomTabBar from '@components/navigation/CustomTabBar';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const TABS = ['Home', 'CRM', 'Reports', 'Approvals'];
+
 const MainTabNavigator = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('Home');
+  const scrollViewRef = useRef(null);
 
-  const renderScreen = () => {
-    switch (activeTab) {
-      case 'Home':
-        return <MainScreen navigation={navigation} route={route} />;
-      case 'CRM':
-        return <CRMDashboardTab navigation={navigation} route={route} />;
-      case 'Reports':
-        return <ReportsDashboardTab navigation={navigation} route={route} />;
-      case 'Approvals':
-        return <ApprovalsDashboardTab navigation={navigation} route={route} />;
-      default:
-        return <MainScreen navigation={navigation} route={route} />;
+  const handleTabPress = tabName => {
+    setActiveTab(tabName);
+    const index = TABS.indexOf(tabName);
+    if (index !== -1 && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        x: index * SCREEN_WIDTH,
+        animated: true,
+      });
+    }
+  };
+
+  const handleScrollEnd = e => {
+    const contentOffsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / SCREEN_WIDTH);
+    if (index >= 0 && index < TABS.length) {
+      setActiveTab(TABS[index]);
     }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.screenContainer}>{renderScreen()}</View>
-      <CustomTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScrollEnd}
+        scrollEventThrottle={16}
+        bounces={false}
+        style={styles.scrollView}
+      >
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <MainScreen navigation={navigation} route={route} />
+        </View>
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <CRMDashboardTab navigation={navigation} route={route} />
+        </View>
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <ReportsDashboardTab navigation={navigation} route={route} />
+        </View>
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <ApprovalsDashboardTab navigation={navigation} route={route} />
+        </View>
+      </ScrollView>
+
+      <CustomTabBar activeTab={activeTab} setActiveTab={handleTabPress} />
     </View>
   );
 };
@@ -36,7 +68,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  screenContainer: {
+  scrollView: {
     flex: 1,
   },
 });

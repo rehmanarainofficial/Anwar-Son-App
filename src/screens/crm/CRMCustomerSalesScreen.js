@@ -14,7 +14,7 @@ import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@store/slices/authSlice';
-import { useGetStockCategoryMutation } from '@api/baseApi';
+import { useGetSalesTargetCategoryMutation } from '@api/baseApi';
 import {
   useGetSalesmanDropdownMutation,
   useGetDebtorsMasterQuery,
@@ -79,13 +79,24 @@ const CRMCustomerSalesScreen = () => {
   // Data state
   const [analysisData, setAnalysisData] = useState([]);
 
+  const grandTotalSales = useMemo(() => {
+    if (!analysisData || analysisData.length === 0) return 0;
+    return analysisData.reduce((total, cust) => {
+      const custSum = (cust.complete_analysis || []).reduce(
+        (sum, i) => sum + parseFloat(i.current_month_sale || 0),
+        0,
+      );
+      return total + custSum;
+    }, 0);
+  }, [analysisData]);
+
   // Loading states
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // Mutations & Queries
   const [getSalesman] = useGetSalesmanDropdownMutation();
-  const [getStockCategory] = useGetStockCategoryMutation();
+  const [getSalesTargetCategory] = useGetSalesTargetCategoryMutation();
   const [getAverageSalesCustomer] = useGetSalesmanProductSalesAverageCustomerMutation();
 
   // Debtors Master Query for Customer dropdown
@@ -149,7 +160,7 @@ const CRMCustomerSalesScreen = () => {
       }
 
       // 2. Category
-      const categoryRes = await getStockCategory({
+      const categoryRes = await getSalesTargetCategory({
         company: 'CRM',
         user_id: userId,
       }).unwrap();
@@ -217,10 +228,10 @@ const CRMCustomerSalesScreen = () => {
   };
 
   const formatTableCellValue = (val) => {
-    if (val === undefined || val === null || val === '' || parseFloat(val) === 0) {
+    if (val === undefined || val === null || val === '' || isNaN(parseFloat(val)) || parseFloat(val) === 0) {
       return '-';
     }
-    return parseFloat(val).toFixed(0);
+    return parseFloat(val).toFixed(2);
   };
 
   const renderTable = (completeAnalysis) => {
@@ -284,7 +295,7 @@ const CRMCustomerSalesScreen = () => {
           {/* Table Header */}
           <View style={[styles.tableRow, styles.tableHeader, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
             <Text style={[styles.tableHeaderCell, { color: theme.colors.textSecondary, width: 180 }]} />
-            <Text style={[styles.tableHeaderCell, { color: theme.colors.textSecondary, width: 75, textAlign: 'center' }]}>Total</Text>
+            <Text style={[styles.tableHeaderCell, { color: theme.colors.textSecondary, width: 85, textAlign: 'center' }]}>Total</Text>
             <Text style={[styles.tableHeaderCell, { color: theme.colors.textSecondary, width: 85, textAlign: 'center' }]}>6Mo Avg</Text>
             <Text style={[styles.tableHeaderCell, { color: theme.colors.textSecondary, width: 85, textAlign: 'center' }]}>12Mo Avg</Text>
             <Text style={[styles.tableHeaderCell, { color: theme.colors.textSecondary, width: 85, textAlign: 'center' }]}>{currMonthName}</Text>
@@ -304,21 +315,21 @@ const CRMCustomerSalesScreen = () => {
           {/* Row 1: Total Sales (purple background) */}
           <View style={[styles.tableRow, { backgroundColor: '#ECE9F8', borderBottomColor: theme.colors.border }]}>
             <Text style={[styles.tableCell, { color: '#000', width: 180, fontWeight: 'bold' }]}>Total Sales</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 75, textAlign: 'center', fontWeight: 'bold' }]}>{totalCurrentSale === 0 ? '-' : totalCurrentSale.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{total6MonthAvg === 0 ? '-' : total6MonthAvg.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{total12MonthAvg === 0 ? '-' : total12MonthAvg.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumCurrent === 0 ? '-' : sumCurrent.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumPrevious === 0 ? '-' : sumPrevious.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM2 === 0 ? '-' : sumM2.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM3 === 0 ? '-' : sumM3.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM4 === 0 ? '-' : sumM4.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM5 === 0 ? '-' : sumM5.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM6 === 0 ? '-' : sumM6.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM7 === 0 ? '-' : sumM7.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM8 === 0 ? '-' : sumM8.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM9 === 0 ? '-' : sumM9.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM10 === 0 ? '-' : sumM10.toFixed(0)}</Text>
-            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM11 === 0 ? '-' : sumM11.toFixed(0)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{totalCurrentSale === 0 ? '-' : totalCurrentSale.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{total6MonthAvg === 0 ? '-' : total6MonthAvg.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{total12MonthAvg === 0 ? '-' : total12MonthAvg.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumCurrent === 0 ? '-' : sumCurrent.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumPrevious === 0 ? '-' : sumPrevious.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM2 === 0 ? '-' : sumM2.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM3 === 0 ? '-' : sumM3.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM4 === 0 ? '-' : sumM4.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM5 === 0 ? '-' : sumM5.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM6 === 0 ? '-' : sumM6.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM7 === 0 ? '-' : sumM7.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM8 === 0 ? '-' : sumM8.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM9 === 0 ? '-' : sumM9.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM10 === 0 ? '-' : sumM10.toFixed(2)}</Text>
+            <Text style={[styles.tableCell, { color: '#000', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{sumM11 === 0 ? '-' : sumM11.toFixed(2)}</Text>
           </View>
 
           {/* Grouped Rows */}
@@ -347,21 +358,21 @@ const CRMCustomerSalesScreen = () => {
                 {/* Group Header Row (light yellow/orange background) */}
                 <View style={[styles.tableRow, { backgroundColor: '#FEF3C7', borderBottomColor: theme.colors.border }]}>
                   <Text style={[styles.tableCell, { color: '#92400E', width: 180, fontWeight: 'bold' }]}>{desc}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 75, textAlign: 'center', fontWeight: 'bold' }]}>{grpTotalCurrentSale === 0 ? '-' : grpTotalCurrentSale.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpTotal6MonthAvg === 0 ? '-' : grpTotal6MonthAvg.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpTotal12MonthAvg === 0 ? '-' : grpTotal12MonthAvg.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumCurrent === 0 ? '-' : grpSumCurrent.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumPrevious === 0 ? '-' : grpSumPrevious.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM2 === 0 ? '-' : grpSumM2.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM3 === 0 ? '-' : grpSumM3.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM4 === 0 ? '-' : grpSumM4.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM5 === 0 ? '-' : grpSumM5.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM6 === 0 ? '-' : grpSumM6.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM7 === 0 ? '-' : grpSumM7.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM8 === 0 ? '-' : grpSumM8.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM9 === 0 ? '-' : grpSumM9.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM10 === 0 ? '-' : grpSumM10.toFixed(0)}</Text>
-                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM11 === 0 ? '-' : grpSumM11.toFixed(0)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpTotalCurrentSale === 0 ? '-' : grpTotalCurrentSale.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpTotal6MonthAvg === 0 ? '-' : grpTotal6MonthAvg.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpTotal12MonthAvg === 0 ? '-' : grpTotal12MonthAvg.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumCurrent === 0 ? '-' : grpSumCurrent.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumPrevious === 0 ? '-' : grpSumPrevious.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM2 === 0 ? '-' : grpSumM2.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM3 === 0 ? '-' : grpSumM3.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM4 === 0 ? '-' : grpSumM4.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM5 === 0 ? '-' : grpSumM5.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM6 === 0 ? '-' : grpSumM6.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM7 === 0 ? '-' : grpSumM7.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM8 === 0 ? '-' : grpSumM8.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM9 === 0 ? '-' : grpSumM9.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM10 === 0 ? '-' : grpSumM10.toFixed(2)}</Text>
+                  <Text style={[styles.tableCell, { color: '#92400E', width: 85, textAlign: 'center', fontWeight: 'bold' }]}>{grpSumM11 === 0 ? '-' : grpSumM11.toFixed(2)}</Text>
                 </View>
 
                 {/* Sub items under group (Individual product codes sorted by total sales desc) */}
@@ -397,14 +408,14 @@ const CRMCustomerSalesScreen = () => {
                       <Text style={[styles.tableCell, { color: theme.colors.text, width: 180, fontWeight: '500' }]} numberOfLines={2}>
                         {item.code || 'N/A'}
                       </Text>
-                      <Text style={[styles.tableCell, { color: theme.colors.text, width: 75, textAlign: 'center' }]}>
+                      <Text style={[styles.tableCell, { color: theme.colors.text, width: 85, textAlign: 'center' }]}>
                         {formatTableCellValue(item.current_month_sale)}
                       </Text>
                       <Text style={[styles.tableCell, { color: theme.colors.text, width: 85, textAlign: 'center' }]}>
                         {formatTableCellValue(item.avg_last_6_months)}
                       </Text>
                       <Text style={[styles.tableCell, { color: theme.colors.text, width: 85, textAlign: 'center' }]}>
-                        {it12MonthAvg === 0 ? '-' : it12MonthAvg.toFixed(0)}
+                        {it12MonthAvg === 0 ? '-' : it12MonthAvg.toFixed(2)}
                       </Text>
                       <Text style={[styles.tableCell, { color: theme.colors.text, width: 85, textAlign: 'center' }]}>
                         {formatTableCellValue(item.current_month)}
@@ -576,34 +587,59 @@ const CRMCustomerSalesScreen = () => {
                   </Text>
                 </View>
               ) : (
-                analysisData.map((cust, index) => {
-                  // Only render if complete_analysis has elements
-                  if (!cust.complete_analysis || cust.complete_analysis.length === 0) {
-                    return null;
-                  }
+                <>
+                  {/* Overall Grand Total Summary Card */}
+                  <View
+                    style={[
+                      styles.grandTotalCard,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.grandTotalIconBg, { backgroundColor: theme.colors.primary + '15' }]}>
+                      <Icon name="calculator-outline" size={22} color={theme.colors.primary} />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.grandTotalLabel, { color: theme.colors.textSecondary }]}>
+                        Grand Total
+                      </Text>
+                      <Text style={[styles.grandTotalValue, { color: theme.colors.primary }]}>
+                        {grandTotalSales.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
 
-                  const custName = cleanText(cust.br_name) || 'Customer Sales Trend';
+                  {analysisData.map((cust, index) => {
+                    // Only render if complete_analysis has elements
+                    if (!cust.complete_analysis || cust.complete_analysis.length === 0) {
+                      return null;
+                    }
 
-                  return (
-                    <View key={index} style={styles.analysisContainer}>
-                      {/* Section 1: Customer Header & Total Sales Trend Title */}
-                      <View style={styles.trendHeaderContainer}>
-                        <Text style={[styles.customerHeading, { color: theme.colors.primary }]}>
-                          {custName}
-                        </Text>
-                        <View style={styles.trendHeaderRow}>
-                          <View style={[styles.trendIndicator, { backgroundColor: theme.colors.primary }]} />
-                          <Text style={[styles.trendTitle, { color: theme.colors.text }]}>TOTAL SALES TREND</Text>
+                    const custName = cleanText(cust.br_name) || 'Customer Sales Trend';
+
+                    return (
+                      <View key={index} style={styles.analysisContainer}>
+                        {/* Section 1: Customer Header & Total Sales Trend Title */}
+                        <View style={styles.trendHeaderContainer}>
+                          <Text style={[styles.customerHeading, { color: theme.colors.primary }]}>
+                            {custName}
+                          </Text>
+                          <View style={styles.trendHeaderRow}>
+                            <View style={[styles.trendIndicator, { backgroundColor: theme.colors.primary }]} />
+                            <Text style={[styles.trendTitle, { color: theme.colors.text }]}>TOTAL SALES TREND</Text>
+                          </View>
+                        </View>
+
+                        {/* Horizontally scrollable grouped products analysis table */}
+                        <View style={[styles.tableCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                          {renderTable(cust.complete_analysis)}
                         </View>
                       </View>
-
-                      {/* Horizontally scrollable grouped products analysis table */}
-                      <View style={[styles.tableCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                        {renderTable(cust.complete_analysis)}
-                      </View>
-                    </View>
-                  );
-                })
+                    );
+                  })}
+                </>
               )}
             </>
           )}
@@ -690,6 +726,37 @@ const styles = StyleSheet.create({
   btnResetText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  grandTotalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginVertical: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  grandTotalIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  grandTotalLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  grandTotalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 2,
   },
   analysisContainer: {
     marginTop: 8,

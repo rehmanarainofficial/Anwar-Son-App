@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,7 +42,7 @@ const CustomTabBar = ({ activeTab, setActiveTab }) => {
         {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 10,
+          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 6) : 6,
         },
       ]}
     >
@@ -57,29 +58,33 @@ const CustomTabBar = ({ activeTab, setActiveTab }) => {
             activeOpacity={0.7}
             style={styles.tabItem}
           >
-            {isFocused ? (
-              <View
+            {/* Facebook-style Top Active Line Indicator */}
+            <View
+              style={[
+                styles.topIndicator,
+                {
+                  backgroundColor: isFocused ? theme.colors.primary : 'transparent',
+                },
+              ]}
+            />
+            <View style={styles.tabContent}>
+              <Icon
+                name={isFocused ? tab.activeIcon : tab.icon}
+                size={22}
+                color={isFocused ? theme.colors.primary : theme.colors.textSecondary}
+              />
+              <Text
                 style={[
-                  styles.activePill,
+                  styles.tabText,
                   {
-                    backgroundColor: theme.colors.primary + '18',
-                    borderColor: theme.colors.primary + '40',
+                    color: isFocused ? theme.colors.primary : theme.colors.textSecondary,
+                    fontWeight: isFocused ? '700' : '500',
                   },
                 ]}
               >
-                <Icon name={tab.activeIcon} size={18} color={theme.colors.primary} />
-                <Text style={[styles.activeText, { color: theme.colors.primary }]}>
-                  {tab.label}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.inactiveWrapper}>
-                <Icon name={tab.icon} size={20} color={theme.colors.textSecondary} />
-                <Text style={[styles.inactiveText, { color: theme.colors.textSecondary }]}>
-                  {tab.label}
-                </Text>
-              </View>
-            )}
+                {tab.label}
+              </Text>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -92,41 +97,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 10,
-    paddingHorizontal: 8,
     borderTopWidth: 1,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
-  activePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
+  topIndicator: {
+    width: 36,
+    height: 3,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+    marginBottom: 4,
   },
-  activeText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  inactiveWrapper: {
+  tabContent: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 2,
+    gap: 3,
   },
-  inactiveText: {
+  tabText: {
     fontSize: 11,
-    fontWeight: '600',
-    marginTop: 3,
+    textAlign: 'center',
   },
 });
 

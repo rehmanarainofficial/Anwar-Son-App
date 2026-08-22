@@ -64,6 +64,9 @@ export const voidApi = baseApi.injectEndpoints({
         formData.append('trans_no', body.trans_no);
         formData.append('type', body.type);
         formData.append('user_id', body.user_id);
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
 
         return {
           url: 'access/void_api.php',

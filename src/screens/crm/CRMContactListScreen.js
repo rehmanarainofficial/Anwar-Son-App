@@ -86,17 +86,21 @@ const CRMContactListScreen = ({ navigation }) => {
   const fetchContacts = useCallback(async () => {
     try {
       const res = await getContactsData({
-        user_id: user?.id,
-        contact_tier: selectedTier,
-        surgical_speciality: selectedSpeciality,
+        user_id: user?.id || user?.company_user_id || '',
+        role_id: user?.role_id,
+        contact_tier: selectedTier || '',
+        surgical_speciality: selectedSpeciality || '',
       }).unwrap();
-      if (res.status === 'true') {
-        setContacts(res.data || []);
+      if (res?.status === 'true' && Array.isArray(res.data)) {
+        setContacts(res.data);
+      } else {
+        setContacts([]);
       }
     } catch (error) {
       console.log('Fetch Contacts Error:', error);
+      setContacts([]);
     }
-  }, [getContactsData, user?.id, selectedTier, selectedSpeciality]);
+  }, [getContactsData, user?.id, user?.company_user_id, user?.role_id, selectedTier, selectedSpeciality]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -146,8 +150,46 @@ const CRMContactListScreen = ({ navigation }) => {
       .replace(/&#39;/g, "'");
   };
 
+  const selectedTierObj = tiers.find(t => String(t.id) === String(selectedTier));
+  const selectedSpecObj = specialities.find(s => String(s.id) === String(selectedSpeciality));
+
   const filteredContacts = contacts.filter((item) => {
+    // 1. Client-side Tier Filter
+    if (selectedTier) {
+      const tierIdStr = String(selectedTier).toLowerCase();
+      const tierDesc = (selectedTierObj?.description || '').toLowerCase().trim();
+
+      const itemTierId = String(item.tier_id || item.contact_tier || item.tier || '').toLowerCase().trim();
+      const itemTierName = (item.tier || item.tier_name || '').toLowerCase().trim();
+
+      const matchesTierId = itemTierId === tierIdStr || itemTierId.includes(tierIdStr);
+      const matchesTierDesc = tierDesc ? itemTierName === tierDesc || itemTierName.includes(tierDesc) : false;
+
+      if (!matchesTierId && !matchesTierDesc) {
+        return false;
+      }
+    }
+
+    // 2. Client-side Speciality Filter
+    if (selectedSpeciality) {
+      const specIdStr = String(selectedSpeciality).toLowerCase();
+      const specDesc = (selectedSpecObj?.description || '').toLowerCase().trim();
+
+      const itemSpecId = String(item.surgical_speciality || item.speciality_id || item.speciality || '').toLowerCase().trim();
+      const itemSpecName = (item.speciality || item.speciality_name || '').toLowerCase().trim();
+
+      const matchesSpecId = itemSpecId === specIdStr;
+      const matchesSpecDesc = specDesc ? itemSpecName.includes(specDesc) : false;
+
+      if (!matchesSpecId && !matchesSpecDesc) {
+        return false;
+      }
+    }
+
+    // 3. Search Query Filter
     const q = searchQuery.toLowerCase();
+    if (!q) return true;
+
     const name = (item.person_name || '').toLowerCase();
     const title = (item.title_name || '').toLowerCase();
     const dept = (item.department_name || '').toLowerCase();

@@ -106,7 +106,9 @@ const AppNavigator = () => {
       <Stack.Navigator
         screenOptions={{
           header: props => <CustomHeader {...props} />,
-          animation: 'slide_from_right',
+          animation: 'fade',
+          headerAnimation: 'none',
+          gestureEnabled: false,
         }}
       >
         {!isAuthenticated ? (

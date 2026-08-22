@@ -16,6 +16,7 @@ import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
 import { CustomDatePicker, SearchableDropdown } from '@components/common';
+import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
   useGetStockCategoryMutation,
@@ -521,7 +522,7 @@ const CRMWorkshopRequestScreen = ({ navigation }) => {
           </View>
           <View style={styles.headerRightRow}>
             {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{item.date || item.tran_date}</Text>
+            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.date || item.tran_date, false)}</Text>
           </View>
         </View>
 

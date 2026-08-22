@@ -7,6 +7,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', body.company?.trim()?.toUpperCase());
         formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'portal/debtors_master.php',
           method: 'POST',
@@ -53,6 +56,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', body.company);
         formData.append('user_id', body.user_id);
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'portal/order_shiping_info.php',
           method: 'POST',
@@ -68,6 +74,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', body.company);
         formData.append('user_id', body.user_id);
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'portal/order_status_listing.php',
           method: 'POST',
@@ -145,6 +154,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', 'CRM');
         formData.append('user_id', body.user_id);
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         if (body.contact_tier !== undefined && body.contact_tier !== null) {
           formData.append('contact_tier', body.contact_tier);
         }
@@ -190,6 +202,9 @@ export const portalApi = baseApi.injectEndpoints({
         formData.append('company', body.company);
         formData.append('user_id', body.user_id);
         formData.append('sub_user_id', body.sub_user_id);
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         if (body.years !== undefined && body.years !== null) {
           formData.append('years', body.years);
         }
@@ -217,6 +232,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', body.company || '');
         formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'dropdown/quater.php',
           method: 'POST',
@@ -232,6 +250,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', body.company || '');
         formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'dropdown/years.php',
           method: 'POST',
@@ -247,6 +268,9 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', body.company || '');
         formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'dropdown/month.php',
           method: 'POST',
@@ -262,7 +286,7 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('user_id', body.user_id || '');
         formData.append('company', body.company || '');
-        formData.append('role_id', body.role_id || '');
+        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '');
         return {
           url: 'dropdown/salesman.php',
           method: 'POST',
@@ -281,6 +305,9 @@ export const portalApi = baseApi.injectEndpoints({
         formData.append('product_id', body.product_id || '');
         formData.append('salesman', body.salesman || '');
         formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'portal/get_salesman_product_sales_average.php',
           method: 'POST',
@@ -299,6 +326,9 @@ export const portalApi = baseApi.injectEndpoints({
         formData.append('category_id', body.category_id || '');
         formData.append('debtor_no', body.debtor_no || '');
         formData.append('user_id', body.user_id || '');
+        if (body?.role_id !== undefined && body?.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
+        }
         return {
           url: 'portal/get_salesman_product_sales_average_customer.php',
           method: 'POST',

@@ -50,14 +50,18 @@ const CRMHospitalListScreen = ({ navigation }) => {
     try {
       const res = await getHospitalData({
         user_id: user?.id || user?.company_user_id || '',
+        role_id: user?.role_id,
         company: 'CRM',
         tier_id: tierId || '',
       }).unwrap();
-      if (res.status === 'true') {
-        setHospitals(res.data || []);
+      if (res?.status === 'true' && Array.isArray(res.data)) {
+        setHospitals(res.data);
+      } else {
+        setHospitals([]);
       }
     } catch (error) {
       console.log('Fetch Hospitals Error:', error);
+      setHospitals([]);
     }
   };
 
@@ -83,8 +87,32 @@ const CRMHospitalListScreen = ({ navigation }) => {
       .replace(/&#39;/g, "'");
   };
 
+  const selectedTierObj = tierRes?.data?.find(
+    t => String(t.id) === String(selectedTierId)
+  );
+
   const filteredHospitals = hospitals.filter(item => {
+    if (selectedTierId) {
+      const tierIdStr = String(selectedTierId).toLowerCase();
+      const tierDesc = (selectedTierObj?.description || '').toLowerCase();
+
+      const itemTierId = String(item.tier_id || item.tier || '').toLowerCase();
+      const itemTierName = (item.tier || item.tier_name || '').toLowerCase();
+
+      const matchesTierId =
+        itemTierId === tierIdStr || itemTierId.includes(`tier ${tierIdStr}`);
+      const matchesTierDesc = tierDesc
+        ? itemTierName.includes(tierDesc) || itemTierName === tierDesc
+        : false;
+
+      if (!matchesTierId && !matchesTierDesc) {
+        return false;
+      }
+    }
+
     const q = searchQuery.toLowerCase();
+    if (!q) return true;
+
     const name = (item.hospital_name || '').toLowerCase();
     const city = (item.city_name || '').toLowerCase();
     const segment = (item.segment || '').toLowerCase();
