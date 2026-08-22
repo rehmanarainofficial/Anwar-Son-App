@@ -262,13 +262,10 @@ const MainScreen = ({ navigation }) => {
         <SafeAreaView style={dynamicStyles.headerContent} edges={['top']}>
           <View style={dynamicStyles.topBar}>
             <View style={dynamicStyles.companyInfo}>
-              <Text style={dynamicStyles.companyName}>
-                {user?.user_id || user?.name || 'Ayesha Khan'}
-              </Text>
+              <Text style={dynamicStyles.companyName}>{user?.user_id}</Text>
             </View>
 
             <View style={dynamicStyles.headerActions}>
-              {/* Toggle ERP Modules vs Quick Actions (ONLY for role_id === 2) */}
               {isRole2 && (
                 <TouchableOpacity
                   style={dynamicStyles.iconBtn}
@@ -326,7 +323,11 @@ const MainScreen = ({ navigation }) => {
                   onPress={() => navigation.navigate(item.screen)}
                 >
                   <View style={dynamicStyles.iconContainer}>
-                    <Icon name={item.icon} size={28} color={theme.colors.primary} />
+                    <Icon
+                      name={item.icon}
+                      size={28}
+                      color={theme.colors.primary}
+                    />
                   </View>
                   <Text style={dynamicStyles.boxName}>{item.name}</Text>
                 </TouchableOpacity>
@@ -342,10 +343,21 @@ const MainScreen = ({ navigation }) => {
                 style={dynamicStyles.topActionCard}
                 onPress={() => navigation.navigate('HCMAttendance')}
               >
-                <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
-                  <Icon name="person-outline" size={22} color={theme.colors.primary} />
+                <View
+                  style={[
+                    dynamicStyles.topActionIconWrap,
+                    { backgroundColor: theme.colors.primary + '15' },
+                  ]}
+                >
+                  <Icon
+                    name="person-outline"
+                    size={22}
+                    color={theme.colors.primary}
+                  />
                 </View>
-                <Text style={dynamicStyles.topActionTitle}>Mark{'\n'}Attendance</Text>
+                <Text style={dynamicStyles.topActionTitle}>
+                  Mark{'\n'}Attendance
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -357,10 +369,21 @@ const MainScreen = ({ navigation }) => {
                   })
                 }
               >
-                <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
-                  <Icon name="clipboard-outline" size={22} color={theme.colors.primary} />
+                <View
+                  style={[
+                    dynamicStyles.topActionIconWrap,
+                    { backgroundColor: theme.colors.primary + '15' },
+                  ]}
+                >
+                  <Icon
+                    name="clipboard-outline"
+                    size={22}
+                    color={theme.colors.primary}
+                  />
                 </View>
-                <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Plan</Text>
+                <Text style={dynamicStyles.topActionTitle}>
+                  Today's{'\n'}Plan
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -372,10 +395,21 @@ const MainScreen = ({ navigation }) => {
                   })
                 }
               >
-                <View style={[dynamicStyles.topActionIconWrap, { backgroundColor: theme.colors.primary + '15' }]}>
-                  <Icon name="trending-up-outline" size={22} color={theme.colors.primary} />
+                <View
+                  style={[
+                    dynamicStyles.topActionIconWrap,
+                    { backgroundColor: theme.colors.primary + '15' },
+                  ]}
+                >
+                  <Icon
+                    name="trending-up-outline"
+                    size={22}
+                    color={theme.colors.primary}
+                  />
                 </View>
-                <Text style={dynamicStyles.topActionTitle}>Today's{'\n'}Progress</Text>
+                <Text style={dynamicStyles.topActionTitle}>
+                  Today's{'\n'}Progress
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -400,9 +434,15 @@ const MainScreen = ({ navigation }) => {
                         color={theme.colors.primary}
                       />
                     </View>
-                    <Text style={dynamicStyles.gridItemText}>{action.title}</Text>
+                    <Text style={dynamicStyles.gridItemText}>
+                      {action.title}
+                    </Text>
                   </View>
-                  <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                  <Icon
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -410,7 +450,9 @@ const MainScreen = ({ navigation }) => {
             {/* FIELD ACTIVITIES REQUESTS SECTION */}
             <View style={[dynamicStyles.sectionHeaderWrap, { marginTop: 20 }]}>
               <View style={dynamicStyles.accentBar} />
-              <Text style={dynamicStyles.sectionHeader}>FIELD ACTIVITIES REQUESTS</Text>
+              <Text style={dynamicStyles.sectionHeader}>
+                FIELD ACTIVITIES REQUESTS
+              </Text>
             </View>
 
             <View style={dynamicStyles.fieldReqRow}>
@@ -420,8 +462,17 @@ const MainScreen = ({ navigation }) => {
                   style={dynamicStyles.fieldReqItem}
                   onPress={() => handleActionPress(req)}
                 >
-                  <View style={[dynamicStyles.fieldReqCircle, { backgroundColor: theme.colors.primary + '15' }]}>
-                    <Icon name={req.icon} size={22} color={theme.colors.primary} />
+                  <View
+                    style={[
+                      dynamicStyles.fieldReqCircle,
+                      { backgroundColor: theme.colors.primary + '15' },
+                    ]}
+                  >
+                    <Icon
+                      name={req.icon}
+                      size={22}
+                      color={theme.colors.primary}
+                    />
                   </View>
                   <Text style={dynamicStyles.fieldReqLabel}>{req.title}</Text>
                 </TouchableOpacity>
@@ -451,7 +502,11 @@ const MainScreen = ({ navigation }) => {
                     </View>
                     <Text style={dynamicStyles.gridItemText}>{exp.title}</Text>
                   </View>
-                  <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                  <Icon
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -477,9 +532,15 @@ const MainScreen = ({ navigation }) => {
                         color={theme.colors.primary}
                       />
                     </View>
-                    <Text style={dynamicStyles.gridItemText}>{leave.title}</Text>
+                    <Text style={dynamicStyles.gridItemText}>
+                      {leave.title}
+                    </Text>
                   </View>
-                  <Icon name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                  <Icon
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -524,6 +585,7 @@ const getStyles = theme =>
       fontSize: 22,
       fontWeight: '800',
       color: '#FFFFFF',
+      textTransform: 'uppercase',
     },
     headerActions: {
       flexDirection: 'row',

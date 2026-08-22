@@ -83,23 +83,47 @@ const CRMDashboardTab = ({ navigation }) => {
   const activeHospitals = totalHospitals > 0 ? (activeHospitalsCount || totalHospitals) : 0;
   const hospitalPct = totalHospitals > 0 ? Math.round((activeHospitals / totalHospitals) * 100) : 0;
 
-  const tier1Count = hospitalsData.filter(h => {
-    const tid = String(h.tier_id || '').toLowerCase();
-    const tname = (h.tier || '').toLowerCase();
-    return tid === '1' || tname.includes('tier 1') || tname === '1';
-  }).length;
+  let tier1Count = 0;
+  let tier2Count = 0;
+  let tier3Count = 0;
+  let unassignedHospitals = 0;
 
-  const tier2Count = hospitalsData.filter(h => {
-    const tid = String(h.tier_id || '').toLowerCase();
-    const tname = (h.tier || '').toLowerCase();
-    return tid === '2' || tname.includes('tier 2') || tname === '2';
-  }).length;
+  hospitalsData.forEach(h => {
+    const tid = String(h.tier_id || h.hospital_tier_id || '').toLowerCase().trim();
+    const tname = (h.tier || h.tier_name || h.hospital_tier || h.category || '').toLowerCase().trim();
 
-  const tier3Count = hospitalsData.filter(h => {
-    const tid = String(h.tier_id || '').toLowerCase();
-    const tname = (h.tier || '').toLowerCase();
-    return tid === '3' || tname.includes('tier 3') || tname === '3';
-  }).length;
+    if (
+      tid === '1' ||
+      tid === 'a' ||
+      tname.includes('tier1') ||
+      tname.includes('tier 1') ||
+      tname.includes('tier a') ||
+      tname === '1' ||
+      tname === 'a'
+    ) {
+      tier1Count++;
+    } else if (
+      tid === '2' ||
+      tid === 'b' ||
+      tname.includes('tier2') ||
+      tname.includes('tier 2') ||
+      tname.includes('tier b') ||
+      tname === '2' ||
+      tname === 'b'
+    ) {
+      tier2Count++;
+    } else if (
+      tid === '3' ||
+      tid === 'c' ||
+      tname.includes('tier3') ||
+      tname.includes('tier 3') ||
+      tname.includes('tier c') ||
+      tname === '3' ||
+      tname === 'c'
+    ) {
+      tier3Count++;
+    }
+  });
 
   // Contact Dynamic Counts
   const totalContacts = contactsData.length;
@@ -110,20 +134,43 @@ const CRMDashboardTab = ({ navigation }) => {
   const activeContacts = totalContacts > 0 ? (activeContactsCount || totalContacts) : 0;
   const contactPct = totalContacts > 0 ? Math.round((activeContacts / totalContacts) * 100) : 0;
 
-  const doctorCount = contactsData.filter(c => {
-    const title = (c.title_name || c.designation || c.role || '').toLowerCase();
-    return title.includes('doc') || title.includes('dr');
-  }).length;
+  let doctorCount = 0;
+  let nurseCount = 0;
+  let adminCount = 0;
 
-  const nurseCount = contactsData.filter(c => {
-    const title = (c.title_name || c.designation || c.role || '').toLowerCase();
-    return title.includes('nurse');
-  }).length;
+  contactsData.forEach(c => {
+    const fullText = (
+      (c.title_name || '') + ' ' +
+      (c.person_name || '') + ' ' +
+      (c.speciality || '') + ' ' +
+      (c.department_name || '') + ' ' +
+      (c.surgical_role || '') + ' ' +
+      (c.designation || '') + ' ' +
+      (c.role || '')
+    ).toLowerCase();
 
-  const adminCount = contactsData.filter(c => {
-    const title = (c.title_name || c.designation || c.role || '').toLowerCase();
-    return title.includes('admin') || title.includes('manager') || title.includes('head');
-  }).length;
+    if (
+      fullText.includes('dr') ||
+      fullText.includes('doc') ||
+      fullText.includes('surgeon') ||
+      fullText.includes('consultant') ||
+      fullText.includes('specialist') ||
+      fullText.includes('physician') ||
+      fullText.includes('medical')
+    ) {
+      doctorCount++;
+    } else if (
+      fullText.includes('nurse') ||
+      fullText.includes('nursing') ||
+      fullText.includes('sister') ||
+      fullText.includes('matron') ||
+      fullText.includes('paramedic')
+    ) {
+      nurseCount++;
+    } else {
+      adminCount++;
+    }
+  });
 
   const handleLogout = () => {
     dispatch(logout());

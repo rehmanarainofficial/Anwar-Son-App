@@ -100,7 +100,9 @@ const CRMHospitalListScreen = ({ navigation }) => {
       const itemTierName = (item.tier || item.tier_name || '').toLowerCase();
 
       const matchesTierId =
-        itemTierId === tierIdStr || itemTierId.includes(`tier ${tierIdStr}`);
+        itemTierId === tierIdStr ||
+        itemTierId.includes(`tier${tierIdStr}`) ||
+        itemTierId.includes(`tier ${tierIdStr}`);
       const matchesTierDesc = tierDesc
         ? itemTierName.includes(tierDesc) || itemTierName === tierDesc
         : false;

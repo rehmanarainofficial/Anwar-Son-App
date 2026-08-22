@@ -155,7 +155,6 @@ const CRMConferenceRequestScreen = ({ navigation }) => {
   const [managerRemarksText, setManagerRemarksText] = useState('');
   const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
-  // API Hooks
   const [getConferenceData, { isLoading: dataLoading }] = useGetConferenceDataMutation();
   const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] = useGetStockCategoryMutation();
   const [postConferenceData] = usePostConferenceDataMutation();
