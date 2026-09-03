@@ -644,7 +644,7 @@ export const baseApi = createApi({
     getSampleData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
         formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
         if (body?.from_date) {

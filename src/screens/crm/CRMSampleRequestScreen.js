@@ -60,42 +60,10 @@ const formatToYYYYMMDD = date => {
   return `${year}-${month}-${day}`;
 };
 
-const STATUS_OPTIONS = [
-  { id: '1', name: 'Draft' },
-  { id: '2', name: 'Submit for Approval' },
-  { id: '3', name: 'Approved' },
-  { id: '4', name: 'Rejected' },
-  { id: '5', name: 'Resubmit' },
-  { id: '6', name: 'Completed' },
-];
-
-const STATUS_MAP = {
-  '1': { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
-  '2': { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
-  '3': { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
-  '4': { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
-  '5': { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
-  '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
-};
-
-const CRMSampleRequestScreen = ({ navigation, route }) => {
+const CRMSampleRequestScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
-
-  const isRole3 = String(user?.role_id) === '3';
-
-  // Route Status Filter Initializer
-  const routeStatusId = route?.params?.statusId;
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState(
-    routeStatusId ? String(routeStatusId) : 'all',
-  );
-
-  useEffect(() => {
-    if (route?.params?.statusId) {
-      setSelectedStatusFilter(String(route.params.statusId));
-    }
-  }, [route?.params?.statusId]);
 
   // List Data State
   const [sampleList, setSampleList] = useState([]);
@@ -126,15 +94,6 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
   };
   const [products, setProducts] = useState([{ ...emptyProduct }]);
   const [remarks, setRemarks] = useState('');
-  const [selectedStatusId, setSelectedStatusId] = useState(isRole3 ? '1' : '3');
-  const [managerRemarks, setManagerRemarks] = useState('');
-
-  // Dedicated Manager Status Modal State
-  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] = useState(false);
-  const [selectedManagerItem, setSelectedManagerItem] = useState(null);
-  const [managerStatusId, setManagerStatusId] = useState('3');
-  const [managerRemarksText, setManagerRemarksText] = useState('');
-  const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
   // API Hooks
   const [getSampleData, { isLoading: dataLoading }] = useGetSampleDataMutation();
@@ -167,6 +126,7 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
     if (!user?.id) return;
     try {
       const payload = {
+        company: 'ANS',
         user_id: user.id,
         role_id: user?.role_id || '2',
       };
@@ -281,8 +241,6 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
         surgicalSpecialty: item.surgical_speciality || null,
       });
       setRemarks(item.comments || item.remarks || '');
-      setSelectedStatusId(String(item.status_id || (isRole3 ? '1' : '3')));
-      setManagerRemarks(item.manager_remarks || '');
 
       if (Array.isArray(item.purch_order_details) && item.purch_order_details.length > 0) {
         setProducts(
@@ -308,60 +266,8 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
       });
       setProducts([{ ...emptyProduct }]);
       setRemarks('');
-      setSelectedStatusId(isRole3 ? '1' : '3');
-      setManagerRemarks('');
     }
     setIsModalVisible(true);
-  };
-
-  const openManagerStatusModal = item => {
-    setSelectedManagerItem(item);
-    setManagerStatusId(String(item.status_id || '3'));
-    setManagerRemarksText(item.manager_remarks || '');
-    setIsManagerStatusModalVisible(true);
-  };
-
-  const handleSaveManagerStatus = async () => {
-    if (!selectedManagerItem) return;
-    try {
-      setIsManagerSubmitting(true);
-      const payload = {
-        company: 'CRM',
-        id: String(selectedManagerItem.id || '0'),
-        status_id: String(managerStatusId),
-        manager_remarks: managerRemarksText,
-        user_id: user?.id || '',
-        role_id: String(user?.role_id || '2'),
-      };
-
-      const res = await postSampleData(payload).unwrap();
-      setIsManagerSubmitting(false);
-
-      if (res && (res.status === 'true' || res.status === true)) {
-        Toast.show({
-          type: 'success',
-          text1: 'Status Updated',
-          text2: 'Sample request status updated successfully!',
-        });
-        setIsManagerStatusModalVisible(false);
-        setSelectedManagerItem(null);
-        loadSampleData();
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: res?.message || 'Failed to update status.',
-        });
-      }
-    } catch (error) {
-      console.log('Error updating manager status:', error);
-      setIsManagerSubmitting(false);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update status.',
-      });
-    }
   };
 
   const handleSubmit = async () => {
@@ -427,7 +333,7 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
       )?.description || basicInfo.surgicalSpecialty;
 
     const payload = {
-      company: 'CRM',
+      company: 'ANS',
       id: String(formId || '0'),
       person_id: user?.person_id || user?.id || '1',
       user_id: user?.id || '',
@@ -440,16 +346,13 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
       department: departmentName || '',
       surgical_speciality: surgicalSpecialtyName || '',
       comments: remarks || '',
-      status_id: String(selectedStatusId),
       purch_order_details: purchOrderDetails,
     };
 
-    if (!isRole3 && managerRemarks) {
-      payload.manager_remarks = managerRemarks;
-    }
-
     try {
+      console.log('CRMSampleRequest [Submit Payload]:', JSON.stringify(payload, null, 2));
       const response = await postSampleData(payload).unwrap();
+      console.log('CRMSampleRequest [Submit Response]:', response);
       if (String(response.status) === 'true' || response.status === true) {
         Toast.show({
           type: 'success',
@@ -466,28 +369,13 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
         });
       }
     } catch (err) {
-      console.error('Submit sample request error:', err);
+      console.error('CRMSampleRequest [Submit Error]:', err);
       Toast.show({
         type: 'error',
         text1: 'Error',
         text2: 'An error occurred during submission.',
       });
     }
-  };
-
-  const renderStatusBadge = statusId => {
-    const config = STATUS_MAP[String(statusId)] || {
-      label: 'Draft',
-      bg: '#FEF3C7',
-      text: '#92400E',
-    };
-    return (
-      <View style={[styles.statusBadge, { backgroundColor: config.bg }]}>
-        <Text style={[styles.statusBadgeText, { color: config.text }]}>
-          {config.label}
-        </Text>
-      </View>
-    );
   };
 
   const renderCardItem = ({ item }) => {
@@ -498,10 +386,7 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
             <Icon name="flask-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
             <Text style={styles.referenceText}>{item.reference || item.ord_no || `SAMPLE-${item.id}`}</Text>
           </View>
-          <View style={styles.headerRightRow}>
-            {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.ord_date || item.created_at, false)}</Text>
-          </View>
+          <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.ord_date || item.created_at, false)}</Text>
         </View>
 
         <View style={styles.divider} />
@@ -541,54 +426,19 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
           </View>
         ) : null}
 
-        {item.manager_remarks ? (
-          <View style={styles.managerRemarksBox}>
-            <Text style={styles.managerRemarksLabel}>Manager Remarks:</Text>
-            <Text style={styles.managerRemarksText}>{item.manager_remarks}</Text>
-          </View>
-        ) : null}
-
         <View style={styles.cardActionsRow}>
-          {isRole3 ? (
-            <TouchableOpacity
-              style={styles.updateCardBtn}
-              onPress={() => openFormModal('update', item)}
-              activeOpacity={0.7}
-            >
-              <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.updateCardBtnText}>Update</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.statusManagerCardBtn}
-              onPress={() => openManagerStatusModal(item)}
-              activeOpacity={0.7}
-            >
-              <Icon name="options-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.statusManagerCardBtnText}>Status</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.updateCardBtn}
+            onPress={() => openFormModal('update', item)}
+            activeOpacity={0.7}
+          >
+            <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+            <Text style={styles.updateCardBtnText}>Update</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
-
-  const filteredSampleList = sampleList.filter(item => {
-    if (selectedStatusFilter && selectedStatusFilter !== 'all') {
-      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
-      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
-
-      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
-      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
-      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
-      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
-      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
-      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
-
-      return sId === String(selectedStatusFilter);
-    }
-    return true;
-  });
 
   return (
     <View style={styles.container}>
@@ -615,7 +465,7 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
         </View>
       ) : (
         <FlatList
-          data={filteredSampleList}
+          data={sampleList}
           keyExtractor={item => String(item.id)}
           renderItem={renderCardItem}
           contentContainerStyle={styles.listContent}
@@ -740,7 +590,7 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
               ))}
             </View>
 
-            {/* Comments & Status */}
+            {/* Comments */}
             <View style={styles.sectionCard}>
               <View style={styles.inputContainer}>
                 <Text style={styles.fieldLabel}>Comments / Remarks</Text>
@@ -753,31 +603,6 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
                   onChangeText={setRemarks}
                 />
               </View>
-
-              <SearchableDropdown
-                label="Status"
-                placeholder="Select Status"
-                data={STATUS_OPTIONS}
-                selectedId={selectedStatusId}
-                onSelect={item => setSelectedStatusId(item.id)}
-                idKey="id"
-                labelKey="name"
-                iconName="flag-outline"
-              />
-
-              {!isRole3 && (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.fieldLabel}>Manager Remarks</Text>
-                  <TextInput
-                    style={[styles.textInput, { height: 75, textAlignVertical: 'top' }]}
-                    placeholder="Enter manager remarks..."
-                    placeholderTextColor={theme.colors.textSecondary}
-                    multiline
-                    value={managerRemarks}
-                    onChangeText={setManagerRemarks}
-                  />
-                </View>
-              )}
             </View>
 
             <TouchableOpacity
@@ -796,72 +621,6 @@ const CRMSampleRequestScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </Modal>
-
-      {/* Dedicated Manager Status Modal */}
-      <Modal
-        visible={isManagerStatusModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setIsManagerStatusModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.statusModalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsManagerStatusModalVisible(false)}
-        >
-          <View style={styles.statusModalSheet} onStartShouldSetResponder={() => true}>
-            <View style={styles.modalSheetHandle} />
-            <Text style={styles.statusModalTitle}>Update Manager Status</Text>
-
-            {selectedManagerItem ? (
-              <View style={styles.managerSummaryBox}>
-                <Text style={styles.summaryRefText}>
-                  {selectedManagerItem.reference || `SAMPLE-${selectedManagerItem.id}`}
-                </Text>
-                <Text style={styles.summaryAmountText}>
-                  {selectedManagerItem.hospital_name || selectedManagerItem.hospital || 'Hospital'}
-                </Text>
-              </View>
-            ) : null}
-
-            <SearchableDropdown
-              label="Select Status"
-              placeholder="Choose Status"
-              data={STATUS_OPTIONS}
-              selectedId={managerStatusId}
-              onSelect={item => setManagerStatusId(String(item.id))}
-              idKey="id"
-              labelKey="name"
-              iconName="flag-outline"
-            />
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.fieldLabel}>Manager Remarks</Text>
-              <TextInput
-                style={[styles.textInput, { height: 70, textAlignVertical: 'top' }]}
-                placeholder="Enter remarks..."
-                placeholderTextColor={theme.colors.textSecondary}
-                multiline
-                value={managerRemarksText}
-                onChangeText={setManagerRemarksText}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.saveManagerStatusBtn}
-              onPress={handleSaveManagerStatus}
-              disabled={isManagerSubmitting}
-              activeOpacity={0.8}
-            >
-              {isManagerSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveManagerStatusBtnText}>Save Status</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -914,20 +673,6 @@ const getStyles = theme =>
       fontWeight: '800',
       color: theme.colors.text,
     },
-    headerRightRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
-    },
-    statusBadgeText: {
-      fontSize: 10,
-      fontWeight: '800',
-    },
     cardDateText: {
       fontSize: 11,
       fontWeight: '600',
@@ -977,24 +722,6 @@ const getStyles = theme =>
       fontSize: 12,
       color: theme.colors.text,
     },
-    managerRemarksBox: {
-      backgroundColor: '#EFF6FF',
-      borderRadius: 10,
-      padding: 10,
-      marginBottom: 8,
-      borderWidth: 1,
-      borderColor: '#BFDBFE',
-    },
-    managerRemarksLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#1E40AF',
-      marginBottom: 2,
-    },
-    managerRemarksText: {
-      fontSize: 12,
-      color: '#1E3A8A',
-    },
     cardActionsRow: {
       marginTop: 6,
     },
@@ -1012,19 +739,6 @@ const getStyles = theme =>
       fontSize: 13,
       fontWeight: '700',
       color: theme.colors.primary,
-    },
-    statusManagerCardBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.primary,
-      borderRadius: 10,
-      paddingVertical: 8,
-    },
-    statusManagerCardBtnText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#FFFFFF',
     },
     emptyContainer: {
       alignItems: 'center',
@@ -1163,67 +877,6 @@ const getStyles = theme =>
       color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '800',
-    },
-    // Manager Status Modal Sheet
-    statusModalOverlay: {
-      flex: 1,
-      justifyContent: 'flex-end',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    statusModalSheet: {
-      backgroundColor: theme.colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: 20,
-      paddingBottom: 34,
-    },
-    modalSheetHandle: {
-      width: 40,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.colors.border,
-      alignSelf: 'center',
-      marginBottom: 14,
-    },
-    statusModalTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: theme.colors.text,
-      marginBottom: 14,
-    },
-    managerSummaryBox: {
-      backgroundColor: theme.colors.background,
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    summaryRefText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.colors.text,
-    },
-    summaryAmountText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.colors.primary,
-      marginTop: 4,
-    },
-    saveManagerStatusBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.primary,
-      borderRadius: 12,
-      paddingVertical: 14,
-      marginTop: 18,
-      elevation: 3,
-    },
-    saveManagerStatusBtnText: {
-      color: '#FFFFFF',
-      fontSize: 15,
-      fontWeight: '700',
     },
   });
 

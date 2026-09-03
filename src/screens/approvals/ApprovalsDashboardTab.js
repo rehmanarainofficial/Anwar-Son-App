@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -10,7 +10,6 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -84,8 +83,8 @@ const ApprovalsDashboardTab = ({ navigation }) => {
   const [sampleList, setSampleList] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal State for Selected Activity Status Popup
-  const [selectedActivityModalId, setSelectedActivityModalId] = useState(null);
+  // Selected Active Field Activity Category (Default: promotional)
+  const [selectedCategoryId, setSelectedCategoryId] = useState('promotional');
 
   const fetchAllActivities = useCallback(async () => {
     if (!user?.id) return;
@@ -93,7 +92,10 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     const to = new Date();
     const from = new Date();
     from.setMonth(from.getMonth() - 1);
-    const formatToYYYYMMDD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const formatToYYYYMMDD = d =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')}`;
 
     const payload = {
       user_id: user.id,
@@ -114,23 +116,49 @@ const ApprovalsDashboardTab = ({ navigation }) => {
         ]);
 
       if (resPromo.status === 'fulfilled' && resPromo.value) {
-        setPromoList(extractList(resPromo.value, ['promotional', 'promotional_data', 'promotions']));
+        setPromoList(
+          extractList(resPromo.value, [
+            'promotional',
+            'promotional_data',
+            'promotions',
+          ]),
+        );
       }
 
       if (resGiveaway.status === 'fulfilled' && resGiveaway.value) {
-        setGiveawayList(extractList(resGiveaway.value, ['giveaways', 'giveaway_data', 'giveaway']));
+        setGiveawayList(
+          extractList(resGiveaway.value, [
+            'giveaways',
+            'giveaway_data',
+            'giveaway',
+          ]),
+        );
       }
 
       if (resWorkshop.status === 'fulfilled' && resWorkshop.value) {
-        setWorkshopList(extractList(resWorkshop.value, ['workshops', 'workshop_data', 'workshop']));
+        setWorkshopList(
+          extractList(resWorkshop.value, [
+            'workshops',
+            'workshop_data',
+            'workshop',
+          ]),
+        );
       }
 
       if (resConference.status === 'fulfilled' && resConference.value) {
-        setConferenceList(extractList(resConference.value, ['conferences', 'conference_data', 'conference']));
+        setConferenceList(
+          extractList(resConference.value, [
+            'conferences',
+            'conference_data',
+            'conference',
+          ]),
+        );
       }
 
       if (resSample.status === 'fulfilled' && resSample.value) {
-        setSampleList(extractList(resSample.value, ['samples', 'sample_data', 'sample']));
+        setSampleList(
+          extractList(resSample.value, ['samples', 'sample_data', 'sample']),
+        );
       }
     } catch (error) {
       console.log('Error fetching field activity approvals data:', error);
@@ -148,7 +176,7 @@ const ApprovalsDashboardTab = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchAllActivities();
-    }, [fetchAllActivities])
+    }, [fetchAllActivities]),
   );
 
   const onRefresh = async () => {
@@ -171,11 +199,22 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     let completed = 0;
 
     list.forEach(item => {
-      const s = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
-      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
+      const s = String(
+        item.status_id !== undefined && item.status_id !== null
+          ? item.status_id
+          : '',
+      ).trim();
+      const statusName = String(item.status || item.status_name || '')
+        .trim()
+        .toLowerCase();
 
       if (s === '1' || statusName === 'draft') draft++;
-      else if (s === '2' || statusName === 'submit for approval' || statusName === 'pending') pending++;
+      else if (
+        s === '2' ||
+        statusName === 'submit for approval' ||
+        statusName === 'pending'
+      )
+        pending++;
       else if (s === '3' || statusName === 'approved') approved++;
       else if (s === '4' || statusName === 'rejected') rejected++;
       else if (s === '5' || statusName === 'resubmit') resubmit++;
@@ -238,112 +277,11 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     },
   ];
 
-  const selectedActivityModal = activityItems.find(a => a.id === selectedActivityModalId);
-
-  const handleSelectStatusChoice = (act, statusId) => {
-    setSelectedActivityModalId(null);
-    if (act?.screen) {
-      navigation.navigate(act.screen, { statusId });
-    }
-  };
-
-  const pendingItems = [
-    {
-      id: 'leave_approval_pending',
-      title: 'Leave Approval',
-      subtext: 'Department & Manager Leave Approvals',
-      date: 'Active',
-      icon: 'calendar-outline',
-      screen: 'LeaveApproval',
-    },
-    {
-      id: 'field_expense',
-      title: 'Field expense',
-      subtext: 'Rs 2,400',
-      date: 'Raised Jun 24, 10:15 AM',
-      icon: 'card-outline',
-      screen: 'CRMMonthlyExpenseApproval',
-    },
-    {
-      id: 'discount_request',
-      title: 'Discount request',
-      subtext: 'Crescent Heart Institute -10%',
-      date: 'Raised Jun 25, 2:30 PM',
-      icon: 'pricetag-outline',
-      screen: 'EmptyPlaceholder',
-      params: { title: 'Discount Request Approval' },
-    },
-  ];
-
-  const approvedItems = [
-    {
-      id: 'leave_request',
-      title: 'Leave request',
-      subtext: 'Leave Approvals Inquiry',
-      date: 'Latest',
-      icon: 'calendar-outline',
-      screen: 'LeaveApproval',
-    },
-  ];
-
-  const rejectedItems = [
-    {
-      id: 'sample_request',
-      title: 'Sample request',
-      subtext: 'City General Hospital',
-      date: 'Raised Jun 18, 11:45 AM',
-      icon: 'flask-outline',
-      screen: 'CRMSampleRequest',
-    },
-  ];
-
-  const renderApprovalCard = (item, badgeType) => {
-    let badgeText = 'Pending';
-    let badgeColor = theme.colors.warning || theme.colors.primary;
-
-    if (badgeType === 'APPROVED') {
-      badgeText = 'Approved';
-      badgeColor = theme.colors.success || theme.colors.primary;
-    } else if (badgeType === 'REJECTED') {
-      badgeText = 'Rejected';
-      badgeColor = theme.colors.error || theme.colors.primary;
-    }
-
-    return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.card}
-        onPress={() => navigation.navigate(item.screen, item.params)}
-      >
-        <View style={styles.iconWrap}>
-          <Icon name={item.icon} size={22} color={theme.colors.primary} />
-        </View>
-
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardSubtext}>{item.subtext}</Text>
-          <View style={styles.dateRow}>
-            <Icon
-              name="time-outline"
-              size={12}
-              color={theme.colors.textSecondary}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.dateText}>{item.date}</Text>
-          </View>
-        </View>
-
-        <View style={[styles.badge, { backgroundColor: badgeColor + '20' }]}>
-          <Text style={[styles.badgeText, { color: badgeColor }]}>
-            {badgeText}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const activeCategory =
+    activityItems.find(a => a.id === selectedCategoryId) || activityItems[0];
 
   const isLoadingAll =
-    promoLoading || giveawayLoading || workshopLoading || conferenceLoading;
+    promoLoading || giveawayLoading || workshopLoading || conferenceLoading || sampleLoading;
 
   return (
     <View style={styles.container}>
@@ -381,7 +319,7 @@ const ApprovalsDashboardTab = ({ navigation }) => {
           />
         }
       >
-        {/* FIELD ACTIVITIES REQUESTS SECTION (HOME STYLE CLEAN CIRCLE ICONS) */}
+        {/* FIELD ACTIVITIES SELECTION ROW */}
         <View style={styles.sectionHeaderWrap}>
           <View style={styles.accentBar} />
           <Text style={styles.sectionTitle}>FIELD ACTIVITIES APPROVALS</Text>
@@ -393,139 +331,97 @@ const ApprovalsDashboardTab = ({ navigation }) => {
           </View>
         ) : (
           <View style={styles.fieldReqRow}>
-            {activityItems.map(act => (
-              <TouchableOpacity
-                key={act.id}
-                style={styles.fieldReqItem}
-                onPress={() => setSelectedActivityModalId(act.id)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.circleWrap}>
-                  <View
-                    style={[
-                      styles.fieldReqCircle,
-                      { backgroundColor: theme.colors.primary + '15' },
-                    ]}
-                  >
-                    <Icon
-                      name={act.icon}
-                      size={22}
-                      color={theme.colors.primary}
-                    />
-                  </View>
-                  {act.counts.total > 0 ? (
-                    <View style={styles.countBadge}>
-                      <Text style={styles.countBadgeText}>
-                        {act.counts.total}
-                      </Text>
+            {activityItems.map(act => {
+              const isSelected = selectedCategoryId === act.id;
+              return (
+                <TouchableOpacity
+                  key={act.id}
+                  style={styles.fieldReqItem}
+                  onPress={() => setSelectedCategoryId(act.id)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.circleWrap}>
+                    <View
+                      style={[
+                        styles.fieldReqCircle,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.colors.primary
+                            : theme.colors.primary + '15',
+                          borderWidth: isSelected ? 2 : 0,
+                          borderColor: theme.colors.primary,
+                        },
+                      ]}
+                    >
+                      <Icon
+                        name={act.icon}
+                        size={22}
+                        color={isSelected ? '#FFFFFF' : theme.colors.primary}
+                      />
                     </View>
-                  ) : null}
-                </View>
-                <Text style={styles.fieldReqLabel} numberOfLines={1}>
-                  {act.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                    {act.counts.total > 0 ? (
+                      <View style={styles.countBadge}>
+                        <Text style={styles.countBadgeText}>
+                          {act.counts.total}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.fieldReqLabel,
+                      {
+                        color: isSelected
+                          ? theme.colors.primary
+                          : theme.colors.text,
+                        fontWeight: isSelected ? '900' : '700',
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {act.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
-        {/* PENDING SECTION */}
+        {/* STATUS FILTERS SECTION (DISPLAYED INLINE ON SCREEN IN PLACE OF OLD PENDING/APPROVED) */}
         <View style={[styles.sectionHeaderWrap, { marginTop: 16 }]}>
           <View style={styles.accentBar} />
-          <Text style={styles.sectionTitle}>PENDING</Text>
+          <Text style={styles.sectionTitle}>
+            {activeCategory?.title?.toUpperCase()} STATUS FILTERS
+          </Text>
         </View>
-        {pendingItems.map(item => renderApprovalCard(item, 'PENDING'))}
 
-        {/* APPROVED SECTION */}
-        <View style={[styles.sectionHeaderWrap, { marginTop: 14 }]}>
-          <View style={styles.accentBar} />
-          <Text style={styles.sectionTitle}>APPROVED</Text>
-        </View>
-        {approvedItems.map(item => renderApprovalCard(item, 'APPROVED'))}
-
-        {/* REJECTED SECTION */}
-        <View style={[styles.sectionHeaderWrap, { marginTop: 14 }]}>
-          <View style={styles.accentBar} />
-          <Text style={styles.sectionTitle}>REJECTED</Text>
-        </View>
-        {rejectedItems.map(item => renderApprovalCard(item, 'REJECTED'))}
-      </ScrollView>
-
-      {/* STATUS SELECTION MODAL POPUP */}
-      <Modal
-        visible={!!selectedActivityModalId}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setSelectedActivityModalId(null)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSelectedActivityModalId(null)}
-        >
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <View style={styles.modalHeaderRow}>
-              <View style={styles.modalHeaderLeft}>
-                <View
-                  style={[
-                    styles.modalHeaderIconWrap,
-                    { backgroundColor: theme.colors.primary + '18' },
-                  ]}
-                >
-                  <Icon
-                    name={selectedActivityModal?.icon || 'layers-outline'}
-                    size={22}
-                    color={theme.colors.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.modalTitle}>
-                    {selectedActivityModal?.title} Approvals
-                  </Text>
-                  <Text style={styles.modalSubTitle}>
-                    Select status filter to view requests
-                  </Text>
-                </View>
-              </View>
+        <View style={styles.statusCardsList}>
+          {STATUS_CONFIG.map(st => {
+            const count = activeCategory?.counts ? activeCategory.counts[st.id] || 0 : 0;
+            return (
               <TouchableOpacity
-                onPress={() => setSelectedActivityModalId(null)}
-                style={styles.closeBtn}
+                key={st.id}
+                style={styles.statusOptionCard}
+                onPress={() => navigation.navigate(activeCategory.screen, { statusId: st.id })}
+                activeOpacity={0.75}
               >
-                <Icon name="close" size={20} color={theme.colors.textSecondary} />
+                <View style={styles.statusOptionLeft}>
+                  <View style={[styles.statusIconWrap, { backgroundColor: st.bg }]}>
+                    <Icon name={st.icon} size={20} color={st.text} />
+                  </View>
+                  <Text style={styles.statusOptionName}>{st.name}</Text>
+                </View>
+
+                <View style={[styles.statusCountBadge, { backgroundColor: st.bg }]}>
+                  <Text style={[styles.statusCountText, { color: st.text }]}>
+                    {count}
+                  </Text>
+                </View>
               </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalDivider} />
-
-            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
-              {STATUS_CONFIG.map(st => {
-                const count = selectedActivityModal?.counts[st.id] || 0;
-                return (
-                  <TouchableOpacity
-                    key={st.id}
-                    style={styles.statusOptionRow}
-                    onPress={() => handleSelectStatusChoice(selectedActivityModal, st.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.statusOptionLeft}>
-                      <View style={[styles.statusIconWrap, { backgroundColor: st.bg }]}>
-                        <Icon name={st.icon} size={18} color={st.text} />
-                      </View>
-                      <Text style={styles.statusOptionName}>{st.name}</Text>
-                    </View>
-
-                    <View style={[styles.statusCountBadge, { backgroundColor: st.bg }]}>
-                      <Text style={[styles.statusCountText, { color: st.text }]}>
-                        {count}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+            );
+          })}
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -608,8 +504,8 @@ const getStyles = theme =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 6,
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.border,
       borderWidth: 1,
@@ -656,153 +552,52 @@ const getStyles = theme =>
     },
     fieldReqLabel: {
       fontSize: 10,
-      fontWeight: '700',
-      color: theme.colors.text,
       textAlign: 'center',
     },
-    card: {
+    statusCardsList: {
+      marginTop: 4,
+      gap: 8,
+    },
+    statusOptionCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.border,
-      padding: 14,
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
       borderRadius: 16,
+      backgroundColor: theme.colors.surface,
       borderWidth: 1,
+      borderColor: theme.colors.border,
       elevation: 2,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.06,
       shadowRadius: 3,
     },
-    iconWrap: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      backgroundColor: theme.colors.primary + '18',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    cardContent: {
-      flex: 1,
-    },
-    cardTitle: {
-      fontSize: 14,
-      fontWeight: '800',
-      color: theme.colors.text,
-      marginBottom: 2,
-    },
-    cardSubtext: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.colors.textSecondary,
-      marginBottom: 4,
-    },
-    dateRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    dateText: {
-      fontSize: 11,
-      color: theme.colors.textSecondary,
-    },
-    badge: {
-      paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderRadius: 12,
-      marginLeft: 8,
-    },
-    badgeText: {
-      fontSize: 11,
-      fontWeight: '800',
-    },
-    // Modal Styles
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      justifyContent: 'center',
-      padding: 20,
-    },
-    modalContent: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 20,
-      padding: 18,
-      elevation: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.2,
-      shadowRadius: 6,
-    },
-    modalHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    modalHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-    },
-    modalHeaderIconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    modalTitle: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: theme.colors.text,
-    },
-    modalSubTitle: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: theme.colors.textSecondary,
-    },
-    closeBtn: {
-      padding: 4,
-    },
-    modalDivider: {
-      height: 1,
-      backgroundColor: theme.colors.border,
-      marginVertical: 12,
-    },
-    statusOptionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      marginBottom: 6,
-      backgroundColor: theme.colors.background,
-    },
     statusOptionLeft: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     statusIconWrap: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 10,
+      marginRight: 12,
     },
     statusOptionName: {
-      fontSize: 13,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '800',
       color: theme.colors.text,
     },
     statusCountBadge: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 12,
     },
     statusCountText: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: '900',
     },
   });
