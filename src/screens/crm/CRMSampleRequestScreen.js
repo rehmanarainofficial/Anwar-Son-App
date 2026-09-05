@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+} from 'react';
 import {
   View,
   Text,
@@ -10,13 +16,12 @@ import {
   Modal,
   FlatList,
   RefreshControl,
-  Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
+import { SearchableDropdown } from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
@@ -28,13 +33,6 @@ import {
   useGetSampleDataMutation,
   usePostSampleDataMutation,
 } from '@api/baseApi';
-
-const getInitialFilterDates = () => {
-  const to = new Date();
-  const from = new Date();
-  from.setMonth(from.getMonth() - 1);
-  return { from, to };
-};
 
 const parseDate = dateStr => {
   if (!dateStr) return new Date();
@@ -60,26 +58,31 @@ const formatToYYYYMMDD = date => {
   return `${year}-${month}-${day}`;
 };
 
+const isUnapproved = status => {
+  if (!status) return true;
+  const s = String(status).trim().toLowerCase();
+  return s === 'un approved' || s === 'unapproved' || s.includes('un');
+};
+
+const isApproved = status => {
+  if (!status) return false;
+  const s = String(status).trim().toLowerCase();
+  return s === 'approved';
+};
+
 const CRMSampleRequestScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
 
-  // List Data State
   const [sampleList, setSampleList] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('approved');
 
-  // Date Filter State (Default 1 Month Range)
-  const initialDates = getInitialFilterDates();
-  const [fromDate, setFromDate] = useState(initialDates.from);
-  const [toDate, setToDate] = useState(initialDates.to);
-
-  // Main Form Modal State (Add / Edit)
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formId, setFormId] = useState(0);
 
-  // Form Field States
   const [basicInfo, setBasicInfo] = useState({
     hospital: null,
     hospitalContact: null,
@@ -95,17 +98,21 @@ const CRMSampleRequestScreen = ({ navigation }) => {
   const [products, setProducts] = useState([{ ...emptyProduct }]);
   const [remarks, setRemarks] = useState('');
 
-  // API Hooks
-  const [getSampleData, { isLoading: dataLoading }] = useGetSampleDataMutation();
-  const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
-  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] = useGetHospitalContactsMutation();
+  const [getSampleData, { isLoading: dataLoading }] =
+    useGetSampleDataMutation();
+  const [getHospital, { data: hospRes, isLoading: hospLoading }] =
+    useGetHospitalMutation();
+  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] =
+    useGetHospitalContactsMutation();
   const [getCityDropdown, { data: cityRes }] = useGetCityDropdownMutation();
-  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] = useGetStockMasterMainDropdownMutation();
+  const [getStockMasterMain, { data: stockRes, isLoading: stockLoading }] =
+    useGetStockMasterMainDropdownMutation();
   const [getDepartment, { data: deptRes }] = useGetDepartmentDropdownMutation();
-  const [getSurgicalSpecialty, { data: surgicalRes }] = useGetSurgicalSpecialityDropdownMutation();
-  const [postSampleData, { isLoading: isSubmitting }] = usePostSampleDataMutation();
+  const [getSurgicalSpecialty, { data: surgicalRes }] =
+    useGetSurgicalSpecialityDropdownMutation();
+  const [postSampleData, { isLoading: isSubmitting }] =
+    usePostSampleDataMutation();
 
-  // Header options with (+) button on the right
   useLayoutEffect(() => {
     navigation.setOptions({
       title: 'Sample Request',
@@ -121,21 +128,15 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     });
   }, [navigation, theme]);
 
-  // Load Sample List Data
   const loadSampleData = useCallback(async () => {
-    if (!user?.id) return;
+    const userId = user?.id || user?.company_user_id;
+    if (!userId) return;
     try {
       const payload = {
         company: 'ANS',
-        user_id: user.id,
-        role_id: user?.role_id || '2',
+        user_id: String(userId),
+        role_id: String(user?.role_id || user?.company_role_id || '2'),
       };
-      if (fromDate) {
-        payload.from_date = formatToYYYYMMDD(fromDate);
-      }
-      if (toDate) {
-        payload.to_date = formatToYYYYMMDD(toDate);
-      }
 
       const res = await getSampleData(payload).unwrap();
 
@@ -152,22 +153,30 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       console.log('Error loading sample data:', error);
       setSampleList([]);
     }
-  }, [user?.id, user?.role_id, fromDate, toDate, getSampleData]);
+  }, [
+    user?.id,
+    user?.company_user_id,
+    user?.role_id,
+    user?.company_role_id,
+    getSampleData,
+  ]);
 
   useEffect(() => {
     loadSampleData();
   }, [loadSampleData]);
 
   useEffect(() => {
-    if (user?.id) {
-      getHospital({ id: user.id });
-      getCityDropdown({ id: user.id });
+    const userId = user?.id || user?.company_user_id;
+    if (userId) {
+      getHospital({ id: userId });
+      getCityDropdown({ id: userId });
       getStockMasterMain({});
       getDepartment({});
       getSurgicalSpecialty({});
     }
   }, [
     user?.id,
+    user?.company_user_id,
     getHospital,
     getCityDropdown,
     getStockMasterMain,
@@ -181,6 +190,21 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     setIsRefreshing(false);
   };
 
+  const unapprovedCount = useMemo(() => {
+    return sampleList.filter(item => isUnapproved(item.status)).length;
+  }, [sampleList]);
+
+  const approvedCount = useMemo(() => {
+    return sampleList.filter(item => isApproved(item.status)).length;
+  }, [sampleList]);
+
+  const filteredList = useMemo(() => {
+    if (activeTab === 'unapproved') {
+      return sampleList.filter(item => isUnapproved(item.status));
+    }
+    return sampleList.filter(item => isApproved(item.status));
+  }, [sampleList, activeTab]);
+
   const handleHospitalSelect = item => {
     setBasicInfo(prev => ({
       ...prev,
@@ -190,7 +214,10 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       department: null,
       surgicalSpecialty: null,
     }));
-    getHospitalContacts({ hospital_id: item.debtor_no, user_id: user?.id });
+    getHospitalContacts({
+      hospital_id: item.debtor_no,
+      user_id: user?.id || user?.company_user_id,
+    });
   };
 
   const handleContactSelect = item => {
@@ -202,8 +229,9 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       surgicalSpecialty: item.surgical_speciality || prev.surgicalSpecialty,
     }));
 
+    const userId = user?.id || user?.company_user_id;
     if (item.city) {
-      getCityDropdown({ id: user?.id, city: item.city });
+      getCityDropdown({ id: userId, city: item.city });
     }
     if (item.department) {
       getDepartment({ department: item.department });
@@ -231,8 +259,9 @@ const CRMSampleRequestScreen = ({ navigation }) => {
 
   const openFormModal = (mode = 'add', item = null) => {
     setFormMode(mode);
+    const userId = user?.id || user?.company_user_id;
     if (mode === 'update' && item) {
-      setFormId(item.id || 0);
+      setFormId(item.id || item.order_no || 0);
       setBasicInfo({
         hospital: item.hospital_id || item.hospital || null,
         hospitalContact: item.contact_id || item.contact || null,
@@ -242,7 +271,10 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       });
       setRemarks(item.comments || item.remarks || '');
 
-      if (Array.isArray(item.purch_order_details) && item.purch_order_details.length > 0) {
+      if (
+        Array.isArray(item.purch_order_details) &&
+        item.purch_order_details.length > 0
+      ) {
         setProducts(
           item.purch_order_details.map(p => ({
             product: p.item_code || p.stock_id || null,
@@ -253,7 +285,10 @@ const CRMSampleRequestScreen = ({ navigation }) => {
         setProducts([{ ...emptyProduct }]);
       }
       if (item.hospital_id || item.hospital) {
-        getHospitalContacts({ hospital_id: item.hospital_id || item.hospital, user_id: user?.id });
+        getHospitalContacts({
+          hospital_id: item.hospital_id || item.hospital,
+          user_id: userId,
+        });
       }
     } else {
       setFormId(0);
@@ -332,11 +367,13 @@ const CRMSampleRequestScreen = ({ navigation }) => {
         s => String(s.id) === String(basicInfo.surgicalSpecialty),
       )?.description || basicInfo.surgicalSpecialty;
 
+    const userId = user?.id || user?.company_user_id || '';
+
     const payload = {
       company: 'ANS',
       id: String(formId || '0'),
-      person_id: user?.person_id || user?.id || '1',
-      user_id: user?.id || '',
+      person_id: user?.person_id || userId || '1',
+      user_id: userId,
       role_id: String(user?.role_id || '2'),
       branch_code: user?.branch_code || '',
       ord_date: todayStr,
@@ -350,14 +387,15 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     };
 
     try {
-      console.log('CRMSampleRequest [Submit Payload]:', JSON.stringify(payload, null, 2));
       const response = await postSampleData(payload).unwrap();
-      console.log('CRMSampleRequest [Submit Response]:', response);
       if (String(response.status) === 'true' || response.status === true) {
         Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: formMode === 'add' ? 'Sample request submitted successfully!' : 'Sample request updated successfully!',
+          text2:
+            formMode === 'add'
+              ? 'Sample request submitted successfully!'
+              : 'Sample request updated successfully!',
         });
         setIsModalVisible(false);
         loadSampleData();
@@ -378,83 +416,294 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     }
   };
 
+  const getSurgicalSpecialtyLabel = val => {
+    if (!val) return 'N/A';
+    const found = surgicalRes?.data?.find(
+      s =>
+        String(s.id) === String(val) || String(s.description) === String(val),
+    );
+    return found?.description || val;
+  };
+
   const renderCardItem = ({ item }) => {
+    const itemIsApproved = isApproved(item.status);
+    const statusLabel =
+      item.status || (itemIsApproved ? 'Approved' : 'Un Approved');
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
-          <View style={styles.referenceContainer}>
-            <Icon name="flask-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.referenceText}>{item.reference || item.ord_no || `SAMPLE-${item.id}`}</Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.referenceContainer}>
+              <Icon
+                name="flask-outline"
+                size={16}
+                color={theme.colors.primary}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.referenceText}>
+                {item.reference ||
+                  `SO-${item.order_no || item.trans_no || 'N/A'}`}
+              </Text>
+            </View>
+            {item.order_no ? (
+              <View style={styles.orderNoBadge}>
+                <Text style={styles.orderNoBadgeText}>#{item.order_no}</Text>
+              </View>
+            ) : null}
           </View>
-          <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.ord_date || item.created_at, false)}</Text>
+
+          <View
+            style={[
+              styles.statusBadge,
+              itemIsApproved
+                ? styles.statusBadgeApproved
+                : styles.statusBadgeUnapproved,
+            ]}
+          >
+            <Icon
+              name={itemIsApproved ? 'checkmark-circle' : 'time'}
+              size={12}
+              color={itemIsApproved ? '#16A34A' : '#D97706'}
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[
+                styles.statusBadgeText,
+                itemIsApproved
+                  ? styles.statusTextApproved
+                  : styles.statusTextUnapproved,
+              ]}
+            >
+              {statusLabel}
+            </Text>
+          </View>
+        </View>
+
+        {/* Date & Branch Subheader */}
+        <View style={styles.subHeaderRow}>
+          <View style={styles.subHeaderItem}>
+            <Icon
+              name="calendar-outline"
+              size={13}
+              color={theme.colors.textSecondary}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={styles.cardDateText}>
+              {item.ord_date
+                ? formatToAsiaDateTime(item.ord_date, false)
+                : 'N/A'}
+            </Text>
+          </View>
+          {item.branch ? (
+            <View style={styles.subHeaderItem}>
+              <Icon
+                name="business-outline"
+                size={13}
+                color={theme.colors.textSecondary}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.branchText}>{item.branch}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.divider} />
 
+        {/* Customer */}
+        {item.customer ? (
+          <View style={styles.infoRow}>
+            <Icon
+              name="people-outline"
+              size={15}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
+            <Text style={styles.infoLabel}>Customer:</Text>
+            <Text style={styles.infoValue} numberOfLines={2}>
+              {item.customer}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.infoRow}>
-          <Icon name="business-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="medkit-outline"
+            size={15}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Hospital:</Text>
-          <Text style={styles.infoValue}>{item.hospital_name || item.hospital || 'N/A'}</Text>
+          <Text style={styles.infoValue} numberOfLines={2}>
+            {item.hospital || item.hospital_name || 'N/A'}
+          </Text>
         </View>
 
+        {/* Contact */}
         <View style={styles.infoRow}>
-          <Icon name="person-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="person-outline"
+            size={15}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Contact:</Text>
-          <Text style={styles.infoValue}>{item.contact_person || item.contact || 'N/A'}</Text>
+          <Text style={styles.infoValue}>
+            {item.contact || item.contact_person || 'N/A'}
+          </Text>
         </View>
 
-        {(item.created_by_name || item.salesman || item.created_by) ? (
-          <View style={styles.infoRow}>
-            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
-            <Text style={styles.infoLabel}>Created By:</Text>
-            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.salesman || item.created_by}</Text>
+        {/* City & Department */}
+        <View style={styles.twoColumnRow}>
+          <View style={[styles.infoRow, { flex: 1, marginBottom: 0 }]}>
+            <Icon
+              name="location-outline"
+              size={15}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
+            <Text style={styles.infoLabel}>City:</Text>
+            <Text style={styles.infoValue}>{item.city || 'N/A'}</Text>
+          </View>
+          <View style={[styles.infoRow, { flex: 1, marginBottom: 0 }]}>
+            <Icon
+              name="git-network-outline"
+              size={15}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
+            <Text style={styles.infoLabel}>Dept:</Text>
+            <Text style={styles.infoValue}>{item.department || 'N/A'}</Text>
+          </View>
+        </View>
+
+        {/* Surgical Speciality */}
+        {item.surgical_speciality ? (
+          <View style={[styles.infoRow, { marginTop: 8 }]}>
+            <Icon
+              name="cut-outline"
+              size={15}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
+            <Text style={styles.infoLabel}>Surgical Spec:</Text>
+            <Text style={styles.infoValue}>
+              {getSurgicalSpecialtyLabel(item.surgical_speciality)}
+            </Text>
           </View>
         ) : null}
 
-        {item.department ? (
-          <View style={styles.infoRow}>
-            <Icon name="git-network-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
-            <Text style={styles.infoLabel}>Department:</Text>
-            <Text style={styles.infoValue}>{item.department}</Text>
-          </View>
-        ) : null}
-
+        {/* Remarks / Comments */}
         {item.comments || item.remarks ? (
           <View style={styles.remarksBox}>
             <Text style={styles.remarksLabel}>Comments:</Text>
-            <Text style={styles.remarksText}>{item.comments || item.remarks}</Text>
+            <Text style={styles.remarksText}>
+              {item.comments || item.remarks}
+            </Text>
           </View>
         ) : null}
-
-        <View style={styles.cardActionsRow}>
-          <TouchableOpacity
-            style={styles.updateCardBtn}
-            onPress={() => openFormModal('update', item)}
-            activeOpacity={0.7}
-          >
-            <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.updateCardBtnText}>Update</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      {/* Date Range Filter */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-        <DateFilter
-          fromDate={fromDate}
-          toDate={toDate}
-          onFromDate={setFromDate}
-          onToDate={setToDate}
-          onClear={() => {
-            setFromDate(null);
-            setToDate(null);
-          }}
-          onFilter={loadSampleData}
-        />
+      {/* 1 Row 2 Tabs: Un Approved & Approved */}
+      <View style={styles.tabBarContainer}>
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'unapproved' && styles.activeTabButton,
+            ]}
+            onPress={() => setActiveTab('unapproved')}
+            activeOpacity={0.7}
+          >
+            <Icon
+              name="time-outline"
+              size={16}
+              color={
+                activeTab === 'unapproved'
+                  ? '#FFFFFF'
+                  : theme.colors.textSecondary
+              }
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'unapproved' && styles.activeTabText,
+              ]}
+            >
+              Un Approved
+            </Text>
+            <View
+              style={[
+                styles.badge,
+                activeTab === 'unapproved'
+                  ? styles.activeBadge
+                  : styles.inactiveBadge,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  activeTab === 'unapproved'
+                    ? styles.activeBadgeText
+                    : styles.inactiveBadgeText,
+                ]}
+              >
+                {unapprovedCount}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'approved' && styles.activeTabButton,
+            ]}
+            onPress={() => setActiveTab('approved')}
+            activeOpacity={0.7}
+          >
+            <Icon
+              name="checkmark-circle-outline"
+              size={16}
+              color={
+                activeTab === 'approved'
+                  ? '#FFFFFF'
+                  : theme.colors.textSecondary
+              }
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'approved' && styles.activeTabText,
+              ]}
+            >
+              Approved
+            </Text>
+            <View
+              style={[
+                styles.badge,
+                activeTab === 'approved'
+                  ? styles.activeBadge
+                  : styles.inactiveBadge,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  activeTab === 'approved'
+                    ? styles.activeBadgeText
+                    : styles.inactiveBadgeText,
+                ]}
+              >
+                {approvedCount}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Content: List of Sample Cards */}
@@ -465,8 +714,12 @@ const CRMSampleRequestScreen = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
-          data={sampleList}
-          keyExtractor={item => String(item.id)}
+          data={filteredList}
+          keyExtractor={(item, index) =>
+            `${item.order_no || item.trans_no || item.id || 'item'}_${
+              item.reference || ''
+            }_${index}`
+          }
           renderItem={renderCardItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -478,23 +731,52 @@ const CRMSampleRequestScreen = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Icon name="flask-outline" size={48} color={theme.colors.textSecondary} />
-              <Text style={styles.emptyTitle}>No Sample Requests</Text>
-              <Text style={styles.emptySubtext}>
-                Tap the (+) icon in the top right header to add a new sample request.
+              <Icon
+                name={
+                  activeTab === 'unapproved'
+                    ? 'flask-outline'
+                    : 'checkmark-done-circle-outline'
+                }
+                size={48}
+                color={theme.colors.textSecondary}
+              />
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'unapproved'
+                  ? 'No Unapproved Sample Requests'
+                  : 'No Approved Sample Requests'}
               </Text>
-              <TouchableOpacity
-                style={styles.addFirstBtn}
-                onPress={() => openFormModal('add')}
-                activeOpacity={0.8}
-              >
-                <Icon name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.addFirstBtnText}>Add Sample Request</Text>
-              </TouchableOpacity>
+              <Text style={styles.emptySubtext}>
+                {activeTab === 'unapproved'
+                  ? 'Tap the (+) icon in the header to submit a new sample request.'
+                  : 'Approved sample requests will show up here.'}
+              </Text>
+              {activeTab === 'unapproved' && (
+                <TouchableOpacity
+                  style={styles.addFirstBtn}
+                  onPress={() => openFormModal('add')}
+                  activeOpacity={0.8}
+                >
+                  <Icon
+                    name="add"
+                    size={20}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.addFirstBtnText}>Add Sample Request</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />
       )}
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => openFormModal('add')}
+        activeOpacity={0.85}
+      >
+        <Icon name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
 
       {/* Add / Edit Form Modal */}
       <Modal
@@ -506,14 +788,22 @@ const CRMSampleRequestScreen = ({ navigation }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalHeaderTitle}>
-              {formMode === 'add' ? 'Add Sample Request' : 'Edit Sample Request'}
+              {formMode === 'add'
+                ? 'Add Sample Request'
+                : 'Edit Sample Request'}
             </Text>
-            <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.modalCloseBtn}>
+            <TouchableOpacity
+              onPress={() => setIsModalVisible(false)}
+              style={styles.modalCloseBtn}
+            >
               <Icon name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Hospital & Contact */}
             <View style={styles.sectionCard}>
               <SearchableDropdown
@@ -546,8 +836,16 @@ const CRMSampleRequestScreen = ({ navigation }) => {
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionCardTitle}>Product Details</Text>
-                <TouchableOpacity style={styles.addProductBtn} onPress={addProduct}>
-                  <Icon name="add-circle-outline" size={18} color={theme.colors.primary} style={{ marginRight: 4 }} />
+                <TouchableOpacity
+                  style={styles.addProductBtn}
+                  onPress={addProduct}
+                >
+                  <Icon
+                    name="add-circle-outline"
+                    size={18}
+                    color={theme.colors.primary}
+                    style={{ marginRight: 4 }}
+                  />
                   <Text style={styles.addProductBtnText}>Add Product</Text>
                 </TouchableOpacity>
               </View>
@@ -555,10 +853,16 @@ const CRMSampleRequestScreen = ({ navigation }) => {
               {products.map((item, index) => (
                 <View key={index} style={styles.productCard}>
                   <View style={styles.productHeaderRow}>
-                    <Text style={styles.productItemLabel}>Item #{index + 1}</Text>
+                    <Text style={styles.productItemLabel}>
+                      Item #{index + 1}
+                    </Text>
                     {products.length > 1 && (
                       <TouchableOpacity onPress={() => removeProduct(index)}>
-                        <Icon name="trash-outline" size={18} color={theme.colors.error || '#EF4444'} />
+                        <Icon
+                          name="trash-outline"
+                          size={18}
+                          color={theme.colors.error || '#EF4444'}
+                        />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -568,7 +872,9 @@ const CRMSampleRequestScreen = ({ navigation }) => {
                     placeholder="Search Product"
                     data={stockRes?.data || []}
                     selectedId={item.product}
-                    onSelect={selected => updateProductField(index, 'product', selected.stock_id)}
+                    onSelect={selected =>
+                      updateProductField(index, 'product', selected.stock_id)
+                    }
                     isLoading={stockLoading}
                     idKey="stock_id"
                     labelKey="description"
@@ -583,7 +889,9 @@ const CRMSampleRequestScreen = ({ navigation }) => {
                       placeholderTextColor={theme.colors.textSecondary}
                       keyboardType="numeric"
                       value={item.quantity}
-                      onChangeText={val => updateProductField(index, 'quantity', val)}
+                      onChangeText={val =>
+                        updateProductField(index, 'quantity', val)
+                      }
                     />
                   </View>
                 </View>
@@ -595,7 +903,10 @@ const CRMSampleRequestScreen = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <Text style={styles.fieldLabel}>Comments / Remarks</Text>
                 <TextInput
-                  style={[styles.textInput, { height: 75, textAlignVertical: 'top' }]}
+                  style={[
+                    styles.textInput,
+                    { height: 75, textAlignVertical: 'top' },
+                  ]}
                   placeholder="Enter comments..."
                   placeholderTextColor={theme.colors.textSecondary}
                   multiline
@@ -615,7 +926,9 @@ const CRMSampleRequestScreen = ({ navigation }) => {
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {formMode === 'add' ? 'Submit Sample Request' : 'Update Sample Request'}
+                  {formMode === 'add'
+                    ? 'Submit Sample Request'
+                    : 'Update Sample Request'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -632,6 +945,61 @@ const getStyles = theme =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    tabBarContainer: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
+      backgroundColor: theme.colors.background,
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    tabButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    activeTabButton: {
+      backgroundColor: theme.colors.primary,
+    },
+    tabText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+    },
+    activeTabText: {
+      color: '#FFFFFF',
+    },
+    badge: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 10,
+      marginLeft: 6,
+    },
+    activeBadge: {
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    },
+    inactiveBadge: {
+      backgroundColor: theme.colors.border,
+    },
+    badgeText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    activeBadgeText: {
+      color: '#FFFFFF',
+    },
+    inactiveBadgeText: {
+      color: theme.colors.textSecondary,
+    },
     loaderContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -644,6 +1012,7 @@ const getStyles = theme =>
     },
     listContent: {
       padding: 16,
+      paddingTop: 8,
       paddingBottom: 80,
     },
     card: {
@@ -664,32 +1033,94 @@ const getStyles = theme =>
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      flexWrap: 'wrap',
+    },
     referenceContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginRight: 8,
     },
     referenceText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '800',
       color: theme.colors.text,
     },
-    cardDateText: {
+    orderNoBadge: {
+      backgroundColor: theme.colors.primary + '15',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    orderNoBadgeText: {
       fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    statusBadgeApproved: {
+      backgroundColor: '#DCFCE7',
+    },
+    statusBadgeUnapproved: {
+      backgroundColor: '#FEF3C7',
+    },
+    statusBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    statusTextApproved: {
+      color: '#16A34A',
+    },
+    statusTextUnapproved: {
+      color: '#D97706',
+    },
+    subHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 6,
+    },
+    subHeaderItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    cardDateText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+    },
+    branchText: {
+      fontSize: 12,
       fontWeight: '600',
       color: theme.colors.textSecondary,
     },
     divider: {
       height: 1,
       backgroundColor: theme.colors.border,
-      marginVertical: 12,
+      marginVertical: 10,
     },
     infoRow: {
       flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 6,
+    },
+    twoColumnRow: {
+      flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 8,
+      justifyContent: 'space-between',
     },
     infoIcon: {
-      marginRight: 8,
+      marginRight: 6,
+      marginTop: 1,
     },
     infoLabel: {
       fontSize: 12,
@@ -699,7 +1130,7 @@ const getStyles = theme =>
     },
     infoValue: {
       fontSize: 12,
-      fontWeight: '600',
+      fontWeight: '700',
       color: theme.colors.text,
       flex: 1,
     },
@@ -707,8 +1138,7 @@ const getStyles = theme =>
       backgroundColor: theme.colors.background,
       borderRadius: 10,
       padding: 10,
-      marginTop: 4,
-      marginBottom: 8,
+      marginTop: 8,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -723,7 +1153,7 @@ const getStyles = theme =>
       color: theme.colors.text,
     },
     cardActionsRow: {
-      marginTop: 6,
+      marginTop: 12,
     },
     updateCardBtn: {
       flexDirection: 'row',
@@ -751,6 +1181,7 @@ const getStyles = theme =>
       color: theme.colors.text,
       marginTop: 12,
       marginBottom: 6,
+      textAlign: 'center',
     },
     emptySubtext: {
       fontSize: 12,
@@ -770,6 +1201,22 @@ const getStyles = theme =>
       color: '#FFFFFF',
       fontSize: 13,
       fontWeight: '700',
+    },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
     },
     // Modal Styles
     modalContainer: {

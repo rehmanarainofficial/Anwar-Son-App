@@ -646,15 +646,11 @@ export const baseApi = createApi({
         const formData = new FormData();
         formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
-        if (body?.from_date) {
-          formData.append('from_date', String(body.from_date));
-        }
-        if (body?.to_date) {
-          formData.append('to_date', String(body.to_date));
+        if (body.role_id !== undefined && body.role_id !== null) {
+          formData.append('role_id', String(body.role_id));
         }
         return {
-          url: 'portal/get_sample_data.php',
+          url: 'portal/sample_status_listing.php',
           method: 'POST',
           body: formData,
           headers: { 'Content-Type': 'multipart/form-data' },
