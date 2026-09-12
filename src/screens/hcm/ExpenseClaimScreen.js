@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,6 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@config/useTheme';
-// Removed formatNumber import
 import Toast from 'react-native-toast-message';
 import { DimensionDropdown, CustomDatePicker } from '@components/common';
 import {
@@ -26,35 +25,18 @@ import {
   usePostServiceExpenseClaimMutation,
 } from '@api/hcmApi';
 
-// Purpose options for checkboxes with expense_type numbers
-const PURPOSE_OPTIONS = [
-  { id: 1, label: 'Monthly Exp' },
-  { id: 2, label: 'Official Travel' },
-  { id: 3, label: 'Client Meeting' },
-  { id: 4, label: 'Office Supplies' },
-  { id: 5, label: 'Training / Seminar' },
-  { id: 6, label: 'Site Visit' },
-  { id: 7, label: 'Other' },
-];
-
 export default function ExpenseClaimScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
-  const userId = userData?.id;
-  const employeeId = userData?.emp_code || userData?.employee_id;
+  const userId = userData?.id || userData?.user_id;
+  const employeeId = userData?.employee_id || userData?.emp_code || userData?.id;
   const onRefresh = route?.params?.onRefresh;
 
-  // Claim Details State
-  const [submissionDate, setSubmissionDate] = useState(new Date());
-  const [selectedPurpose, setSelectedPurpose] = useState(null);
-  const [otherPurposeText, setOtherPurposeText] = useState('');
-  const [accompaniedBy, setAccompaniedBy] = useState('');
+  // Selected Dimension
   const [selectedDimensionId, setSelectedDimensionId] = useState(0);
 
-  // Date Picker States
-  const [showSubmissionDatePicker, setShowSubmissionDatePicker] =
-    useState(false);
+  // Date Picker State
   const [showItemDatePicker, setShowItemDatePicker] = useState(false);
 
   // Expense Item Form State
@@ -63,7 +45,7 @@ export default function ExpenseClaimScreen({ navigation, route }) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
 
-  // Data State
+  // Items List State
   const [items, setItems] = useState([]);
 
   // Image State
@@ -77,13 +59,19 @@ export default function ExpenseClaimScreen({ navigation, route }) {
   const [postServiceExpenseClaim, { isLoading: submitting }] =
     usePostServiceExpenseClaimMutation();
 
-  const accountTitles = (accountsData?.data || [])
-    .filter(account => account.inactive === '0' || account.inactive === 0)
+  const rawAccounts = Array.isArray(accountsData)
+    ? accountsData
+    : Array.isArray(accountsData?.data)
+    ? accountsData.data
+    : [];
+
+  const accountTitles = rawAccounts
+    .filter(account => account.inactive === '0' || account.inactive === 0 || account.inactive === false)
     .map(account => ({
-      label: account.account_name,
+      label: (account.account_name || '').replace(/&amp;/g, '&'),
       value: account.account_code,
       account_code: account.account_code,
-      account_name: account.account_name,
+      account_name: (account.account_name || '').replace(/&amp;/g, '&'),
     }));
 
   const formatNumber = num => {
@@ -179,7 +167,7 @@ export default function ExpenseClaimScreen({ navigation, route }) {
 
   const handleAddItem = () => {
     if (!expenseCategory || !amount) {
-      Toast.show({ type: 'error', text1: 'Please fill required fields' });
+      Toast.show({ type: 'error', text1: 'Please fill required fields (Category & Amount)' });
       return;
     }
 
@@ -224,11 +212,6 @@ export default function ExpenseClaimScreen({ navigation, route }) {
       return;
     }
 
-    if (!selectedPurpose) {
-      Toast.show({ type: 'error', text1: 'Please select a purpose' });
-      return;
-    }
-
     try {
       const totalAmount = items.reduce(
         (sum, item) => sum + parseFloat(item.amount || 0),
@@ -243,14 +226,16 @@ export default function ExpenseClaimScreen({ navigation, route }) {
       }));
 
       const formData = new FormData();
-      formData.append('trans_date', formatDateForApi(submissionDate));
-      formData.append('expense_type', selectedPurpose.toString());
+      const firstItemDate = items[0]?.date ? new Date(items[0].date) : new Date();
+      formData.append('company', 'ANS');
+      formData.append('trans_date', formatDateForApi(firstItemDate));
+      formData.append('expense_type', '1');
       formData.append('amount', totalAmount.toString());
-      formData.append('user_id', userId);
+      formData.append('user_id', userId ? String(userId) : '');
       formData.append('expense_detail', JSON.stringify(expenseDetail));
-      formData.append('comments', accompaniedBy || '');
-      formData.append('employee_id', employeeId);
-      formData.append('dimension_id', selectedDimensionId);
+      formData.append('comments', '');
+      formData.append('employee_id', String(userData?.employee_id || employeeId || ''));
+      formData.append('dimension_id', selectedDimensionId ? String(selectedDimensionId) : '0');
 
       if (selectedImage) {
         const imageFile = {
@@ -274,10 +259,7 @@ export default function ExpenseClaimScreen({ navigation, route }) {
         setExpenseCategory(null);
         setDescription('');
         setAmount('');
-        setSubmissionDate(new Date());
-        setSelectedPurpose(null);
-        setOtherPurposeText('');
-        setAccompaniedBy('');
+        setItemDate(new Date());
         setSelectedImage(null);
 
         if (onRefresh) {
@@ -291,7 +273,7 @@ export default function ExpenseClaimScreen({ navigation, route }) {
         });
       }
     } catch (error) {
-      console.log('Error:', error);
+      console.log('Error submitting expense claim:', error);
       Toast.show({ type: 'error', text1: 'Submission failed' });
     }
   };
@@ -301,8 +283,6 @@ export default function ExpenseClaimScreen({ navigation, route }) {
       items.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0),
     );
   };
-
-  const paddingTop = Platform.OS === 'ios' ? insets.top + 10 : insets.top + 15;
 
   return (
     <View
@@ -321,124 +301,6 @@ export default function ExpenseClaimScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Claim Details Card */}
-        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <Text
-            style={[
-              styles.cardTitle,
-              {
-                color: theme.colors.text,
-                borderBottomColor: theme.colors.border,
-              },
-            ]}
-          >
-            Claim Details
-          </Text>
-
-          {/* Claim Submission Date */}
-          <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-              Claim Submission Date:
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.dateInputField,
-                {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              onPress={() => setShowSubmissionDatePicker(true)}
-            >
-              <Text
-                style={[styles.dateInputText, { color: theme.colors.text }]}
-              >
-                {formatDate(submissionDate)}
-              </Text>
-              <Ionicons
-                name="calendar-outline"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Purpose of Expense */}
-          <View style={styles.purposeSection}>
-            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-              Purpose of Expense:
-            </Text>
-            <Text
-              style={[
-                styles.purposeHint,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              (Select one option)
-            </Text>
-            <View style={styles.checkboxGrid}>
-              {PURPOSE_OPTIONS.map(purpose => {
-                const isSelected = selectedPurpose === purpose.id;
-
-                return (
-                  <TouchableOpacity
-                    key={purpose.id}
-                    style={[
-                      styles.checkboxRow,
-                      {
-                        backgroundColor: theme.colors.background,
-                        borderColor: theme.colors.border,
-                      },
-                    ]}
-                    onPress={() => setSelectedPurpose(purpose.id)}
-                  >
-                    <View
-                      style={[
-                        styles.checkbox,
-                        { borderColor: theme.colors.textSecondary },
-                        isSelected && {
-                          backgroundColor: theme.colors.success,
-                          borderColor: theme.colors.success,
-                        },
-                      ]}
-                    >
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="#FFF" />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.checkboxLabel,
-                        { color: theme.colors.text },
-                      ]}
-                    >
-                      {purpose.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Other Specify Field */}
-            {selectedPurpose === 7 && (
-              <TextInput
-                style={[
-                  styles.otherSpecifyInput,
-                  {
-                    backgroundColor: theme.colors.background,
-                    borderColor: theme.colors.border,
-                    color: theme.colors.text,
-                  },
-                ]}
-                placeholder="Please specify..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={otherPurposeText}
-                onChangeText={setOtherPurposeText}
-              />
-            )}
-          </View>
-        </View>
-
         {/* Expense Items Card */}
         <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Text
@@ -453,155 +315,148 @@ export default function ExpenseClaimScreen({ navigation, route }) {
             Expense Items
           </Text>
 
-          {/* Add Item Form */}
-          <View
-            style={[
-              styles.addItemForm,
-              { backgroundColor: theme.colors.background },
-            ]}
-          >
-            {/* Date Field */}
-            <View style={styles.formRow}>
-              <Text style={[styles.formLabel, { color: theme.colors.text }]}>
-                Date:
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.formDateField,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                onPress={() => setShowItemDatePicker(true)}
-              >
-                <Text
-                  style={[styles.formDateText, { color: theme.colors.text }]}
-                >
-                  {formatDate(itemDate)}
-                </Text>
-                <Ionicons
-                  name="calendar-outline"
-                  size={18}
-                  color={theme.colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Expense Category Dropdown */}
-            <View style={styles.formRow}>
-              <Text style={[styles.formLabel, { color: theme.colors.text }]}>
-                Expense Category:
-              </Text>
-              <Dropdown
-                style={[
-                  styles.formDropdown,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                data={accountTitles}
-                search
-                searchPlaceholder="Search account..."
-                labelField="account_name"
-                valueField="account_code"
-                value={expenseCategory}
-                onChange={item => setExpenseCategory(item.account_code)}
-                placeholder={accountsLoading ? 'Loading...' : 'Select Category'}
-                placeholderStyle={[
-                  styles.dropdownPlaceholder,
-                  { color: theme.colors.textSecondary },
-                ]}
-                selectedTextStyle={[
-                  styles.dropdownSelectedText,
-                  { color: theme.colors.text },
-                ]}
-                itemTextStyle={[
-                  styles.dropdownItemText,
-                  { color: theme.colors.text },
-                ]}
-                containerStyle={[
-                  styles.dropdownContainer,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                renderLeftIcon={() =>
-                  accountsLoading && (
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.primary}
-                      style={{ marginRight: 8 }}
-                    />
-                  )
-                }
-              />
-            </View>
-
-            {/* Description Field */}
-            <View style={styles.formRow}>
-              <Text style={[styles.formLabel, { color: theme.colors.text }]}>
-                Description:
-              </Text>
-              <TextInput
-                style={[
-                  styles.formInput,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                    color: theme.colors.text,
-                  },
-                ]}
-                placeholder="Enter description..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={description}
-                onChangeText={setDescription}
-              />
-            </View>
-
-            {/* Amount Field */}
-            <View style={styles.formRow}>
-              <Text style={[styles.formLabel, { color: theme.colors.text }]}>
-                Amount:
-              </Text>
-              <TextInput
-                style={[
-                  styles.formInput,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                    color: theme.colors.text,
-                  },
-                ]}
-                placeholder="0.00"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="numeric"
-                value={amount}
-                onChangeText={setAmount}
-              />
-            </View>
-
-            {/* Add Item Button */}
+          {/* Direct Input Fields */}
+          {/* Date Field */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Date:
+            </Text>
             <TouchableOpacity
               style={[
-                styles.addItemBtn,
+                styles.formDateField,
                 {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.text,
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
                 },
               ]}
-              onPress={handleAddItem}
+              onPress={() => setShowItemDatePicker(true)}
             >
-              <Ionicons name="add-circle" size={22} color={theme.colors.text} />
               <Text
-                style={[styles.addItemBtnText, { color: theme.colors.text }]}
+                style={[styles.formDateText, { color: theme.colors.text }]}
               >
-                Add Item
+                {formatDate(itemDate)}
               </Text>
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color={theme.colors.textSecondary}
+              />
             </TouchableOpacity>
           </View>
+
+          {/* Expense Category Dropdown */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Expense Category:
+            </Text>
+            <Dropdown
+              style={[
+                styles.formDropdown,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              data={accountTitles}
+              search
+              searchPlaceholder="Search account..."
+              labelField="account_name"
+              valueField="account_code"
+              value={expenseCategory}
+              onChange={item => setExpenseCategory(item.account_code)}
+              placeholder={accountsLoading ? 'Loading...' : 'Select Category'}
+              placeholderStyle={[
+                styles.dropdownPlaceholder,
+                { color: theme.colors.textSecondary },
+              ]}
+              selectedTextStyle={[
+                styles.dropdownSelectedText,
+                { color: theme.colors.text },
+              ]}
+              itemTextStyle={[
+                styles.dropdownItemText,
+                { color: theme.colors.text },
+              ]}
+              containerStyle={[
+                styles.dropdownContainer,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              renderLeftIcon={() =>
+                accountsLoading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                )
+              }
+            />
+          </View>
+
+          {/* Description Field */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Description:
+            </Text>
+            <TextInput
+              style={[
+                styles.formInput,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.text,
+                },
+              ]}
+              placeholder="Enter description..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          {/* Amount Field */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Amount:
+            </Text>
+            <TextInput
+              style={[
+                styles.formInput,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.text,
+                },
+              ]}
+              placeholder="0.00"
+              placeholderTextColor={theme.colors.textSecondary}
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
+            />
+          </View>
+
+          {/* Add Item Button */}
+          <TouchableOpacity
+            style={[
+              styles.addItemBtn,
+              {
+                backgroundColor: theme.colors.background,
+                borderColor: theme.colors.border,
+              },
+            ]}
+            onPress={handleAddItem}
+          >
+            <Ionicons name="add-circle" size={22} color={theme.colors.primary} />
+            <Text
+              style={[styles.addItemBtnText, { color: theme.colors.text }]}
+            >
+              Add Item
+            </Text>
+          </TouchableOpacity>
 
           {/* Items Table */}
           {items.length > 0 && (
@@ -749,37 +604,6 @@ export default function ExpenseClaimScreen({ navigation, route }) {
               </ScrollView>
             </View>
           )}
-        </View>
-
-        {/* Additional Notes Card */}
-        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-            Additional Notes{' '}
-            <Text
-              style={[
-                styles.cardTitleHint,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              (Names of Accompanying Person(s) if any)
-            </Text>
-          </Text>
-          <TextInput
-            style={[
-              styles.notesInput,
-              {
-                backgroundColor: theme.colors.background,
-                borderColor: theme.colors.border,
-                color: theme.colors.text,
-              },
-            ]}
-            placeholder=""
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline
-            numberOfLines={4}
-            value={accompaniedBy}
-            onChangeText={setAccompaniedBy}
-          />
         </View>
 
         {/* Attach Receipt Card */}
@@ -934,18 +758,7 @@ export default function ExpenseClaimScreen({ navigation, route }) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Date Pickers */}
-      <CustomDatePicker
-        visible={showSubmissionDatePicker}
-        onClose={() => setShowSubmissionDatePicker(false)}
-        onSelect={date => {
-          setSubmissionDate(date);
-          setShowSubmissionDatePicker(false);
-        }}
-        selectedDate={submissionDate}
-        title="Submission Date"
-      />
-
+      {/* Date Picker Modal */}
       <CustomDatePicker
         visible={showItemDatePicker}
         onClose={() => setShowItemDatePicker(false)}
@@ -1005,21 +818,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
   scrollView: {
     flex: 1,
   },
@@ -1050,119 +848,48 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Field Styles
-  fieldRow: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  dateInputField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-  },
-  dateInputText: {
-    fontSize: 15,
-  },
-
-  // Purpose Checkbox Styles
-  purposeSection: {
-    marginBottom: 16,
-  },
-  purposeHint: {
-    fontSize: 12,
-    marginBottom: 12,
-    fontStyle: 'italic',
-  },
-  checkboxGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 4,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  checkboxLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  otherSpecifyInput: {
-    marginTop: 12,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    fontSize: 14,
-  },
-
-  // Add Item Form Styles
-  addItemForm: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
   formRow: {
+    width: '100%',
     marginBottom: 14,
   },
   formLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
   },
   formDateField: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    height: 48,
     borderWidth: 1,
   },
   formDateText: {
-    fontSize: 14,
+    fontSize: 15,
   },
   formDropdown: {
+    width: '100%',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    height: 44,
+    height: 48,
   },
   formInput: {
+    width: '100%',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    fontSize: 14,
-    height: 44,
+    fontSize: 15,
+    height: 48,
   },
   dropdownPlaceholder: {
     fontSize: 14,
   },
   dropdownSelectedText: {
-    fontSize: 14,
+    fontSize: 15,
   },
   dropdownItemText: {
     fontSize: 14,
@@ -1172,13 +899,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   addItemBtn: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    paddingVertical: 12,
+    height: 48,
     gap: 8,
-    marginTop: 4,
+    marginTop: 6,
+    marginBottom: 16,
     borderWidth: 1,
   },
   addItemBtnText: {
@@ -1241,17 +970,6 @@ const styles = StyleSheet.create({
   colDesc: { width: 130 },
   colAmount: { width: 100 },
   colAction: { width: 40, alignItems: 'center', justifyContent: 'center' },
-
-  // Notes Styles
-  notesInput: {
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    fontSize: 14,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
 
   // Attach Button Styles
   attachButtonsRow: {

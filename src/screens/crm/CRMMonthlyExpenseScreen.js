@@ -1,27 +1,37 @@
 import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
+  Text,
+  TouchableOpacity,
+  TextInput,
   StyleSheet,
   ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   Image,
+  Modal,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
-import { useTheme } from '@config/useTheme';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Dropdown } from 'react-native-element-dropdown';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@config/useTheme';
+import Toast from 'react-native-toast-message';
+import { DimensionDropdown, CustomDatePicker } from '@components/common';
+import {
+  useGetClaimExpenseAccountQuery,
+  usePostServiceExpenseClaimMutation,
+} from '@api/hcmApi';
 
-const DUMMY_DROPDOWN = [
-  { label: 'Option 1', value: '1' },
-  { label: 'Option 2', value: '2' },
-  { label: 'Option 3', value: '3' },
-];
-
-const CRMMonthlyExpenseScreen = ({ navigation }) => {
+export default function CRMMonthlyExpenseScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const styles = getStyles(theme);
+  const userData = useSelector(state => state.auth.user);
+  const userId = userData?.id || userData?.user_id;
+  const employeeId = userData?.employee_id || userData?.emp_code || userData?.id;
+  const onRefresh = route?.params?.onRefresh;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -29,357 +39,1053 @@ const CRMMonthlyExpenseScreen = ({ navigation }) => {
     });
   }, [navigation]);
 
-  // Section 1 State
-  const [basicInfo, setBasicInfo] = useState({ salesman: null, city: null, month: null });
+  // Selected Dimension
+  const [selectedDimensionId, setSelectedDimensionId] = useState(0);
 
-  // Section 2 State
-  const [localExpense, setLocalExpense] = useState({ allowances: '', noOfDays: '', fuelAllowance: '', totalAmount: '' });
+  // Date Picker State
+  const [showItemDatePicker, setShowItemDatePicker] = useState(false);
 
-  // Section 3 State (Dynamic)
-  const [outstationVisits, setOutstationVisits] = useState([
-    { date: '', fromCity: null, toCity: null, outboundExpense: '', outstationAllowance: '', overnightStay: '', total: '', image: null }
-  ]);
+  // Expense Item Form State
+  const [itemDate, setItemDate] = useState(new Date());
+  const [expenseCategory, setExpenseCategory] = useState(null);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
 
-  // Section 4 State
-  const [otherExpense, setOtherExpense] = useState({
-    mobile: { amount: '', image: null },
-    courier: { amount: '', image: null },
-    printing: { amount: '', image: null },
-    transport: { amount: '', image: null },
-    others: { amount: '', image: null },
-    vehicle: { amount: '', image: null },
-  });
+  // Items List State
+  const [items, setItems] = useState([]);
 
-  const handleImagePick = (callback) => {
-    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (response) => {
-      if (response.didCancel) return;
-      if (response.assets && response.assets.length > 0) {
-        callback(response.assets[0].uri);
+  // Image State
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  // RTK Queries & Mutations
+  const { data: accountsData, isLoading: accountsLoading } =
+    useGetClaimExpenseAccountQuery();
+  const [postServiceExpenseClaim, { isLoading: submitting }] =
+    usePostServiceExpenseClaimMutation();
+
+  const rawAccounts = Array.isArray(accountsData)
+    ? accountsData
+    : Array.isArray(accountsData?.data)
+    ? accountsData.data
+    : [];
+
+  const accountTitles = rawAccounts
+    .filter(account => account.inactive === '0' || account.inactive === 0 || account.inactive === false)
+    .map(account => ({
+      label: (account.account_name || '').replace(/&amp;/g, '&'),
+      value: account.account_code,
+      account_code: account.account_code,
+      account_name: (account.account_name || '').replace(/&amp;/g, '&'),
+    }));
+
+  const formatNumber = num => {
+    if (!num) return '0';
+    const parsed = parseFloat(num);
+    return isNaN(parsed)
+      ? '0'
+      : parsed.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  };
+
+  const formatDate = date => {
+    const d = new Date(date);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day} / ${month} / ${year}`;
+  };
+
+  const formatDateForApi = date => {
+    const d = new Date(date);
+    return d.toISOString().split('T')[0];
+  };
+
+  const handleImagePicker = () => {
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 800,
+      maxHeight: 800,
+    };
+
+    setImageLoading(true);
+
+    launchImageLibrary(options, response => {
+      setImageLoading(false);
+
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.error) {
+        console.log('ImagePicker Error: ', response.error);
+        Toast.show({ type: 'error', text1: 'Error selecting image' });
+      } else if (response.assets && response.assets.length > 0) {
+        const imageUri = response.assets[0].uri;
+        setSelectedImage(imageUri);
+        setShowImageModal(true);
       }
     });
   };
 
-  // UI Helpers
-  const renderInput = (label, value, onChangeText, keyboardType = 'default') => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-        placeholder={`Enter ${label}`}
-        placeholderTextColor={theme.colors.textSecondary}
-        keyboardType={keyboardType}
-        value={value}
-        onChangeText={onChangeText}
-      />
-    </View>
-  );
+  const handleCameraCapture = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Camera Permission',
+          message: 'App needs camera permission to take photos.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        },
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Toast.show({ type: 'error', text1: 'Camera permission denied' });
+        return;
+      }
+    }
 
-  const renderDropdown = (label, value, onChange) => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
-      <Dropdown
-        style={[styles.dropdown, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
-        placeholderStyle={[styles.placeholderStyle, { color: theme.colors.textSecondary }]}
-        selectedTextStyle={[styles.selectedTextStyle, { color: theme.colors.text }]}
-        itemTextStyle={[styles.itemTextStyle, { color: theme.colors.text }]}
-        containerStyle={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
-        data={DUMMY_DROPDOWN}
-        maxHeight={300}
-        labelField="label"
-        valueField="value"
-        placeholder={`Select ${label}`}
-        value={value}
-        onChange={(item) => onChange(item.value)}
-      />
-    </View>
-  );
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 800,
+      maxHeight: 800,
+      saveToPhotos: false,
+    };
 
-  const renderInputWithImage = (label, stateKey) => {
-    const data = otherExpense[stateKey];
-    return (
-      <View style={styles.inputWithImageRow}>
-        <View style={styles.inputFlex}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-            placeholder="Amount"
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="numeric"
-            value={data.amount}
-            onChangeText={(text) => setOtherExpense(prev => ({ ...prev, [stateKey]: { ...data, amount: text } }))}
-          />
-        </View>
-        <TouchableOpacity 
-          style={[styles.imageUploadBtnSmall, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}
-          onPress={() => handleImagePick((uri) => setOtherExpense(prev => ({ ...prev, [stateKey]: { ...data, image: uri } })))}
-        >
-          {data.image ? (
-            <Image source={{ uri: data.image }} style={styles.smallPreview} />
-          ) : (
-            <Icon name="camera-outline" size={24} color={theme.colors.primary} />
-          )}
-        </TouchableOpacity>
-      </View>
+    setImageLoading(true);
+
+    launchCamera(options, response => {
+      setImageLoading(false);
+
+      if (response.didCancel) {
+        console.log('User cancelled camera');
+      } else if (response.error) {
+        console.log('Camera Error: ', response.error);
+        Toast.show({ type: 'error', text1: 'Error capturing image' });
+      } else if (response.assets && response.assets.length > 0) {
+        const imageUri = response.assets[0].uri;
+        setSelectedImage(imageUri);
+        setShowImageModal(true);
+      }
+    });
+  };
+
+  const handleAddItem = () => {
+    if (!expenseCategory || !amount) {
+      Toast.show({ type: 'error', text1: 'Please fill required fields (Category & Amount)' });
+      return;
+    }
+
+    const selectedAccount = accountTitles.find(
+      acc => acc.value === expenseCategory,
+    );
+
+    setItems(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        srNo: prev.length + 1,
+        date: new Date(itemDate),
+        expenseCategory: expenseCategory,
+        expenseCategoryLabel: selectedAccount?.account_name || '',
+        accountCode: selectedAccount?.account_code || '',
+        description: description,
+        amount: amount,
+      },
+    ]);
+
+    // Reset form fields
+    setExpenseCategory(null);
+    setDescription('');
+    setAmount('');
+    setItemDate(new Date());
+  };
+
+  const handleRemoveItem = id => {
+    setItems(prev => {
+      const filtered = prev.filter(item => item.id !== id);
+      return filtered.map((item, index) => ({ ...item, srNo: index + 1 }));
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (items.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Please add at least one expense item',
+      });
+      return;
+    }
+
+    try {
+      const totalAmount = items.reduce(
+        (sum, item) => sum + parseFloat(item.amount || 0),
+        0,
+      );
+
+      const expenseDetail = items.map(item => ({
+        account_code: item.accountCode,
+        line_date: formatDateForApi(item.date),
+        amount: parseFloat(item.amount),
+        line_memo: item.description || '',
+      }));
+
+      const formData = new FormData();
+      const firstItemDate = items[0]?.date ? new Date(items[0].date) : new Date();
+      formData.append('company', 'ANS');
+      formData.append('trans_date', formatDateForApi(firstItemDate));
+      formData.append('expense_type', '1');
+      formData.append('amount', totalAmount.toString());
+      formData.append('user_id', userId ? String(userId) : '');
+      formData.append('expense_detail', JSON.stringify(expenseDetail));
+      formData.append('comments', '');
+      formData.append('employee_id', String(userData?.employee_id || employeeId || ''));
+      formData.append('dimension_id', selectedDimensionId ? String(selectedDimensionId) : '0');
+
+      if (selectedImage) {
+        const imageFile = {
+          uri: selectedImage,
+          type: 'image/jpeg',
+          name: `expense_${Date.now()}.jpg`,
+        };
+        formData.append('filename', imageFile);
+      }
+
+      const response = await postServiceExpenseClaim(formData).unwrap();
+
+      if (response.status === true || response.status === 'true') {
+        Toast.show({
+          type: 'success',
+          text1: 'Monthly expense request submitted successfully',
+        });
+
+        // Reset all fields
+        setItems([]);
+        setExpenseCategory(null);
+        setDescription('');
+        setAmount('');
+        setItemDate(new Date());
+        setSelectedImage(null);
+
+        if (onRefresh) {
+          onRefresh();
+        }
+        navigation.goBack();
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: response.message || 'Server rejected submission',
+        });
+      }
+    } catch (error) {
+      console.log('Error submitting expense claim:', error);
+      Toast.show({ type: 'error', text1: 'Submission failed' });
+    }
+  };
+
+  const calculateTotal = () => {
+    return formatNumber(
+      items.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0),
     );
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
-        {/* Section 1: Basic (No Title) */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          {renderDropdown('Salesman Name', basicInfo.salesman, (val) => setBasicInfo({...basicInfo, salesman: val}))}
-          {renderDropdown('City', basicInfo.city, (val) => setBasicInfo({...basicInfo, city: val}))}
-          {renderDropdown('Month', basicInfo.month, (val) => setBasicInfo({...basicInfo, month: val}))}
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ marginBottom: 16 }}>
+          <DimensionDropdown
+            onDimensionSelect={dimensionId => {
+              setSelectedDimensionId(dimensionId);
+            }}
+          />
         </View>
 
-        {/* Section 2: Local Working Expense */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Local Working Expense</Text>
-          {renderInput('Allowances', localExpense.allowances, (text) => setLocalExpense({...localExpense, allowances: text}), 'numeric')}
-          {renderInput('No. of Days', localExpense.noOfDays, (text) => setLocalExpense({...localExpense, noOfDays: text}), 'numeric')}
-          {renderInput('Daily Allowance of Fuel', localExpense.fuelAllowance, (text) => setLocalExpense({...localExpense, fuelAllowance: text}), 'numeric')}
-          {renderInput('Total Amount', localExpense.totalAmount, (text) => setLocalExpense({...localExpense, totalAmount: text}), 'numeric')}
-        </View>
+        {/* Expense Items Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Text
+            style={[
+              styles.cardTitle,
+              {
+                color: theme.colors.text,
+                borderBottomColor: theme.colors.border,
+              },
+            ]}
+          >
+            Expense Items
+          </Text>
 
-        {/* Section 3: Outstation Working Expense */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Outstation Working Expense</Text>
-          
-          {outstationVisits.map((visit, index) => (
-            <View key={index} style={[styles.dynamicBlock, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-              <View style={styles.dynamicHeader}>
-                <Text style={[styles.dynamicTitle, { color: theme.colors.text }]}>Visit {index + 1}</Text>
-                {outstationVisits.length > 1 && (
-                  <TouchableOpacity onPress={() => setOutstationVisits(prev => prev.filter((_, i) => i !== index))}>
-                    <Icon name="trash-outline" size={20} color={theme.colors.error} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {renderInput('Date', visit.date, (text) => {
-                const updated = [...outstationVisits];
-                updated[index].date = text;
-                setOutstationVisits(updated);
-              })}
-              {renderDropdown('From City', visit.fromCity, (val) => {
-                const updated = [...outstationVisits];
-                updated[index].fromCity = val;
-                setOutstationVisits(updated);
-              })}
-              {renderDropdown('To City', visit.toCity, (val) => {
-                const updated = [...outstationVisits];
-                updated[index].toCity = val;
-                setOutstationVisits(updated);
-              })}
-              {renderInput('Outbound Expense', visit.outboundExpense, (text) => {
-                const updated = [...outstationVisits];
-                updated[index].outboundExpense = text;
-                setOutstationVisits(updated);
-              }, 'numeric')}
-              {renderInput('Outstation Allowance', visit.outstationAllowance, (text) => {
-                const updated = [...outstationVisits];
-                updated[index].outstationAllowance = text;
-                setOutstationVisits(updated);
-              }, 'numeric')}
-              {renderInput('Overnight Stay', visit.overnightStay, (text) => {
-                const updated = [...outstationVisits];
-                updated[index].overnightStay = text;
-                setOutstationVisits(updated);
-              }, 'numeric')}
-              {renderInput('Total', visit.total, (text) => {
-                const updated = [...outstationVisits];
-                updated[index].total = text;
-                setOutstationVisits(updated);
-              }, 'numeric')}
-
-              <Text style={[styles.label, { color: theme.colors.text, marginTop: 8 }]}>Upload Image</Text>
-              <TouchableOpacity 
-                style={[styles.imageUploadBtn, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
-                onPress={() => handleImagePick((uri) => {
-                  const updated = [...outstationVisits];
-                  updated[index].image = uri;
-                  setOutstationVisits(updated);
-                })}
+          {/* Direct Input Fields */}
+          {/* Date Field */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Date:
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.formDateField,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              onPress={() => setShowItemDatePicker(true)}
+            >
+              <Text
+                style={[styles.formDateText, { color: theme.colors.text }]}
               >
-                {visit.image ? (
-                  <Image source={{ uri: visit.image }} style={styles.previewImage} />
-                ) : (
-                  <View style={styles.uploadPlaceholder}>
-                    <Icon name="cloud-upload-outline" size={28} color={theme.colors.primary} />
-                    <Text style={{ color: theme.colors.textSecondary, marginTop: 8 }}>Tap to upload receipt</Text>
+                {formatDate(itemDate)}
+              </Text>
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color={theme.colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Expense Category Dropdown */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Expense Category:
+            </Text>
+            <Dropdown
+              style={[
+                styles.formDropdown,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              data={accountTitles}
+              search
+              searchPlaceholder="Search account..."
+              labelField="account_name"
+              valueField="account_code"
+              value={expenseCategory}
+              onChange={item => setExpenseCategory(item.account_code)}
+              placeholder={accountsLoading ? 'Loading...' : 'Select Category'}
+              placeholderStyle={[
+                styles.dropdownPlaceholder,
+                { color: theme.colors.textSecondary },
+              ]}
+              selectedTextStyle={[
+                styles.dropdownSelectedText,
+                { color: theme.colors.text },
+              ]}
+              itemTextStyle={[
+                styles.dropdownItemText,
+                { color: theme.colors.text },
+              ]}
+              containerStyle={[
+                styles.dropdownContainer,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              renderLeftIcon={() =>
+                accountsLoading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                )
+              }
+            />
+          </View>
+
+          {/* Description Field */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Description:
+            </Text>
+            <TextInput
+              style={[
+                styles.formInput,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.text,
+                },
+              ]}
+              placeholder="Enter description..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          {/* Amount Field */}
+          <View style={styles.formRow}>
+            <Text style={[styles.formLabel, { color: theme.colors.text }]}>
+              Amount:
+            </Text>
+            <TextInput
+              style={[
+                styles.formInput,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.text,
+                },
+              ]}
+              placeholder="0.00"
+              placeholderTextColor={theme.colors.textSecondary}
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
+            />
+          </View>
+
+          {/* Add Item Button */}
+          <TouchableOpacity
+            style={[
+              styles.addItemBtn,
+              {
+                backgroundColor: theme.colors.background,
+                borderColor: theme.colors.border,
+              },
+            ]}
+            onPress={handleAddItem}
+          >
+            <Ionicons name="add-circle" size={22} color={theme.colors.primary} />
+            <Text
+              style={[styles.addItemBtnText, { color: theme.colors.text }]}
+            >
+              Add Item
+            </Text>
+          </TouchableOpacity>
+
+          {/* Items Table */}
+          {items.length > 0 && (
+            <View
+              style={[
+                styles.tableContainer,
+                { borderColor: theme.colors.border },
+              ]}
+            >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View>
+                  {/* Table Header */}
+                  <View
+                    style={[
+                      styles.tableHeader,
+                      { backgroundColor: theme.colors.primary },
+                    ]}
+                  >
+                    <Text style={[styles.tableHeaderCell, styles.colSr]}>
+                      Sr.
+                    </Text>
+                    <Text style={[styles.tableHeaderCell, styles.colDate]}>
+                      Date
+                    </Text>
+                    <Text style={[styles.tableHeaderCell, styles.colCategory]}>
+                      Expense Category
+                    </Text>
+                    <Text style={[styles.tableHeaderCell, styles.colDesc]}>
+                      Description
+                    </Text>
+                    <Text style={[styles.tableHeaderCell, styles.colAmount]}>
+                      Amount
+                    </Text>
+                    <Text
+                      style={[styles.tableHeaderCell, styles.colAction]}
+                    ></Text>
                   </View>
-                )}
+
+                  {/* Table Rows */}
+                  {items.map((item, index) => (
+                    <View
+                      key={item.id}
+                      style={[
+                        styles.tableRow,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderBottomColor: theme.colors.border,
+                        },
+                        index % 2 === 0 && {
+                          backgroundColor: theme.colors.background,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.colSr,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        {item.srNo}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.colDate,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        {formatDate(item.date)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.colCategory,
+                          { color: theme.colors.text },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.expenseCategoryLabel}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.colDesc,
+                          { color: theme.colors.text },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.description || '-'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.colAmount,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        {formatNumber(item.amount)}
+                      </Text>
+                      <TouchableOpacity
+                        style={[styles.tableCell, styles.colAction]}
+                        onPress={() => handleRemoveItem(item.id)}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={18}
+                          color={theme.colors.error}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  {/* Total Row */}
+                  <View
+                    style={[
+                      styles.totalRow,
+                      { backgroundColor: theme.colors.border },
+                    ]}
+                  >
+                    <Text style={[styles.totalCell, styles.colSr]}></Text>
+                    <Text style={[styles.totalCell, styles.colDate]}></Text>
+                    <Text style={[styles.totalCell, styles.colCategory]}></Text>
+                    <Text
+                      style={[
+                        styles.totalLabel,
+                        styles.colDesc,
+                        { color: theme.colors.text },
+                      ]}
+                    >
+                      Total:
+                    </Text>
+                    <Text
+                      style={[
+                        styles.totalAmount,
+                        styles.colAmount,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
+                      {calculateTotal()}
+                    </Text>
+                    <Text style={[styles.totalCell, styles.colAction]}></Text>
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
+        {/* Attach Receipt Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+            Attach Receipt / Document{' '}
+            <Text
+              style={[
+                styles.cardTitleHint,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
+              (Take photos of your bills before submitting the form.)
+            </Text>
+          </Text>
+
+          {imageLoading ? (
+            <View style={styles.attachButtonsRow}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+          ) : (
+            <View style={styles.attachButtonsRow}>
+              <TouchableOpacity
+                onPress={handleCameraCapture}
+                style={[
+                  styles.attachOptionButton,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.attachIconWrap,
+                    { backgroundColor: theme.colors.primary },
+                  ]}
+                >
+                  <Ionicons name="camera" size={24} color="#FFF" />
+                </View>
+                <Text
+                  style={[
+                    styles.attachOptionText,
+                    { color: theme.colors.text },
+                  ]}
+                >
+                  Camera
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleImagePicker}
+                style={[
+                  styles.attachOptionButton,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.attachIconWrap,
+                    { backgroundColor: theme.colors.secondary },
+                  ]}
+                >
+                  <Ionicons name="images" size={24} color="#FFF" />
+                </View>
+                <Text
+                  style={[
+                    styles.attachOptionText,
+                    { color: theme.colors.text },
+                  ]}
+                >
+                  Gallery
+                </Text>
               </TouchableOpacity>
             </View>
-          ))}
-          
-          <TouchableOpacity 
-            style={[styles.addMoreBtn, { borderColor: theme.colors.primary }]}
-            onPress={() => setOutstationVisits([...outstationVisits, { date: '', fromCity: null, toCity: null, outboundExpense: '', outstationAllowance: '', overnightStay: '', total: '', image: null }])}
-          >
-            <Icon name="add" size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.addMoreText, { color: theme.colors.primary }]}>Add More Visit</Text>
-          </TouchableOpacity>
-        </View>
+          )}
 
-        {/* Section 4: Other Expense */}
-        <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Other Expense</Text>
-          {renderInputWithImage('Mobile/Internet Charges', 'mobile')}
-          {renderInputWithImage('Courier & Postage', 'courier')}
-          {renderInputWithImage('Printing, Stationary & Photography', 'printing')}
-          {renderInputWithImage('Good Delivery Transport', 'transport')}
-          {renderInputWithImage('Vehicle Repair & Maintenance', 'vehicle')}
-          {renderInputWithImage('Others', 'others')}
+          {selectedImage && (
+            <TouchableOpacity
+              style={[
+                styles.imagePreviewContainer,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              onPress={() => setShowImageModal(true)}
+            >
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.imagePreview}
+              />
+              <Text
+                style={[
+                  styles.imagePreviewText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Tap to view full image
+              </Text>
+              <TouchableOpacity
+                style={styles.removeImageBtn}
+                onPress={() => setSelectedImage(null)}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={24}
+                  color={theme.colors.error}
+                />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity 
-          style={[styles.submitBtn, { backgroundColor: theme.colors.primary }]}
-          onPress={() => navigation.goBack()}
+        <TouchableOpacity
+          style={[
+            styles.submitBtn,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.text,
+            },
+            (submitting || items.length === 0) && {
+              backgroundColor: theme.colors.border,
+              borderColor: theme.colors.textSecondary,
+            },
+          ]}
+          onPress={handleSubmit}
+          disabled={submitting || items.length === 0}
         >
-          <Text style={styles.submitBtnText}>Submit Expense</Text>
+          {submitting ? (
+            <ActivityIndicator color={theme.colors.text} />
+          ) : (
+            <>
+              <Ionicons
+                name="paper-plane"
+                size={22}
+                color={theme.colors.text}
+              />
+              <Text
+                style={[styles.submitBtnText, { color: theme.colors.text }]}
+              >
+                Submit Expense Claim
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
-        
+
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      <CustomDatePicker
+        visible={showItemDatePicker}
+        onClose={() => setShowItemDatePicker(false)}
+        onSelect={date => {
+          setItemDate(date);
+          setShowItemDatePicker(false);
+        }}
+        selectedDate={itemDate}
+        title="Expense Date"
+      />
+
+      {/* Image Preview Modal */}
+      <Modal
+        visible={showImageModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImageModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                Image Preview
+              </Text>
+              <TouchableOpacity onPress={() => setShowImageModal(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            {selectedImage && (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.modalImage}
+              />
+            )}
+            <TouchableOpacity
+              style={[
+                styles.modalCloseButton,
+                { backgroundColor: theme.colors.primary },
+              ]}
+              onPress={() => setShowImageModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-};
+}
 
-const getStyles = (theme) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
-  content: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 16,
   },
-  sectionCard: {
+
+  // Card Styles
+  card: {
     borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  sectionTitle: {
+  cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    paddingBottom: 12,
   },
-  inputContainer: {
-    marginBottom: 16,
+  cardTitleHint: {
+    fontSize: 12,
+    fontWeight: '400',
+    fontStyle: 'italic',
   },
-  label: {
+
+  formRow: {
+    width: '100%',
+    marginBottom: 14,
+  },
+  formLabel: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  input: {
-    height: 50,
+  formDateField: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    height: 48,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+  },
+  formDateText: {
     fontSize: 15,
   },
-  dropdown: {
-    height: 50,
+  formDropdown: {
+    width: '100%',
+    borderRadius: 8,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    height: 48,
   },
-  placeholderStyle: { fontSize: 15 },
-  selectedTextStyle: { fontSize: 15 },
-  itemTextStyle: { fontSize: 15 },
-  dynamicBlock: {
+  formInput: {
+    width: '100%',
+    borderRadius: 8,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
+    fontSize: 15,
+    height: 48,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+  },
+  dropdownSelectedText: {
+    fontSize: 15,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+  },
+  dropdownContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  addItemBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    height: 48,
+    gap: 8,
+    marginTop: 6,
     marginBottom: 16,
+    borderWidth: 1,
   },
-  dynamicHeader: {
+  addItemBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Table Styles
+  tableContainer: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+  },
+  tableHeaderCell: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  tableCell: {
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+  },
+  totalCell: {
+    paddingHorizontal: 8,
+  },
+  totalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'right',
+    paddingHorizontal: 8,
+  },
+  totalAmount: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+
+  // Column Widths
+  colSr: { width: 40 },
+  colDate: { width: 100 },
+  colCategory: { width: 150 },
+  colDesc: { width: 130 },
+  colAmount: { width: 100 },
+  colAction: { width: 40, alignItems: 'center', justifyContent: 'center' },
+
+  // Attach Button Styles
+  attachButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  attachOptionButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  attachIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  attachOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  imagePreviewContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 12,
+    position: 'relative',
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  imagePreview: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+  },
+  imagePreviewText: {
+    fontSize: 12,
+    marginTop: 8,
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    borderRadius: 12,
+  },
+
+  // Submit Button Styles
+  submitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    paddingVertical: 16,
+    gap: 10,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  submitBtnText: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    width: '90%',
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 15,
   },
-  dynamicTitle: {
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '700',
   },
-  addMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 48,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-  },
-  addMoreText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  imageUploadBtn: {
-    height: 120,
-    borderWidth: 1,
-    borderRadius: 12,
-    borderStyle: 'dashed',
-    overflow: 'hidden',
-    marginTop: 8,
-  },
-  previewImage: {
+  modalImage: {
     width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    height: 300,
+    borderRadius: 8,
+    marginBottom: 15,
   },
-  uploadPlaceholder: {
-    flex: 1,
+  modalCloseButton: {
+    padding: 12,
+    borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  inputWithImageRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 16,
-    gap: 12,
-  },
-  inputFlex: {
-    flex: 1,
-  },
-  imageUploadBtnSmall: {
-    width: 50,
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderStyle: 'dashed',
-    overflow: 'hidden',
-  },
-  smallPreview: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  submitBtn: {
-    height: 54,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  submitBtnText: {
+  modalCloseText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
-
-export default CRMMonthlyExpenseScreen;

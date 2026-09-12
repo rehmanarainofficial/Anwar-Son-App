@@ -31,7 +31,7 @@ export const hcmApi = baseApi.injectEndpoints({
         formData.append('in_out', body.in_out !== undefined ? String(body.in_out) : '0');
         formData.append('status1', '1');
         formData.append('id', '0');
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'portal/user_attendance_post.php',
@@ -45,12 +45,17 @@ export const hcmApi = baseApi.injectEndpoints({
     getExpenseClaimInquiry: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
         const formData = new FormData();
-        Object.keys(body).forEach(key => {
-          formData.append(key, body[key]);
-        });
+        formData.append('company', 'ANS');
+        if (body) {
+          Object.keys(body).forEach(key => {
+            if (key !== 'company') {
+              formData.append(key, body[key]);
+            }
+          });
+        }
 
         const result = await baseQuery({
-          url: 'hcm/expense_claim_inquiry.php',
+          url: 'portal/expense_claim_inquiry.php',
           method: 'POST',
           body: formData,
         });
@@ -59,12 +64,20 @@ export const hcmApi = baseApi.injectEndpoints({
       },
     }),
     getClaimExpenseAccount: builder.query({
-      query: () => 'hcm/claim_expense_account.php',
+      query: () => {
+        const formData = new FormData();
+        formData.append('company', 'ANS');
+        return {
+          url: 'dropdown/claim_expense_account.php',
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
     postServiceExpenseClaim: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
         const result = await baseQuery({
-          url: 'hcm/post_service_expense_claim.php',
+          url: 'portal/post_service_expense_claim.php',
           method: 'POST',
           body: body,
         });

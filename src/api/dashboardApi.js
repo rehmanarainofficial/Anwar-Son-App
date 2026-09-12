@@ -10,13 +10,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         formData.append('company', 'ANS');
         formData.append('dimension_id', body.dimension_id || '');
 
-        console.log('📊 [getIncomeExpense POST Payload]', {
-          from_date: body.from_date,
-          to_date: body.to_date,
-          company: 'ANS',
-          dimension_id: body.dimension_id || '',
-        });
-
         return {
           url: 'dashboard/income_and_expense.php',
           method: 'POST',
@@ -59,11 +52,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
 
-        console.log('📊 [getFinancialOverview POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
-
         return {
           url: 'dashboard/financial_overview.php',
           method: 'POST',
@@ -76,11 +64,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
-
-        console.log('📊 [getDashReceivable POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
 
         return {
           url: 'dashboard/dash_receivable.php',
@@ -95,11 +78,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
 
-        console.log('📊 [getDashPayable POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
-
         return {
           url: 'dashboard/dash_payable.php',
           method: 'POST',
@@ -112,11 +90,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
-
-        console.log('📊 [getDashBanks POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
 
         return {
           url: 'dashboard/dash_banks.php',
@@ -131,11 +104,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
 
-        console.log('📊 [getDashCategoryWiseValution POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
-
         return {
           url: 'dashboard/dash_category_wise_valution.php',
           method: 'POST',
@@ -149,11 +117,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
 
-        console.log('📊 [getDashLocationWiseValution POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
-
         return {
           url: 'dashboard/dash_location_wise_valution.php',
           method: 'POST',
@@ -166,11 +129,6 @@ export const dashboardApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('company', 'ANS');
         formData.append('dimension_id', body?.dimension_id || '');
-
-        console.log('📊 [getDashItemWiseValution POST Payload]', {
-          company: 'ANS',
-          dimension_id: body?.dimension_id || '',
-        });
 
         return {
           url: 'dashboard/dash_item_wise_valution.php',

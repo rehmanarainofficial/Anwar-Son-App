@@ -289,7 +289,11 @@ const AppNavigator = () => {
               name="HCMExpenseClaim"
               component={ExpenseClaimInquiryScreen}
             />
-            <Stack.Screen name="ExpenseClaim" component={ExpenseClaimScreen} />
+            <Stack.Screen
+              name="ExpenseClaim"
+              component={ExpenseClaimScreen}
+              options={{ title: 'Expense Claim' }}
+            />
             <Stack.Screen name="HCMDVRInquiry" component={FinanceScreen} />
             <Stack.Screen name="HCMLocalPurchase" component={FinanceScreen} />
             <Stack.Screen
