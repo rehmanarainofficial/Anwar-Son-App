@@ -179,7 +179,10 @@ const CRMScreen = ({ navigation }) => {
                         style={styles.dropdownItem}
                         onPress={() => {
                           if (option === 'Monthly Expense') {
-                            navigation.navigate('CRMMonthlyExpense');
+                            navigation.navigate('HCMExpenseClaim', {
+                              targetForm: 'CRMMonthlyExpense',
+                              title: 'Monthly Expense Inquiry',
+                            });
                           } else if (option === 'Samples') {
                             navigation.navigate('CRMSampleRequest');
                           } else if (option === 'Give a way') {

@@ -232,7 +232,10 @@ const MainScreen = ({ navigation }) => {
     } else if (item.id === 'fuel_summary') {
       navigation.navigate('FuelSummaryScreen');
     } else if (item.id === 'field_expense') {
-      navigation.navigate('CRMMonthlyExpense');
+      navigation.navigate('HCMExpenseClaim', {
+        targetForm: 'CRMMonthlyExpense',
+        title: 'Expense Inquiry',
+      });
     } else if (item.id === 'outstation_expense') {
       navigation.navigate('OutstationExpense');
     } else if (item.id === 'apply_leave') {

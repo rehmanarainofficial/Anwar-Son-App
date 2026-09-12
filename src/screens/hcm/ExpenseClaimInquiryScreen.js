@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Platform,
   FlatList,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
@@ -27,11 +29,10 @@ const getDefaultDateRange = () => {
   return { fromDate, toDate: today };
 };
 
-export default function ExpenseClaimInquiryScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
+export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
-  const employeeId = userData?.emp_code || userData?.employee_id;
+  const employeeId = userData?.employee_id || userData?.emp_code || userData?.id;
 
   // Inquiry State
   const [inquiryData, setInquiryData] = useState([]);
@@ -54,7 +55,7 @@ export default function ExpenseClaimInquiryScreen({ navigation }) {
 
   useEffect(() => {
     fetchInquiryData();
-  }, []);
+  }, [selectedDimensionId]);
 
   const formatDateForApi = date => {
     const d = new Date(date);
@@ -71,20 +72,30 @@ export default function ExpenseClaimInquiryScreen({ navigation }) {
 
   const fetchInquiryData = async () => {
     try {
-      const response = await getExpenseClaimInquiry({
+      const payload = {
         from_date: formatDateForApi(filterFromDate),
         to_date: formatDateForApi(filterToDate),
-        employee_id: employeeId,
-        dimension_id: selectedDimensionId,
-      }).unwrap();
+        employee_id: employeeId ? String(employeeId) : '',
+        dimension_id: selectedDimensionId ? String(selectedDimensionId) : '0',
+      };
+      console.log('--- [EXPENSE INQUIRY REQUEST] ---', payload);
 
-      if (response.status === 'true' || response.status === true) {
-        setInquiryData(response.data || []);
-      } else {
-        setInquiryData([]);
-      }
+      const response = await getExpenseClaimInquiry(payload).unwrap();
+
+      console.log('--- [EXPENSE INQUIRY RESPONSE RAW] ---', response);
+
+      const rawList = Array.isArray(response)
+        ? response
+        : (response?.status === 'true' || response?.status === true)
+        ? response.data || []
+        : Array.isArray(response?.data)
+        ? response.data
+        : [];
+
+      console.log('--- [EXPENSE INQUIRY PARSED DATA LIST] --- (Count:', rawList.length, ')', rawList);
+      setInquiryData(rawList);
     } catch (error) {
-      console.log('Inquiry error:', error);
+      console.log('--- [EXPENSE INQUIRY ERROR] ---', error);
       Toast.show({
         type: 'error',
         text1: 'Error loading expense claims',
@@ -294,14 +305,17 @@ export default function ExpenseClaimInquiryScreen({ navigation }) {
     );
   };
 
+  const title = route?.params?.title || 'Expense Claims';
+  const targetForm = route?.params?.targetForm || 'ExpenseClaim';
+
   React.useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Expense Claims',
+      title: title,
       hideHomeIcon: true,
       headerRight: () => (
         <TouchableOpacity
           onPress={() =>
-            navigation.navigate('ExpenseClaim', { onRefresh: fetchInquiryData })
+            navigation.navigate(targetForm, { onRefresh: fetchInquiryData })
           }
           style={{ paddingRight: 10 }}
         >
@@ -309,7 +323,7 @@ export default function ExpenseClaimInquiryScreen({ navigation }) {
         </TouchableOpacity>
       ),
     });
-  });
+  }, [navigation, targetForm, title]);
 
   return (
     <View
@@ -427,9 +441,27 @@ export default function ExpenseClaimInquiryScreen({ navigation }) {
             renderItem={renderInquiryItem}
             contentContainerStyle={styles.inquiryList}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={inquiryLoading}
+                onRefresh={fetchInquiryData}
+                colors={[theme.colors.primary]}
+                tintColor={theme.colors.primary}
+              />
+            }
           />
         ) : (
-          <View style={styles.emptyContainer}>
+          <ScrollView
+            contentContainerStyle={styles.emptyContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={inquiryLoading}
+                onRefresh={fetchInquiryData}
+                colors={[theme.colors.primary]}
+                tintColor={theme.colors.primary}
+              />
+            }
+          >
             <Ionicons
               name="document-text-outline"
               size={60}
@@ -446,8 +478,25 @@ export default function ExpenseClaimInquiryScreen({ navigation }) {
             >
               Try adjusting the date filter or create a new claim
             </Text>
-          </View>
+          </ScrollView>
         )}
+
+        {/* Floating Action Button (FAB) */}
+        <TouchableOpacity
+          style={[
+            styles.fabButton,
+            {
+              backgroundColor: theme.colors.primary,
+              shadowColor: theme.colors.text,
+            },
+          ]}
+          onPress={() =>
+            navigation.navigate(targetForm, { onRefresh: fetchInquiryData })
+          }
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={30} color="#FFFFFF" />
+        </TouchableOpacity>
 
         {/* Filter Date Pickers */}
         <CustomDatePicker
@@ -649,5 +698,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8,
     textAlign: 'center',
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 99,
   },
 });

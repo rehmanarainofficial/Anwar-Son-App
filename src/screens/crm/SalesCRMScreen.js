@@ -307,7 +307,11 @@ const SalesCRMScreen = ({ navigation }) => {
                   'Monthly Expense',
                   'calendar-outline',
                   false,
-                  () => navigation.navigate('CRMMonthlyExpense'),
+                  () =>
+                    navigation.navigate('HCMExpenseClaim', {
+                      targetForm: 'CRMMonthlyExpense',
+                      title: 'Monthly Expense Inquiry',
+                    }),
                 )}
                 {renderPillButton(
                   'Additional Expense Request',

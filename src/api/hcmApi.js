@@ -46,19 +46,45 @@ export const hcmApi = baseApi.injectEndpoints({
       queryFn: async (body, api, extraOptions, baseQuery) => {
         const formData = new FormData();
         formData.append('company', 'ANS');
+        if (body?.from_date) {
+          formData.append('from_date', String(body.from_date));
+        }
+        if (body?.to_date) {
+          formData.append('to_date', String(body.to_date));
+        }
+        if (body?.employee_id !== undefined && body?.employee_id !== null) {
+          formData.append('employee_id', String(body.employee_id));
+        }
         if (body) {
           Object.keys(body).forEach(key => {
-            if (key !== 'company') {
-              formData.append(key, body[key]);
+            if (
+              key !== 'company' &&
+              key !== 'from_date' &&
+              key !== 'to_date' &&
+              key !== 'employee_id' &&
+              body[key] !== undefined &&
+              body[key] !== null
+            ) {
+              formData.append(key, String(body[key]));
             }
           });
         }
+
+        console.log('[hcmApi] getExpenseClaimInquiry request body:', {
+          company: 'ANS',
+          from_date: body?.from_date,
+          to_date: body?.to_date,
+          employee_id: body?.employee_id,
+          ...body,
+        });
 
         const result = await baseQuery({
           url: 'portal/expense_claim_inquiry.php',
           method: 'POST',
           body: formData,
         });
+
+        console.log('[hcmApi] getExpenseClaimInquiry response:', result);
 
         return result.data ? { data: result.data } : { error: result.error };
       },
