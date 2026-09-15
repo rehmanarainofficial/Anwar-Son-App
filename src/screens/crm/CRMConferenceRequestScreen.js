@@ -204,7 +204,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
     try {
       const payload = {
         user_id: user.id,
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
       };
       if (fromDate) {
         payload.from_date = formatToYYYYMMDD(fromDate);
@@ -275,7 +275,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
       try {
         const detailRes = await getConferenceData({
           user_id: user?.id,
-          role_id: user?.role_id || '2',
+          role_id: user?.role_id || '',
           id: item.id,
         }).unwrap();
 
@@ -484,7 +484,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         attendance: attendanceList,
         status_id: selectedStatusId || (isRole3 ? '1' : '3'),
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
@@ -544,7 +544,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         attendance: selectedManagerItem.attendance || [],
         status_id: managerStatusId,
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 

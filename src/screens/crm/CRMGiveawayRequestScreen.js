@@ -168,7 +168,7 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
     try {
       const payload = {
         user_id: user.id,
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
       };
       if (fromDate) {
         payload.from_date = formatToYYYYMMDD(fromDate);
@@ -336,7 +336,7 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         remarks: remarks,
         status_id: selectedStatusId || (isRole3 ? '1' : '3'),
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
@@ -388,7 +388,7 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         remarks: selectedManagerItem.remarks || '',
         status_id: managerStatusId,
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 

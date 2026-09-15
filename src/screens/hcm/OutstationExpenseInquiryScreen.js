@@ -13,8 +13,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import { useTheme } from '@config/useTheme';
 import Toast from 'react-native-toast-message';
-import { DimensionDropdown, CustomDatePicker } from '@components/common';
-import { useGetExpenseClaimInquiryMutation } from '@api/hcmApi';
+import { CustomDatePicker } from '@components/common';
+import { useGetOutstationExpenseInquiryMutation } from '@api/hcmApi';
 import { useGetViewGLMutation } from '@api/voidApi';
 
 const getDefaultDateRange = () => {
@@ -23,11 +23,16 @@ const getDefaultDateRange = () => {
   return { fromDate, toDate: today };
 };
 
-export default function ExpenseClaimInquiryScreen({ navigation, route }) {
+export default function OutstationExpenseInquiryScreen({
+  navigation,
+  route,
+}) {
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
   const employeeId =
-    userData?.employee_id || userData?.emp_code || userData?.id;
+    userData?.employee_id !== undefined && userData?.employee_id !== null
+      ? userData.employee_id
+      : userData?.emp_code || '';
 
   // Inquiry State
   const [inquiryData, setInquiryData] = useState([]);
@@ -39,16 +44,15 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const [showFilterFromDatePicker, setShowFilterFromDatePicker] =
     useState(false);
   const [showFilterToDatePicker, setShowFilterToDatePicker] = useState(false);
-  const [selectedDimensionId, setSelectedDimensionId] = useState(0);
 
   // RTK Mutations
-  const [getExpenseClaimInquiry, { isLoading: inquiryLoading }] =
-    useGetExpenseClaimInquiryMutation();
+  const [getOutstationExpenseInquiry, { isLoading: inquiryLoading }] =
+    useGetOutstationExpenseInquiryMutation();
   const [getViewGL] = useGetViewGLMutation();
 
   useEffect(() => {
     fetchInquiryData();
-  }, [selectedDimensionId]);
+  }, []);
 
   const formatDateForApi = date => {
     const d = new Date(date);
@@ -57,7 +61,7 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
 
   const formatNumber = num => {
     if (!num) return '0';
-    const parsed = parseFloat(num);
+    const parsed = parseFloat(String(num).replace(/,/g, ''));
     return isNaN(parsed)
       ? '0'
       : parsed.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -66,13 +70,13 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const fetchInquiryData = async () => {
     try {
       const payload = {
+        company: 'ANS',
         from_date: formatDateForApi(filterFromDate),
         to_date: formatDateForApi(filterToDate),
-        employee_id: employeeId ? String(employeeId) : '',
-        dimension_id: selectedDimensionId ? String(selectedDimensionId) : '0',
+        employee_id: String(employeeId || ''),
       };
 
-      const response = await getExpenseClaimInquiry(payload).unwrap();
+      const response = await getOutstationExpenseInquiry(payload).unwrap();
       const rawList = Array.isArray(response)
         ? response
         : response?.status === 'true' || response?.status === true
@@ -83,10 +87,10 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
 
       setInquiryData(rawList);
     } catch (error) {
-      console.log('--- [EXPENSE INQUIRY ERROR] ---', error);
+      console.log('--- [OUTSTATION INQUIRY ERROR] ---', error);
       Toast.show({
         type: 'error',
-        text1: 'Error loading expense claims',
+        text1: 'Error loading outstation claims',
       });
       setInquiryData([]);
     }
@@ -95,6 +99,7 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const formatDisplayDate = dateString => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
@@ -108,7 +113,6 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
         company: 'ANS',
         trans_no: item.trans_no,
         type: item.type,
-        dimension_id: selectedDimensionId,
       }).unwrap();
 
       navigation.navigate('FinanceViewLedger', {
@@ -116,7 +120,6 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
         reference: item.reference,
         trans_no: item.trans_no,
         type: item.type,
-        dimension_id: selectedDimensionId,
       });
     } catch (error) {
       console.log('GL View API Error:', error);
@@ -157,9 +160,21 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
     };
   };
 
-  const renderInquiryItem = ({ item, index }) => {
+  const renderInquiryItem = ({ item }) => {
     const managerStatus = getApprovalStatus(item.manager_approval, false);
     const accountsStatus = getApprovalStatus(item.approval, true);
+
+    const routeInfo =
+      item.from_city && item.to_city
+        ? `${item.from_city} ➔ ${item.to_city}`
+        : item.from_city_name && item.to_city_name
+        ? `${item.from_city_name} ➔ ${item.to_city_name}`
+        : '';
+
+    const dateText =
+      item.leave_date && item.return_date
+        ? `${formatDisplayDate(item.leave_date)} - ${formatDisplayDate(item.return_date)}`
+        : formatDisplayDate(item.ord_date || item.trans_date || item.date);
 
     return (
       <View
@@ -173,11 +188,27 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
         >
           <View style={styles.headerLeft}>
             <Text style={[styles.inquiryRef, { color: theme.colors.primary }]}>
-              {item.reference || 'N/A'}
+              {item.reference || `Claim #${item.trans_no || 'N/A'}`}
             </Text>
-            <Text style={[styles.inquiryName, { color: theme.colors.text }]}>
-              {item.name || 'N/A'}
-            </Text>
+            {item.name ? (
+              <Text style={[styles.inquiryName, { color: theme.colors.text }]}>
+                {item.name}
+              </Text>
+            ) : null}
+            {routeInfo ? (
+              <View style={styles.routeRow}>
+                <Ionicons
+                  name="navigate-outline"
+                  size={13}
+                  color={theme.colors.primary}
+                />
+                <Text
+                  style={[styles.routeText, { color: theme.colors.textSecondary }]}
+                >
+                  {routeInfo}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <View style={styles.badgesContainer}>
             <View
@@ -225,23 +256,47 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
         </View>
 
         <View style={styles.inquiryBody}>
-          <View style={styles.inquiryRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={theme.colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.inquiryDateText,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              {formatDisplayDate(item.ord_date)}
-            </Text>
+          <View style={{ flex: 1 }}>
+            <View style={styles.inquiryRow}>
+              <Ionicons
+                name="calendar-outline"
+                size={15}
+                color={theme.colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.inquiryDateText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                {dateText}
+              </Text>
+            </View>
+            {item.fuel ? (
+              <View style={[styles.inquiryRow, { marginTop: 4 }]}>
+                <Ionicons
+                  name="speedometer-outline"
+                  size={15}
+                  color={theme.colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.inquiryDateText,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Fuel: {item.fuel} Ltrs
+                </Text>
+              </View>
+            ) : null}
           </View>
-          <Text style={[styles.inquiryTotal, { color: theme.colors.success }]}>
-            Rs. {formatNumber(item.total || 0)}
+          <Text
+            style={[
+              styles.inquiryTotal,
+              { color: theme.colors.success || '#10b981' },
+            ]}
+          >
+            Rs. {formatNumber(item.total || item.amount || 0)}
           </Text>
         </View>
 
@@ -287,8 +342,14 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
     );
   };
 
-  const title = route?.params?.title || 'Expense Claims';
-  const targetForm = route?.params?.targetForm || 'ExpenseClaim';
+  const totalFuel = inquiryData.reduce(
+    (sum, item) =>
+      sum + (parseFloat(String(item.fuel || 0).replace(/,/g, '')) || 0),
+    0,
+  );
+
+  const title = route?.params?.title || 'Outstation Expenses';
+  const targetForm = route?.params?.targetForm || 'OutstationExpenseForm';
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -312,14 +373,6 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       <View style={styles.inquiryContainer}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-          <DimensionDropdown
-            onDimensionSelect={dimensionId => {
-              setSelectedDimensionId(dimensionId);
-            }}
-          />
-        </View>
-
         {/* Filter Section */}
         <View
           style={[
@@ -405,6 +458,93 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* Summary Row Card (Total Trips & Total Petrol Ltrs) */}
+        <View
+          style={[
+            styles.summaryRowCard,
+            {
+              backgroundColor: theme.colors.surface,
+              shadowColor: theme.colors.text,
+            },
+          ]}
+        >
+          <View style={styles.summaryItem}>
+            <View
+              style={[
+                styles.summaryIconBox,
+                { backgroundColor: theme.colors.primary + '15' },
+              ]}
+            >
+              <Ionicons
+                name="navigate-outline"
+                size={16}
+                color={theme.colors.primary}
+              />
+            </View>
+            <View>
+              <Text
+                style={[
+                  styles.summaryItemLabel,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Total Trips
+              </Text>
+              <Text
+                style={[
+                  styles.summaryItemValue,
+                  { color: theme.colors.text },
+                ]}
+              >
+                {inquiryData.length}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.summaryDivider,
+              { backgroundColor: theme.colors.border },
+            ]}
+          />
+
+          <View style={styles.summaryItem}>
+            <View
+              style={[
+                styles.summaryIconBox,
+                { backgroundColor: '#F59E0B18' },
+              ]}
+            >
+              <Ionicons
+                name="speedometer-outline"
+                size={16}
+                color="#D97706"
+              />
+            </View>
+            <View>
+              <Text
+                style={[
+                  styles.summaryItemLabel,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Total Petrol
+              </Text>
+              <Text
+                style={[
+                  styles.summaryItemValue,
+                  { color: '#D97706' },
+                ]}
+              >
+                {totalFuel.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}{' '}
+                Ltrs
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Inquiry List */}
         {inquiryLoading ? (
           <View style={styles.loaderContainer}>
@@ -412,13 +552,15 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
             <Text
               style={[styles.loaderText, { color: theme.colors.textSecondary }]}
             >
-              Loading expense claims...
+              Loading outstation claims...
             </Text>
           </View>
         ) : inquiryData.length > 0 ? (
           <FlatList
             data={inquiryData}
-            keyExtractor={(item, index) => `inquiry-${item.trans_no || index}`}
+            keyExtractor={(item, index) =>
+              `outstation-${item.trans_no || item.id || index}`
+            }
             renderItem={renderInquiryItem}
             contentContainerStyle={styles.inquiryList}
             showsVerticalScrollIndicator={false}
@@ -444,12 +586,12 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
             }
           >
             <Ionicons
-              name="document-text-outline"
+              name="briefcase-outline"
               size={60}
               color={theme.colors.textSecondary}
             />
             <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-              No expense claims found
+              No outstation claims found
             </Text>
             <Text
               style={[
@@ -457,7 +599,7 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
                 { color: theme.colors.textSecondary },
               ]}
             >
-              Try adjusting the date filter or create a new claim
+              Try adjusting the date filter or create a new visit claim
             </Text>
           </ScrollView>
         )}
@@ -509,26 +651,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 6,
-    paddingBottom: 16,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  newBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    padding: 4,
-  },
   inquiryContainer: {
     flex: 1,
   },
@@ -541,6 +663,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+  },
+  summaryRowCard: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  summaryIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryItemLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  summaryItemValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 30,
   },
   filterRow: {
     flexDirection: 'row',
@@ -603,6 +765,18 @@ const styles = StyleSheet.create({
   },
   inquiryName: {
     fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  routeText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   badgesContainer: {
     alignItems: 'flex-end',

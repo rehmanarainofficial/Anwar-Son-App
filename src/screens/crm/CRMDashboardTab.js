@@ -38,7 +38,7 @@ const CRMDashboardTab = ({ navigation }) => {
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const uId = user?.id || user?.company_user_id || '';
+      const uId = user?.id || '';
       const rId = user?.role_id;
 
       const [hospRes, contactRes] = await Promise.all([

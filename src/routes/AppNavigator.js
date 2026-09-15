@@ -67,7 +67,10 @@ import ExpenseClaimScreen from '@screens/hcm/ExpenseClaimScreen';
 import LeaveScreen from '@screens/hcm/LeaveScreen';
 import LeaveStatusScreen from '@screens/hcm/LeaveStatusScreen';
 import LeaveApprovalScreen from '@screens/approvals/LeaveApprovalScreen';
+import FieldExpenseApprovalScreen from '@screens/approvals/FieldExpenseApprovalScreen';
+import OutstationExpenseApprovalScreen from '@screens/approvals/OutstationExpenseApprovalScreen';
 import OutstationExpenseScreen from '@screens/hcm/OutstationExpenseScreen';
+import OutstationExpenseInquiryScreen from '@screens/hcm/OutstationExpenseInquiryScreen';
 import { LoadingSpinner, CustomHeader } from '@components/common';
 
 const Stack = createNativeStackNavigator();
@@ -414,8 +417,23 @@ const AppNavigator = () => {
             />
             <Stack.Screen
               name="OutstationExpense"
+              component={OutstationExpenseInquiryScreen}
+              options={{ title: 'Outstation Expenses' }}
+            />
+            <Stack.Screen
+              name="OutstationExpenseForm"
               component={OutstationExpenseScreen}
               options={{ title: 'Outstation Visit' }}
+            />
+            <Stack.Screen
+              name="FieldExpenseApproval"
+              component={FieldExpenseApprovalScreen}
+              options={{ title: 'Field Expense Approval' }}
+            />
+            <Stack.Screen
+              name="OutstationExpenseApproval"
+              component={OutstationExpenseApprovalScreen}
+              options={{ title: 'Outstation Expense Approval' }}
             />
             <Stack.Screen
               name="CRMGiveawayApproval"

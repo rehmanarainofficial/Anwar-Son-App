@@ -24,6 +24,10 @@ import {
   useGetConferenceDataMutation,
   useGetSampleDataMutation,
 } from '@api/baseApi';
+import {
+  useGetExpenseClaimInquiryMutation,
+  useGetOutstationExpenseInquiryMutation,
+} from '@api/hcmApi';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT =
@@ -74,6 +78,10 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     useGetConferenceDataMutation();
   const [getSampleData, { isLoading: sampleLoading }] =
     useGetSampleDataMutation();
+  const [getExpenseClaimInquiry, { isLoading: fieldExpLoading }] =
+    useGetExpenseClaimInquiryMutation();
+  const [getOutstationExpenseInquiry, { isLoading: outExpLoading }] =
+    useGetOutstationExpenseInquiryMutation();
 
   // Data States
   const [promoList, setPromoList] = useState([]);
@@ -81,6 +89,8 @@ const ApprovalsDashboardTab = ({ navigation }) => {
   const [workshopList, setWorkshopList] = useState([]);
   const [conferenceList, setConferenceList] = useState([]);
   const [sampleList, setSampleList] = useState([]);
+  const [fieldExpenseList, setFieldExpenseList] = useState([]);
+  const [outstationExpenseList, setOutstationExpenseList] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // Selected Active Field Activity Category (Default: promotional)
@@ -106,14 +116,35 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     };
 
     try {
-      const [resPromo, resGiveaway, resWorkshop, resConference, resSample] =
-        await Promise.allSettled([
-          getPromotionalData(payload).unwrap(),
-          getGiveawayData(payload).unwrap(),
-          getWorkshopData(payload).unwrap(),
-          getConferenceData(payload).unwrap(),
-          getSampleData(payload).unwrap(),
-        ]);
+      const [
+        resPromo,
+        resGiveaway,
+        resWorkshop,
+        resConference,
+        resSample,
+        resFieldExp,
+        resOutExp,
+      ] = await Promise.allSettled([
+        getPromotionalData(payload).unwrap(),
+        getGiveawayData(payload).unwrap(),
+        getWorkshopData(payload).unwrap(),
+        getConferenceData(payload).unwrap(),
+        getSampleData(payload).unwrap(),
+        getExpenseClaimInquiry({
+          company: 'ANS',
+          from_date: formatToYYYYMMDD(from),
+          to_date: formatToYYYYMMDD(to),
+          employee_id: String(user?.employee_id || ''),
+          role_id: user?.role_id !== undefined ? String(user.role_id) : '2',
+        }).unwrap(),
+        getOutstationExpenseInquiry({
+          company: 'ANS',
+          from_date: formatToYYYYMMDD(from),
+          to_date: formatToYYYYMMDD(to),
+          employee_id: String(user?.employee_id || ''),
+          role_id: user?.role_id !== undefined ? String(user.role_id) : '2',
+        }).unwrap(),
+      ]);
 
       if (resPromo.status === 'fulfilled' && resPromo.value) {
         setPromoList(
@@ -160,8 +191,22 @@ const ApprovalsDashboardTab = ({ navigation }) => {
           extractList(resSample.value, ['samples', 'sample_data', 'sample']),
         );
       }
+
+      if (resFieldExp.status === 'fulfilled' && resFieldExp.value) {
+        const raw = Array.isArray(resFieldExp.value)
+          ? resFieldExp.value
+          : resFieldExp.value?.data || [];
+        setFieldExpenseList(Array.isArray(raw) ? raw : []);
+      }
+
+      if (resOutExp.status === 'fulfilled' && resOutExp.value) {
+        const raw = Array.isArray(resOutExp.value)
+          ? resOutExp.value
+          : resOutExp.value?.data || [];
+        setOutstationExpenseList(Array.isArray(raw) ? raw : []);
+      }
     } catch (error) {
-      console.log('Error fetching field activity approvals data:', error);
+      console.log('Error fetching approvals data:', error);
     }
   }, [
     user?.id,
@@ -171,6 +216,8 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     getWorkshopData,
     getConferenceData,
     getSampleData,
+    getExpenseClaimInquiry,
+    getOutstationExpenseInquiry,
   ]);
 
   useFocusEffect(
@@ -421,6 +468,153 @@ const ApprovalsDashboardTab = ({ navigation }) => {
             );
           })}
         </View>
+
+        {/* EXPENSE APPROVALS SECTION */}
+        <View style={[styles.sectionHeaderWrap, { marginTop: 22 }]}>
+          <View style={styles.accentBar} />
+          <Text style={styles.sectionTitle}>EXPENSE APPROVALS</Text>
+        </View>
+
+        <View style={styles.expenseCardsList}>
+          {/* Field Expense Approval Card */}
+          <TouchableOpacity
+            style={styles.statusOptionCard}
+            onPress={() => navigation.navigate('FieldExpenseApproval')}
+            activeOpacity={0.75}
+          >
+            <View style={styles.statusOptionLeft}>
+              <View
+                style={[
+                  styles.statusIconWrap,
+                  { backgroundColor: theme.colors.primary + '18' },
+                ]}
+              >
+                <Icon
+                  name="wallet-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <View>
+                <Text style={styles.statusOptionName}>Field Expense</Text>
+                <Text
+                  style={[
+                    styles.expenseSubText,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Accounts & Manager Approval
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.expenseRightWrap}>
+              {fieldExpenseList.filter(
+                i =>
+                  i.manager_approval !== '0' &&
+                  i.manager_approval !== 0 &&
+                  i.manager_approval !== 'Approved' &&
+                  i.manager_approval !== 'approved',
+              ).length > 0 ? (
+                <View
+                  style={[
+                    styles.statusCountBadge,
+                    { backgroundColor: theme.colors.primary + '18' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusCountText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {
+                      fieldExpenseList.filter(
+                        i =>
+                          i.manager_approval !== '0' &&
+                          i.manager_approval !== 0 &&
+                          i.manager_approval !== 'Approved' &&
+                          i.manager_approval !== 'approved',
+                      ).length
+                    }
+                  </Text>
+                </View>
+              ) : null}
+              <Icon
+                name="chevron-forward"
+                size={18}
+                color={theme.colors.textSecondary}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {/* Outstation Expense Approval Card */}
+          <TouchableOpacity
+            style={styles.statusOptionCard}
+            onPress={() => navigation.navigate('OutstationExpenseApproval')}
+            activeOpacity={0.75}
+          >
+            <View style={styles.statusOptionLeft}>
+              <View
+                style={[
+                  styles.statusIconWrap,
+                  { backgroundColor: '#F59E0B20' },
+                ]}
+              >
+                <Icon
+                  name="briefcase-outline"
+                  size={20}
+                  color="#D97706"
+                />
+              </View>
+              <View>
+                <Text style={styles.statusOptionName}>Outstation Expense</Text>
+                <Text
+                  style={[
+                    styles.expenseSubText,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Accounts & Manager Approval
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.expenseRightWrap}>
+              {outstationExpenseList.filter(
+                i =>
+                  i.manager_approval !== '0' &&
+                  i.manager_approval !== 0 &&
+                  i.manager_approval !== 'Approved' &&
+                  i.manager_approval !== 'approved',
+              ).length > 0 ? (
+                <View
+                  style={[
+                    styles.statusCountBadge,
+                    { backgroundColor: '#FEF3C7' },
+                  ]}
+                >
+                  <Text style={[styles.statusCountText, { color: '#D97706' }]}>
+                    {
+                      outstationExpenseList.filter(
+                        i =>
+                          i.manager_approval !== '0' &&
+                          i.manager_approval !== 0 &&
+                          i.manager_approval !== 'Approved' &&
+                          i.manager_approval !== 'approved',
+                      ).length
+                    }
+                  </Text>
+                </View>
+              ) : null}
+              <Icon
+                name="chevron-forward"
+                size={18}
+                color={theme.colors.textSecondary}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -599,6 +793,20 @@ const getStyles = theme =>
     statusCountText: {
       fontSize: 13,
       fontWeight: '900',
+    },
+    expenseCardsList: {
+      marginTop: 4,
+      gap: 8,
+    },
+    expenseSubText: {
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 2,
+    },
+    expenseRightWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
   });
 

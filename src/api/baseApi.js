@@ -247,7 +247,7 @@ export const baseApi = createApi({
       query: body => {
         const formData = new FormData();
         formData.append('company', 'CRM');
-        formData.append('id', body.id || '0');
+        formData.append('id', body.id || '');
         formData.append('user_id', body.user_id);
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
