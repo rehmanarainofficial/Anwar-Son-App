@@ -26,9 +26,12 @@ export const voidApi = baseApi.injectEndpoints({
     getViewData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'ANS');
-        formData.append('trans_no', body.trans_no);
-        formData.append('type', body.type);
+        formData.append('company', body.company || 'ANS');
+        formData.append('trans_no', body.trans_no !== undefined ? String(body.trans_no) : '');
+        formData.append('type', body.type !== undefined ? String(body.type) : '');
+        if (body.dimension_id !== undefined && body.dimension_id !== null) {
+          formData.append('dimension_id', String(body.dimension_id));
+        }
 
         return {
           url: 'view/view_data.php',
@@ -43,9 +46,12 @@ export const voidApi = baseApi.injectEndpoints({
     getViewGL: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'ANS');
-        formData.append('trans_no', body.trans_no);
-        formData.append('type', body.type);
+        formData.append('company', body.company || 'ANS');
+        formData.append('trans_no', body.trans_no !== undefined ? String(body.trans_no) : '');
+        formData.append('type', body.type !== undefined ? String(body.type) : '');
+        if (body.dimension_id !== undefined && body.dimension_id !== null) {
+          formData.append('dimension_id', String(body.dimension_id));
+        }
 
         return {
           url: 'view/view_gl.php',

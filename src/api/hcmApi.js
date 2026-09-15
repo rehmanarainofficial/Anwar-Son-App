@@ -111,38 +111,7 @@ export const hcmApi = baseApi.injectEndpoints({
         return result.data ? { data: result.data } : { error: result.error };
       },
     }),
-    getViewGL: builder.mutation({
-      queryFn: async (body, api, extraOptions, baseQuery) => {
-        const formData = new FormData();
-        Object.keys(body).forEach(key => {
-          formData.append(key, body[key]);
-        });
 
-        const result = await baseQuery({
-          url: 'view/view_gl.php',
-          method: 'POST',
-          body: formData,
-        });
-
-        return result.data ? { data: result.data } : { error: result.error };
-      },
-    }),
-    getViewData: builder.mutation({
-      queryFn: async (body, api, extraOptions, baseQuery) => {
-        const formData = new FormData();
-        Object.keys(body).forEach(key => {
-          formData.append(key, body[key]);
-        });
-
-        const result = await baseQuery({
-          url: 'view/view_data.php',
-          method: 'POST',
-          body: formData,
-        });
-
-        return result.data ? { data: result.data } : { error: result.error };
-      },
-    }),
 
     // --- Leave Management APIs ---
     getEmployeeLeaveHistory: builder.mutation({
@@ -248,8 +217,6 @@ export const {
   useGetExpenseClaimInquiryMutation,
   useGetClaimExpenseAccountQuery,
   usePostServiceExpenseClaimMutation,
-  useGetViewGLMutation,
-  useGetViewDataMutation,
   useGetEmployeeLeaveHistoryMutation,
   usePostEmployeeLeaveMutation,
   useGetEmpSelfLeavesMutation,

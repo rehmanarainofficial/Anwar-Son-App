@@ -5,23 +5,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Platform,
   FlatList,
   ScrollView,
   RefreshControl,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@config/useTheme';
 import Toast from 'react-native-toast-message';
-import { exportReportToPDF } from '@config/reportHelper';
 import { DimensionDropdown, CustomDatePicker } from '@components/common';
-import {
-  useGetExpenseClaimInquiryMutation,
-  useGetViewGLMutation,
-  useGetViewDataMutation,
-} from '@api/hcmApi';
+import { useGetExpenseClaimInquiryMutation } from '@api/hcmApi';
+import { useGetViewGLMutation } from '@api/voidApi';
 
 const getDefaultDateRange = () => {
   const today = new Date();
@@ -32,12 +26,12 @@ const getDefaultDateRange = () => {
 export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
-  const employeeId = userData?.employee_id || userData?.emp_code || userData?.id;
+  const employeeId =
+    userData?.employee_id || userData?.emp_code || userData?.id;
 
   // Inquiry State
   const [inquiryData, setInquiryData] = useState([]);
-  const [viewLoading, setViewLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [loadingTransNo, setLoadingTransNo] = useState(null);
   const { fromDate: defaultFromDate, toDate: defaultToDate } =
     getDefaultDateRange();
   const [filterFromDate, setFilterFromDate] = useState(defaultFromDate);
@@ -51,7 +45,6 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const [getExpenseClaimInquiry, { isLoading: inquiryLoading }] =
     useGetExpenseClaimInquiryMutation();
   const [getViewGL] = useGetViewGLMutation();
-  const [getViewData] = useGetViewDataMutation();
 
   useEffect(() => {
     fetchInquiryData();
@@ -78,21 +71,16 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
         employee_id: employeeId ? String(employeeId) : '',
         dimension_id: selectedDimensionId ? String(selectedDimensionId) : '0',
       };
-      console.log('--- [EXPENSE INQUIRY REQUEST] ---', payload);
 
       const response = await getExpenseClaimInquiry(payload).unwrap();
-
-      console.log('--- [EXPENSE INQUIRY RESPONSE RAW] ---', response);
-
       const rawList = Array.isArray(response)
         ? response
-        : (response?.status === 'true' || response?.status === true)
+        : response?.status === 'true' || response?.status === true
         ? response.data || []
         : Array.isArray(response?.data)
         ? response.data
         : [];
 
-      console.log('--- [EXPENSE INQUIRY PARSED DATA LIST] --- (Count:', rawList.length, ')', rawList);
       setInquiryData(rawList);
     } catch (error) {
       console.log('--- [EXPENSE INQUIRY ERROR] ---', error);
@@ -114,9 +102,10 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   };
 
   const handleView = async item => {
-    setViewLoading(true);
+    setLoadingTransNo(item.trans_no);
     try {
       const response = await getViewGL({
+        company: 'ANS',
         trans_no: item.trans_no,
         type: item.type,
         dimension_id: selectedDimensionId,
@@ -125,7 +114,9 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
       navigation.navigate('FinanceViewLedger', {
         glData: response,
         reference: item.reference,
-        transNo: item.trans_no,
+        trans_no: item.trans_no,
+        type: item.type,
+        dimension_id: selectedDimensionId,
       });
     } catch (error) {
       console.log('GL View API Error:', error);
@@ -134,39 +125,7 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
         text1: 'Failed to fetch GL details',
       });
     } finally {
-      setViewLoading(false);
-    }
-  };
-
-  const handlePDF = async item => {
-    setPdfLoading(true);
-    try {
-      const response = await getViewData({
-        trans_no: item.trans_no,
-        type: item.type,
-        dimension_id: selectedDimensionId,
-      }).unwrap();
-
-      const data = response;
-      const htmlString = `
-        <html>
-          <body style="font-family: sans-serif; padding: 20px;">
-            <h1>Expense Claim Reference: ${item.reference}</h1>
-            <p><strong>Name:</strong> ${item.name}</p>
-            <p><strong>Total:</strong> Rs. ${formatNumber(item.total || 0)}</p>
-          </body>
-        </html>
-      `;
-      await exportReportToPDF(htmlString, item.reference);
-    } catch (error) {
-      console.log('PDF Download Error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Download Failed',
-        text2: 'Failed to download PDF',
-      });
-    } finally {
-      setPdfLoading(false);
+      setLoadingTransNo(null);
     }
   };
 
@@ -253,9 +212,9 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
               { backgroundColor: theme.colors.primary + '10' },
             ]}
             onPress={() => handleView(item)}
-            disabled={viewLoading}
+            disabled={loadingTransNo === item.trans_no}
           >
-            {viewLoading ? (
+            {loadingTransNo === item.trans_no ? (
               <ActivityIndicator size="small" color={theme.colors.primary} />
             ) : (
               <>
@@ -271,31 +230,6 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
                   ]}
                 >
                   View
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              { backgroundColor: theme.colors.error + '10' },
-            ]}
-            onPress={() => handlePDF(item)}
-            disabled={pdfLoading}
-          >
-            {pdfLoading ? (
-              <ActivityIndicator size="small" color={theme.colors.error} />
-            ) : (
-              <>
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color={theme.colors.error}
-                />
-                <Text
-                  style={[styles.actionBtnText, { color: theme.colors.error }]}
-                >
-                  PDF
                 </Text>
               </>
             )}
@@ -329,7 +263,6 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-
       <View style={styles.inquiryContainer}>
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           <DimensionDropdown
@@ -532,7 +465,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 6,
     paddingBottom: 16,
   },
   backBtn: {

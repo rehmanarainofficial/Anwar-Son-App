@@ -45,6 +45,7 @@ import CRMProductSalesScreen from '@screens/crm/CRMProductSalesScreen';
 import CRMCustomerSalesScreen from '@screens/crm/CRMCustomerSalesScreen';
 import CRMSalesVsTargetScreen from '@screens/crm/CRMSalesVsTargetScreen';
 import FinanceScreen from '@screens/finance/FinanceScreen';
+import GLViewScreen from '@screens/finance/GLViewScreen';
 import AccountDetailScreen from '@screens/dashboard/AccountDetailScreen';
 import LedgerScreen from '@components/ledger/LedgerScreen';
 import CustomerAgingScreen from '@components/aging/CustomerAgingScreen';
@@ -425,7 +426,11 @@ const AppNavigator = () => {
             <Stack.Screen name="CRMScheduleMeeting" component={FinanceScreen} />
             <Stack.Screen name="CRMLeadToOrder" component={FinanceScreen} />
 
-            <Stack.Screen name="FinanceViewLedger" component={FinanceScreen} />
+            <Stack.Screen
+              name="FinanceViewLedger"
+              component={GLViewScreen}
+              options={{ title: 'General Ledger View' }}
+            />
             <Stack.Screen
               name="FinanceTransactions"
               component={FinanceScreen}
