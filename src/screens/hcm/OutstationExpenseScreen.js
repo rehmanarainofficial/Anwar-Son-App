@@ -51,9 +51,9 @@ const OutstationExpenseScreen = ({ navigation, route }) => {
   const styles = getStyles(theme);
   const onRefresh = route?.params?.onRefresh;
   const userData = useSelector(state => state.auth.user);
-  const userId = userData?.id || userData?.user_id || '';
-  const employeeId =
-    userData?.employee_id || userData?.emp_code || userData?.id || '';
+  const userId = userData?.id || '';
+  const user_id = userData?.user_id || '';
+  const employeeId = userData?.employee_id || '';
 
   const [cities, setCities] = useState([]);
   const [fromCity, setFromCity] = useState(null);
@@ -68,14 +68,11 @@ const OutstationExpenseScreen = ({ navigation, route }) => {
   const [receipt, setReceipt] = useState(null);
 
   const [isLoadingRates, setIsLoadingRates] = useState(false);
-
-  // Date picker state: { visible: boolean, field: 'leavingDate' | 'returnDate' }
   const [datePickerState, setDatePickerState] = useState({
     visible: false,
     field: null,
   });
 
-  // RTK Mutations
   const [getCityDropdown, { isLoading: citiesLoading }] =
     useGetCityDropdownMutation();
   const [getOutstationData] = useGetOutstationDataMutation();
@@ -136,11 +133,8 @@ const OutstationExpenseScreen = ({ navigation, route }) => {
           to_city: String(nextToCity),
           user_id: String(userId),
         };
-        console.log('Fetching outstation rates payload:', payload);
 
         const res = await getOutstationData(payload).unwrap();
-        console.log('Outstation rates response:', res);
-
         if (res?.status === 'true' || res?.status === true) {
           const rateData = Array.isArray(res.data) ? res.data[0] : res.data;
           if (rateData) {
@@ -237,23 +231,68 @@ const OutstationExpenseScreen = ({ navigation, route }) => {
     try {
       const expense_detail = [];
 
-      const parsedNightStay =
-        parseFloat(String(nightStay).replace(/,/g, '')) || 0;
+      const parsedNightStay = parseFloat(String(nightStay).replace(/,/g, '')) || 0;
       if (parsedNightStay > 0 || nightStayDetail.trim()) {
         expense_detail.push({
+          account_code: '605002',
+          line_date: leavingDate || formatToYYYYMMDD(new Date()),
           amount: parsedNightStay,
           line_memo: nightStayDetail.trim() || 'Night Stay',
         });
       }
 
-      const parsedOtherExpense =
-        parseFloat(String(otherExpense).replace(/,/g, '')) || 0;
+      const parsedOtherExpense = parseFloat(String(otherExpense).replace(/,/g, '')) || 0;
       if (parsedOtherExpense > 0 || otherDetail.trim()) {
         expense_detail.push({
+          account_code: '605002',
+          line_date: returnDate || leavingDate || formatToYYYYMMDD(new Date()),
           amount: parsedOtherExpense,
           line_memo: otherDetail.trim() || 'Other Expense',
         });
       }
+
+      const totalAmount = expense_detail.reduce(
+        (sum, item) => sum + (parseFloat(item.amount) || 0),
+        0,
+      );
+
+      const transDate = formatToYYYYMMDD(new Date());
+
+      const fromCityObj = cities.find(c => String(c.id) === String(fromCity));
+      const toCityObj = cities.find(c => String(c.id) === String(toCity));
+      const fromCityLabel = fromCityObj?.description || fromCity;
+      const toCityLabel = toCityObj?.description || toCity;
+
+      const commentParts = [];
+      const outstationLabel =
+        fromCityLabel && toCityLabel
+          ? `Outstation: ${fromCityLabel} to ${toCityLabel}`
+          : 'Outstation';
+      commentParts.push(`${outstationLabel} (user_id: ${user_id})`);
+      if (leavingDate) {
+        commentParts.push(`Leave: ${leavingDate}`);
+      }
+      if (returnDate) {
+        commentParts.push(`Return: ${returnDate}`);
+      }
+      if (fuel && fuel !== '0') {
+        commentParts.push(`Fuel: ${fuel} Ltrs`);
+      }
+      if (parsedNightStay > 0 || nightStayDetail.trim()) {
+        commentParts.push(
+          `Night Stay: ${parsedNightStay}${
+            nightStayDetail.trim() ? ` (${nightStayDetail.trim()})` : ''
+          }`,
+        );
+      }
+      if (parsedOtherExpense > 0 || otherDetail.trim()) {
+        commentParts.push(
+          `Other Expense: ${parsedOtherExpense}${
+            otherDetail.trim() ? ` (${otherDetail.trim()})` : ''
+          }`,
+        );
+      }
+      const comments = commentParts.join(' | ');
 
       const payload = {
         company: 'ANS',
@@ -266,6 +305,10 @@ const OutstationExpenseScreen = ({ navigation, route }) => {
         fuel: String(fuel || '0'),
         expense_detail: JSON.stringify(expense_detail),
         filename: receipt ? receipt : null,
+        expense_type: '5',
+        trans_date: transDate,
+        comments: comments,
+        amount: String(totalAmount),
       };
 
       console.log('Outstation Visit Request Payload:', payload);

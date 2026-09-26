@@ -28,6 +28,7 @@ import {
   useGetPromotionalDataMutation,
   usePostPromotionalDataMutation,
 } from '@api/baseApi';
+import { usePostOutstationExpenseClaimMutation } from '@api/hcmApi';
 
 const getInitialFilterDates = () => {
   const to = new Date();
@@ -149,6 +150,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const [getActivityTypeDropdown, { data: activityRes, isLoading: activityLoading }] = useGetPromotionalActivityTypeDropdownMutation();
   const [getPurposeDropdown, { data: purposeRes, isLoading: purposeLoading }] = useGetPromotionalPurposeDropdownMutation();
   const [postPromotionalData] = usePostPromotionalDataMutation();
+  const [postFieldExpensePayments] = usePostOutstationExpenseClaimMutation();
 
   // Header options with (+) button on the right
   useLayoutEffect(() => {
@@ -328,8 +330,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     setIsSubmitting(true);
 
     try {
+      const effectiveStatusId = selectedStatusId || (isRole3 ? '1' : '3');
       const payload = {
-        company: 'CRM',
+        company: 'ANS',
         id: formId,
         tran_date: requestDate,
         hospital_id: selectedHospitalId || '',
@@ -340,9 +343,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         remarks: remarks,
         amount: amount,
         receipt_file: receiptFile,
-        status_id: selectedStatusId || (isRole3 ? '1' : '3'),
+        status_id: effectiveStatusId,
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
@@ -354,6 +357,56 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
           text1: formMode === 'update' ? 'Activity Updated' : 'Activity Saved',
           text2: response.message || 'Promotional record processed successfully.',
         });
+
+        // When status is Completed (6), also fire field expense payments API
+        if (String(effectiveStatusId) === '6') {
+          try {
+            const currentDate = formatToYYYYMMDD(new Date());
+            const loginUserId = user?.user_id || user?.username || '';
+            const parsedAmount = parseFloat(String(amount).replace(/,/g, '')) || 0;
+
+            // Build comments from all promotional inputs
+            const promoCommentParts = [
+              loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
+            ];
+            if (requestDate) promoCommentParts.push(`Date: ${requestDate}`);
+            if (selectedHospitalId) promoCommentParts.push(`Hospital ID: ${selectedHospitalId}`);
+            if (selectedCommunityId) promoCommentParts.push(`Community ID: ${selectedCommunityId}`);
+            if (selectedContactId) promoCommentParts.push(`Contact ID: ${selectedContactId}`);
+            if (selectedActivityTypeId) promoCommentParts.push(`Activity Type ID: ${selectedActivityTypeId}`);
+            if (selectedPurposeId) promoCommentParts.push(`Purpose ID: ${selectedPurposeId}`);
+            if (remarks.trim()) promoCommentParts.push(`Remarks: ${remarks.trim()}`);
+            if (managerRemarks && managerRemarks.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
+
+            const expensePayload = {
+              company: 'ANS',
+              user_id: String(user?.id || ''),
+              employee_id: String(user?.employee_id || ''),
+              from_city: '0',
+              to_city: '0',
+              leave_date: '0',
+              return_date: '0',
+              fuel: '0',
+              expense_detail: JSON.stringify([
+                {
+                  account_code: '606003',
+                  line_date: currentDate,
+                  amount: parsedAmount,
+                  line_memo: '',
+                },
+              ]),
+              expense_type: '1',
+              trans_date: currentDate,
+              comments: promoCommentParts.join(' | '),
+              amount: String(parsedAmount),
+              filename: null,
+            };
+            await postFieldExpensePayments(expensePayload).unwrap();
+          } catch (expErr) {
+            console.log('Field expense payment error (non-blocking):', expErr);
+          }
+        }
+
         setIsModalVisible(false);
         loadPromotionalData();
       } else {
@@ -407,6 +460,56 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
           text1: 'Status Updated',
           text2: response.message || 'Activity status updated successfully.',
         });
+
+        // When status is Completed (6), also fire field expense payments API
+        if (String(managerStatusId) === '6') {
+          try {
+            const currentDate = formatToYYYYMMDD(new Date());
+            const loginUserId = user?.user_id || user?.username || '';
+            const parsedAmount = parseFloat(String(selectedManagerItem.amount || '0').replace(/,/g, '')) || 0;
+
+            // Build comments from manager item data
+            const promoCommentParts = [
+              loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
+            ];
+            if (selectedManagerItem.tran_date) promoCommentParts.push(`Date: ${formatToYYYYMMDD(selectedManagerItem.tran_date)}`);
+            if (selectedManagerItem.hospital_id) promoCommentParts.push(`Hospital ID: ${selectedManagerItem.hospital_id}`);
+            if (selectedManagerItem.community_id) promoCommentParts.push(`Community ID: ${selectedManagerItem.community_id}`);
+            if (selectedManagerItem.contact_id) promoCommentParts.push(`Contact ID: ${selectedManagerItem.contact_id}`);
+            if (selectedManagerItem.activity_type_id) promoCommentParts.push(`Activity Type ID: ${selectedManagerItem.activity_type_id}`);
+            if (selectedManagerItem.purpose_id) promoCommentParts.push(`Purpose ID: ${selectedManagerItem.purpose_id}`);
+            if (selectedManagerItem.remarks && selectedManagerItem.remarks.trim()) promoCommentParts.push(`Remarks: ${selectedManagerItem.remarks.trim()}`);
+            if (managerRemarksText && managerRemarksText.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
+
+            const expensePayload = {
+              company: 'ANS',
+              user_id: String(user?.id || ''),
+              employee_id: String(user?.employee_id || ''),
+              from_city: '0',
+              to_city: '0',
+              leave_date: '0',
+              return_date: '0',
+              fuel: '0',
+              expense_detail: JSON.stringify([
+                {
+                  account_code: '606003',
+                  line_date: currentDate,
+                  amount: parsedAmount,
+                  line_memo: '',
+                },
+              ]),
+              expense_type: '1',
+              trans_date: currentDate,
+              comments: promoCommentParts.join(' | '),
+              amount: String(parsedAmount),
+              filename: null,
+            };
+            await postFieldExpensePayments(expensePayload).unwrap();
+          } catch (expErr) {
+            console.log('Field expense payment error (non-blocking):', expErr);
+          }
+        }
+
         setIsManagerStatusModalVisible(false);
         loadPromotionalData();
       } else {

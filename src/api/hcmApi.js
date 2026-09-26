@@ -206,47 +206,62 @@ export const hcmApi = baseApi.injectEndpoints({
     }),
     postOutstationExpenseClaim: builder.mutation({
       queryFn: async (body, api, extraOptions, baseQuery) => {
-        const formData = new FormData();
-        formData.append('company', body?.company || 'ANS');
-        formData.append('user_id', String(body?.user_id || ''));
-        formData.append('employee_id', String(body?.employee_id || ''));
-        formData.append('from_city', String(body?.from_city || ''));
-        formData.append('to_city', String(body?.to_city || ''));
-        formData.append('leave_date', String(body?.leave_date || ''));
-        formData.append('return_date', String(body?.return_date || ''));
-        formData.append('fuel', String(body?.fuel || '0'));
-        formData.append(
-          'expense_detail',
-          typeof body?.expense_detail === 'string'
-            ? body.expense_detail
-            : JSON.stringify(body?.expense_detail || []),
-        );
+        let formData;
+        if (body instanceof FormData) {
+          formData = body;
+        } else {
+          formData = new FormData();
+          formData.append('company', body?.company || 'ANS');
+          formData.append('user_id', String(body?.user_id || ''));
+          formData.append('employee_id', String(body?.employee_id || ''));
+          formData.append('from_city', String(body?.from_city || ''));
+          formData.append('to_city', String(body?.to_city || ''));
+          formData.append('leave_date', String(body?.leave_date || ''));
+          formData.append('return_date', String(body?.return_date || ''));
+          formData.append('fuel', String(body?.fuel || '0'));
+          formData.append(
+            'expense_detail',
+            typeof body?.expense_detail === 'string'
+              ? body.expense_detail
+              : JSON.stringify(body?.expense_detail || []),
+          );
+          formData.append(
+            'expense_type',
+            String(body?.expense_type !== undefined ? body.expense_type : '1'),
+          );
+          formData.append('trans_date', String(body?.trans_date || ''));
+          formData.append('comments', String(body?.comments || ''));
+          formData.append(
+            'amount',
+            String(body?.amount !== undefined ? body.amount : '0'),
+          );
 
-        if (body?.filename) {
-          if (typeof body.filename === 'object' && body.filename.uri) {
-            formData.append('filename', {
-              uri: body.filename.uri,
-              type: body.filename.type || 'image/jpeg',
-              name:
-                body.filename.fileName ||
-                body.filename.name ||
-                `receipt_${Date.now()}.jpg`,
-            });
-          } else if (
-            typeof body.filename === 'string' &&
-            (body.filename.startsWith('file:') ||
-              body.filename.startsWith('content:'))
-          ) {
-            formData.append('filename', {
-              uri: body.filename,
-              type: 'image/jpeg',
-              name: `receipt_${Date.now()}.jpg`,
-            });
+          if (body?.filename) {
+            if (typeof body.filename === 'object' && body.filename.uri) {
+              formData.append('filename', {
+                uri: body.filename.uri,
+                type: body.filename.type || 'image/jpeg',
+                name:
+                  body.filename.fileName ||
+                  body.filename.name ||
+                  `receipt_${Date.now()}.jpg`,
+              });
+            } else if (
+              typeof body.filename === 'string' &&
+              (body.filename.startsWith('file:') ||
+                body.filename.startsWith('content:'))
+            ) {
+              formData.append('filename', {
+                uri: body.filename,
+                type: 'image/jpeg',
+                name: `receipt_${Date.now()}.jpg`,
+              });
+            }
           }
         }
 
         const result = await baseQuery({
-          url: 'portal/post_outstaion_expense_claim.php',
+          url: 'field_activity/post_field_expense_payments.php',
           method: 'POST',
           body: formData,
         });
