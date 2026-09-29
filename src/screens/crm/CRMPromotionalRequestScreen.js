@@ -219,7 +219,6 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     setIsRefreshing(false);
   };
 
-  // Open Main Form Modal for Add or Edit (Role 3 or Add mode)
   const openFormModal = (mode, item = null) => {
     setFormMode(mode);
     if (mode === 'update' && item) {
@@ -308,7 +307,6 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     });
   };
 
-  // Save / Update Handler from Main Form Modal
   const handleSaveForm = async () => {
     if (!selectedHospitalId) {
       Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a Hospital.' });
@@ -351,21 +349,21 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
       const response = await postPromotionalData(payload).unwrap();
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      const isSuccess = response && response.status === 'true' || response.status === true;
+
+      if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: formMode === 'update' ? 'Activity Updated' : 'Activity Saved',
-          text2: response.message || 'Promotional record processed successfully.',
+          text2: response?.message || 'Promotional record processed successfully.',
         });
 
-        // When status is Completed (6), also fire field expense payments API
         if (String(effectiveStatusId) === '6') {
           try {
             const currentDate = formatToYYYYMMDD(new Date());
             const loginUserId = user?.user_id || user?.username || '';
             const parsedAmount = parseFloat(String(amount).replace(/,/g, '')) || 0;
 
-            // Build comments from all promotional inputs
             const promoCommentParts = [
               loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
             ];
@@ -375,24 +373,24 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             if (selectedContactId) promoCommentParts.push(`Contact ID: ${selectedContactId}`);
             if (selectedActivityTypeId) promoCommentParts.push(`Activity Type ID: ${selectedActivityTypeId}`);
             if (selectedPurposeId) promoCommentParts.push(`Purpose ID: ${selectedPurposeId}`);
-            if (remarks.trim()) promoCommentParts.push(`Remarks: ${remarks.trim()}`);
+            if (remarks && remarks.trim()) promoCommentParts.push(`Remarks: ${remarks.trim()}`);
             if (managerRemarks && managerRemarks.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
 
             const expensePayload = {
               company: 'ANS',
-              user_id: String(user?.id || ''),
-              employee_id: String(user?.employee_id || ''),
+              user_id: String(user?.id || user?.user_id || ''),
+              employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
               from_city: '0',
               to_city: '0',
-              leave_date: '0',
-              return_date: '0',
+              leave_date: currentDate,
+              return_date: currentDate,
               fuel: '0',
               expense_detail: JSON.stringify([
                 {
                   account_code: '606003',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: '',
+                  line_memo: 'Promotional Activity',
                 },
               ]),
               expense_type: '1',
@@ -401,9 +399,10 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               amount: String(parsedAmount),
               filename: null,
             };
+
             await postFieldExpensePayments(expensePayload).unwrap();
           } catch (expErr) {
-            console.log('Field expense payment error (non-blocking):', expErr);
+            // Handled non-blocking
           }
         }
 
@@ -454,11 +453,20 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
       const response = await postPromotionalData(payload).unwrap();
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      const isSuccess = response && (
+        response.status === 'true' ||
+        response.status === true ||
+        response.status === 1 ||
+        response.status === '1' ||
+        response.status === 'success' ||
+        response.success === true
+      );
+
+      if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: 'Status Updated',
-          text2: response.message || 'Activity status updated successfully.',
+          text2: response?.message || 'Activity status updated successfully.',
         });
 
         // When status is Completed (6), also fire field expense payments API
@@ -466,7 +474,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
           try {
             const currentDate = formatToYYYYMMDD(new Date());
             const loginUserId = user?.user_id || user?.username || '';
-            const parsedAmount = parseFloat(String(selectedManagerItem.amount || '0').replace(/,/g, '')) || 0;
+            const parsedAmount = parseFloat(String(selectedManagerItem?.amount || '0').replace(/,/g, '')) || 0;
 
             // Build comments from manager item data
             const promoCommentParts = [
@@ -481,21 +489,24 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             if (selectedManagerItem.remarks && selectedManagerItem.remarks.trim()) promoCommentParts.push(`Remarks: ${selectedManagerItem.remarks.trim()}`);
             if (managerRemarksText && managerRemarksText.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
 
+            const targetUserId = String(selectedManagerItem?.user_id || user?.id || user?.user_id || '');
+            const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
+
             const expensePayload = {
               company: 'ANS',
-              user_id: String(user?.id || ''),
-              employee_id: String(user?.employee_id || ''),
+              user_id: targetUserId,
+              employee_id: targetEmployeeId,
               from_city: '0',
               to_city: '0',
-              leave_date: '0',
-              return_date: '0',
+              leave_date: currentDate,
+              return_date: currentDate,
               fuel: '0',
               expense_detail: JSON.stringify([
                 {
                   account_code: '606003',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: '',
+                  line_memo: 'Promotional Activity Claim',
                 },
               ]),
               expense_type: '1',
@@ -504,9 +515,10 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               amount: String(parsedAmount),
               filename: null,
             };
+
             await postFieldExpensePayments(expensePayload).unwrap();
           } catch (expErr) {
-            console.log('Field expense payment error (non-blocking):', expErr);
+            // Handled non-blocking
           }
         }
 

@@ -22,6 +22,7 @@ import {
   useGetConferenceDataMutation,
   usePostConferenceDataMutation,
 } from '@api/baseApi';
+import { usePostOutstationExpenseClaimMutation } from '@api/hcmApi';
 
 const getInitialFilterDates = () => {
   const to = new Date();
@@ -182,6 +183,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const [getConferenceData, { isLoading: dataLoading }] = useGetConferenceDataMutation();
   const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] = useGetStockCategoryMutation();
   const [postConferenceData] = usePostConferenceDataMutation();
+  const [postFieldExpensePayments] = usePostOutstationExpenseClaimMutation();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -375,11 +377,38 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   };
 
   // Open Manager Status Modal
-  const openManagerStatusModal = item => {
+  const openManagerStatusModal = async item => {
     setSelectedManagerItem(item);
     setManagerStatusId(String(item.status_id || '3'));
     setManagerRemarksText(item.manager_remarks || '');
     setIsManagerStatusModalVisible(true);
+
+    if (item?.id) {
+      try {
+        const detailRes = await getConferenceData({
+          user_id: user?.id,
+          role_id: user?.role_id || '',
+          id: item.id,
+        }).unwrap();
+
+        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+          let d = detailRes.data;
+          if (d && Array.isArray(d.conferences) && d.conferences.length > 0) {
+            d = d.conferences[0];
+          } else if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+            d = d.workshops[0];
+          }
+          setSelectedManagerItem(prev => ({
+            ...(prev || item),
+            ...d,
+            budget: d.budget || prev?.budget,
+            budget_total: d.budget_total || prev?.budget_total,
+          }));
+        }
+      } catch (e) {
+        // Handled non-blocking
+      }
+    }
   };
 
   // Dynamic Handlers
@@ -453,6 +482,46 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
     });
   };
 
+  // Helper to calculate total budget amount for conference (sum of unit_cost * qty)
+  const calculateConferenceAmount = (item, budget) => {
+    const bg = budget || item?.budget;
+    let list = [];
+    if (Array.isArray(bg)) {
+      list = bg;
+    } else if (typeof bg === 'string' && bg.trim()) {
+      try {
+        const parsed = JSON.parse(bg);
+        if (Array.isArray(parsed)) list = parsed;
+      } catch (e) {}
+    }
+
+    if (list.length > 0) {
+      const sum = list.reduce((acc, b) => {
+        const unitCost = parseFloat(String(b.unit_cost || b.unit_price || b.cost || 0).replace(/,/g, '')) || 0;
+        const qtyNum = parseFloat(String(b.qty || b.quantity || 0).replace(/,/g, '')) || 0;
+        const total = parseFloat(String(b.total || 0).replace(/,/g, '')) || 0;
+
+        // Multiply unit_cost * qty, or fallback to total if available
+        const rowSum = (unitCost > 0 && qtyNum > 0) ? (unitCost * qtyNum) : (total > 0 ? total : (unitCost > 0 ? unitCost : 0));
+        return acc + rowSum;
+      }, 0);
+
+      if (sum > 0) return sum;
+    }
+
+    if (item?.budget_total) {
+      const bt = parseFloat(String(item.budget_total).replace(/,/g, ''));
+      if (!isNaN(bt) && bt > 0) return bt;
+    }
+
+    if (item?.amount) {
+      const a = parseFloat(String(item.amount).replace(/,/g, ''));
+      if (!isNaN(a) && a > 0) return a;
+    }
+
+    return 0;
+  };
+
   // Save Form Handler
   const handleSaveForm = async () => {
     if (!eventName.trim()) {
@@ -463,6 +532,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
     setIsSubmitting(true);
 
     try {
+      const effectiveStatusId = selectedStatusId || (isRole3 ? '1' : '3');
       const payload = {
         company: 'CRM',
         id: formId,
@@ -482,7 +552,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         materials: materialsList,
         budget: budgetList,
         attendance: attendanceList,
-        status_id: selectedStatusId || (isRole3 ? '1' : '3'),
+        status_id: effectiveStatusId,
         user_id: user?.id || '',
         role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
@@ -490,12 +560,70 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
       const response = await postConferenceData(payload).unwrap();
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      const isSuccess = response && (
+        response.status === 'true' ||
+        response.status === true ||
+        response.status === 1 ||
+        response.status === '1' ||
+        response.status === 'success' ||
+        response.success === true
+      );
+
+      if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: formMode === 'update' ? 'Conference Updated' : 'Conference Saved',
-          text2: response.message || 'Conference request processed successfully.',
+          text2: response?.message || 'Conference request processed successfully.',
         });
+
+        // When status is Completed (6), also fire field expense payments API
+        if (String(effectiveStatusId) === '6') {
+          try {
+            const currentDate = formatToYYYYMMDD(new Date());
+            const loginUserId = user?.user_id || user?.username || '';
+            const parsedAmount = calculateConferenceAmount(null, budgetList);
+
+            const confCommentParts = [
+              loginUserId ? `Conference ${loginUserId}` : 'Conference',
+            ];
+            if (eventName) confCommentParts.push(`Event: ${eventName}`);
+            if (startDate) confCommentParts.push(`Start: ${startDate}`);
+            if (endDate) confCommentParts.push(`End: ${endDate}`);
+            if (venue) confCommentParts.push(`Venue: ${venue}`);
+            if (organizedBy) confCommentParts.push(`Organized By: ${organizedBy}`);
+            if (purpose && purpose.trim()) confCommentParts.push(`Purpose: ${purpose.trim()}`);
+            if (managerRemarks && managerRemarks.trim()) confCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
+
+            const expensePayload = {
+              company: 'ANS',
+              user_id: String(user?.id || user?.user_id || ''),
+              employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
+              from_city: '0',
+              to_city: '0',
+              leave_date: currentDate,
+              return_date: currentDate,
+              fuel: '0',
+              expense_detail: JSON.stringify([
+                {
+                  account_code: '606001',
+                  line_date: currentDate,
+                  amount: parsedAmount,
+                  line_memo: 'Conference Request Claim',
+                },
+              ]),
+              expense_type: '3',
+              trans_date: currentDate,
+              comments: confCommentParts.join(' | '),
+              amount: String(parsedAmount),
+              filename: null,
+            };
+
+            await postFieldExpensePayments(expensePayload).unwrap();
+          } catch (expErr) {
+            // Handled non-blocking
+          }
+        }
+
         setIsModalVisible(false);
         loadConferenceData();
       } else {
@@ -550,12 +678,98 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
       const response = await postConferenceData(payload).unwrap();
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      const isSuccess = response && (
+        response.status === 'true' ||
+        response.status === true ||
+        response.status === 1 ||
+        response.status === '1' ||
+        response.status === 'success' ||
+        response.success === true
+      );
+
+      if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: 'Status Updated',
-          text2: response.message || 'Conference status updated successfully.',
+          text2: response?.message || 'Conference status updated successfully.',
         });
+
+        // When status is Completed (6), also fire field expense payments API
+        if (String(managerStatusId) === '6') {
+          try {
+            const currentDate = formatToYYYYMMDD(new Date());
+            const loginUserId = user?.user_id || user?.username || '';
+
+            let itemDetail = selectedManagerItem;
+            // If budget array is missing or empty, fetch details from getConferenceData
+            if ((!itemDetail?.budget || !Array.isArray(itemDetail.budget) || itemDetail.budget.length === 0) && itemDetail?.id) {
+              try {
+                const detailRes = await getConferenceData({
+                  user_id: user?.id,
+                  role_id: user?.role_id || '',
+                  id: itemDetail.id,
+                }).unwrap();
+
+                if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+                  let d = detailRes.data;
+                  if (d && Array.isArray(d.conferences) && d.conferences.length > 0) {
+                    d = d.conferences[0];
+                  } else if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+                    d = d.workshops[0];
+                  }
+                  itemDetail = { ...(itemDetail || {}), ...d };
+                }
+              } catch (detailErr) {
+                // Handled non-blocking
+              }
+            }
+
+            const parsedAmount = calculateConferenceAmount(itemDetail, itemDetail?.budget);
+
+            const confCommentParts = [
+              loginUserId ? `Conference ${loginUserId}` : 'Conference',
+            ];
+            if (selectedManagerItem.event_name) confCommentParts.push(`Event: ${selectedManagerItem.event_name}`);
+            if (selectedManagerItem.start_date) confCommentParts.push(`Start: ${formatToYYYYMMDD(selectedManagerItem.start_date)}`);
+            if (selectedManagerItem.end_date) confCommentParts.push(`End: ${formatToYYYYMMDD(selectedManagerItem.end_date)}`);
+            if (selectedManagerItem.venue) confCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
+            if (selectedManagerItem.organized_by || selectedManagerItem.organizedBy) confCommentParts.push(`Organized By: ${selectedManagerItem.organized_by || selectedManagerItem.organizedBy}`);
+            if (selectedManagerItem.purpose && selectedManagerItem.purpose.trim()) confCommentParts.push(`Purpose: ${selectedManagerItem.purpose.trim()}`);
+            if (managerRemarksText && managerRemarksText.trim()) confCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
+
+            const targetUserId = String(selectedManagerItem?.user_id || user?.id || user?.user_id || '');
+            const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
+
+            const expensePayload = {
+              company: 'ANS',
+              user_id: targetUserId,
+              employee_id: targetEmployeeId,
+              from_city: '0',
+              to_city: '0',
+              leave_date: currentDate,
+              return_date: currentDate,
+              fuel: '0',
+              expense_detail: JSON.stringify([
+                {
+                  account_code: '606001',
+                  line_date: currentDate,
+                  amount: parsedAmount,
+                  line_memo: 'Conference Request Claim',
+                },
+              ]),
+              expense_type: '3',
+              trans_date: currentDate,
+              comments: confCommentParts.join(' | '),
+              amount: String(parsedAmount),
+              filename: null,
+            };
+
+            await postFieldExpensePayments(expensePayload).unwrap();
+          } catch (expErr) {
+            // Handled non-blocking
+          }
+        }
+
         setIsManagerStatusModalVisible(false);
         loadConferenceData();
       } else {

@@ -235,6 +235,9 @@ export const hcmApi = baseApi.injectEndpoints({
             'amount',
             String(body?.amount !== undefined ? body.amount : '0'),
           );
+          if (body?.dimension_id !== undefined && body?.dimension_id !== null) {
+            formData.append('dimension_id', String(body.dimension_id));
+          }
 
           if (body?.filename) {
             if (typeof body.filename === 'object' && body.filename.uri) {

@@ -16,17 +16,15 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Dropdown } from 'react-native-element-dropdown';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { useSelector } from 'react-redux';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@config/useTheme';
 import Toast from 'react-native-toast-message';
 import { DimensionDropdown, CustomDatePicker } from '@components/common';
 import {
   useGetClaimExpenseAccountQuery,
-  usePostServiceExpenseClaimMutation,
+  usePostOutstationExpenseClaimMutation,
 } from '@api/hcmApi';
 
 export default function ExpenseClaimScreen({ navigation, route }) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
   const userId = userData?.id || userData?.user_id;
@@ -56,8 +54,8 @@ export default function ExpenseClaimScreen({ navigation, route }) {
   // RTK Queries & Mutations
   const { data: accountsData, isLoading: accountsLoading } =
     useGetClaimExpenseAccountQuery();
-  const [postServiceExpenseClaim, { isLoading: submitting }] =
-    usePostServiceExpenseClaimMutation();
+  const [postOutstationExpenseClaim, { isLoading: submitting }] =
+    usePostOutstationExpenseClaimMutation();
 
   const rawAccounts = Array.isArray(accountsData)
     ? accountsData
@@ -91,8 +89,11 @@ export default function ExpenseClaimScreen({ navigation, route }) {
   };
 
   const formatDateForApi = date => {
+    if (!date) return new Date().toISOString().split('T')[0];
     const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    return isNaN(d.getTime())
+      ? new Date().toISOString().split('T')[0]
+      : d.toISOString().split('T')[0];
   };
 
   const handleImagePicker = () => {
@@ -214,44 +215,75 @@ export default function ExpenseClaimScreen({ navigation, route }) {
 
     try {
       const totalAmount = items.reduce(
-        (sum, item) => sum + parseFloat(item.amount || 0),
+        (sum, item) =>
+          sum + (parseFloat(String(item.amount).replace(/,/g, '')) || 0),
         0,
       );
 
-      const expenseDetail = items.map(item => ({
-        account_code: item.accountCode,
+      const expense_detail = items.map(item => ({
+        account_code: String(item.accountCode || item.expenseCategory || ''),
         line_date: formatDateForApi(item.date),
-        amount: parseFloat(item.amount),
+        amount: parseFloat(String(item.amount).replace(/,/g, '')) || 0,
         line_memo: item.description || '',
       }));
 
-      const formData = new FormData();
-      const firstItemDate = items[0]?.date ? new Date(items[0].date) : new Date();
-      formData.append('company', 'ANS');
-      formData.append('trans_date', formatDateForApi(firstItemDate));
-      formData.append('expense_type', '1');
-      formData.append('amount', totalAmount.toString());
-      formData.append('user_id', userId ? String(userId) : '');
-      formData.append('expense_detail', JSON.stringify(expenseDetail));
-      formData.append('comments', '');
-      formData.append('employee_id', String(userData?.employee_id || employeeId || ''));
-      formData.append('dimension_id', selectedDimensionId ? String(selectedDimensionId) : '0');
+      const currentDate = formatDateForApi(new Date());
+      const firstItemDate = items[0]?.date
+        ? formatDateForApi(items[0].date)
+        : currentDate;
+      const lastItemDate = items[items.length - 1]?.date
+        ? formatDateForApi(items[items.length - 1].date)
+        : currentDate;
 
+      let receiptFile = null;
       if (selectedImage) {
-        const imageFile = {
+        receiptFile = {
           uri: selectedImage,
           type: 'image/jpeg',
           name: `expense_${Date.now()}.jpg`,
+          fileName: `expense_${Date.now()}.jpg`,
         };
-        formData.append('filename', imageFile);
       }
 
-      const response = await postServiceExpenseClaim(formData).unwrap();
+      const comments = items
+        .map(
+          i =>
+            `${i.expenseCategoryLabel || i.accountCode || ''}: ${
+              i.description || ''
+            }`.trim(),
+        )
+        .filter(Boolean)
+        .join(' | ');
 
-      if (response.status === true || response.status === 'true') {
+      const payload = {
+        company: 'ANS',
+        user_id: String(userId || ''),
+        employee_id: String(userData?.employee_id || employeeId || ''),
+        from_city: '0',
+        to_city: '0',
+        leave_date: firstItemDate || currentDate,
+        return_date: lastItemDate || currentDate,
+        fuel: '0',
+        expense_detail: JSON.stringify(expense_detail),
+        filename: receiptFile,
+        expense_type: '4',
+        trans_date: firstItemDate || currentDate,
+        comments: comments,
+        amount: String(totalAmount),
+        dimension_id: selectedDimensionId ? String(selectedDimensionId) : '0',
+      };
+
+      const response = await postOutstationExpenseClaim(payload).unwrap();
+
+      if (
+        response?.status === true ||
+        response?.status === 'true' ||
+        response?.success === true
+      ) {
         Toast.show({
           type: 'success',
-          text1: 'Expense claim submitted successfully',
+          text1: 'Claim Submitted',
+          text2: 'Expense claim submitted successfully',
         });
 
         // Reset all fields
@@ -269,12 +301,15 @@ export default function ExpenseClaimScreen({ navigation, route }) {
       } else {
         Toast.show({
           type: 'error',
-          text1: response.message || 'Server rejected submission',
+          text1: response?.message || 'Server rejected submission',
         });
       }
     } catch (error) {
       console.log('Error submitting expense claim:', error);
-      Toast.show({ type: 'error', text1: 'Submission failed' });
+      Toast.show({
+        type: 'error',
+        text1: error?.data?.message || 'Submission failed',
+      });
     }
   };
 

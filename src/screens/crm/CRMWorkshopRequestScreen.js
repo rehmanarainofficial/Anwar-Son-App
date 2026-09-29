@@ -23,6 +23,7 @@ import {
   useGetWorkshopDataMutation,
   usePostWorkshopDataMutation,
 } from '@api/baseApi';
+import { usePostOutstationExpenseClaimMutation } from '@api/hcmApi';
 
 const getInitialFilterDates = () => {
   const to = new Date();
@@ -174,11 +175,11 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const [managerRemarksText, setManagerRemarksText] = useState('');
   const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
-  // API Hooks
   const [getWorkshopData, { isLoading: dataLoading }] = useGetWorkshopDataMutation();
   const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
   const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] = useGetStockCategoryMutation();
   const [postWorkshopData] = usePostWorkshopDataMutation();
+  const [postFieldExpensePayments] = usePostOutstationExpenseClaimMutation();
 
   // Header options with (+) button on the right
   useLayoutEffect(() => {
@@ -338,11 +339,37 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   };
 
   // Open Dedicated Manager Status Modal
-  const openManagerStatusModal = item => {
+  const openManagerStatusModal = async item => {
     setSelectedManagerItem(item);
     setManagerStatusId(String(item.status_id || '3'));
     setManagerRemarksText(item.manager_remarks || '');
     setIsManagerStatusModalVisible(true);
+
+    if (item?.id) {
+      try {
+        const detailRes = await getWorkshopData({
+          user_id: user?.id,
+          role_id: user?.role_id || '2',
+          id: item.id,
+        }).unwrap();
+
+        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+          let d = detailRes.data;
+          if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+            d = d.workshops[0];
+          }
+          setSelectedManagerItem(prev => ({
+            ...(prev || item),
+            ...d,
+            budget: d.budget || prev?.budget,
+            total_budget: d.total_budget || prev?.total_budget,
+            est_cost: d.est_cost || prev?.est_cost,
+          }));
+        }
+      } catch (e) {
+        // Handled non-blocking
+      }
+    }
   };
 
   // Dynamic Handlers
@@ -402,6 +429,51 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
     });
   };
 
+  // Helper to calculate total budget amount for workshop (sum of unit_cost * qty)
+  const calculateWorkshopAmount = (item, budget) => {
+    const bg = budget || item?.budget;
+    let list = [];
+    if (Array.isArray(bg)) {
+      list = bg;
+    } else if (typeof bg === 'string' && bg.trim()) {
+      try {
+        const parsed = JSON.parse(bg);
+        if (Array.isArray(parsed)) list = parsed;
+      } catch (e) {}
+    }
+
+    if (list.length > 0) {
+      const sum = list.reduce((acc, b) => {
+        const unitCost = parseFloat(String(b.unit_cost || b.unit_price || b.cost || 0).replace(/,/g, '')) || 0;
+        const qtyNum = parseFloat(String(b.qty || b.quantity || 0).replace(/,/g, '')) || 0;
+        const total = parseFloat(String(b.total || 0).replace(/,/g, '')) || 0;
+
+        // Multiply unit_cost * qty, or fallback to row total
+        const rowSum = (unitCost > 0 && qtyNum > 0) ? (unitCost * qtyNum) : (total > 0 ? total : (unitCost > 0 ? unitCost : 0));
+        return acc + rowSum;
+      }, 0);
+
+      if (sum > 0) return sum;
+    }
+
+    if (item?.total_budget) {
+      const tb = parseFloat(String(item.total_budget).replace(/,/g, ''));
+      if (!isNaN(tb) && tb > 0) return tb;
+    }
+
+    if (item?.est_cost) {
+      const ec = parseFloat(String(item.est_cost).replace(/,/g, ''));
+      if (!isNaN(ec) && ec > 0) return ec;
+    }
+
+    if (item?.amount) {
+      const a = parseFloat(String(item.amount).replace(/,/g, ''));
+      if (!isNaN(a) && a > 0) return a;
+    }
+
+    return 0;
+  };
+
   // Save Form Handler
   const handleSaveForm = async () => {
     if (!title.trim()) {
@@ -416,6 +488,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
     setIsSubmitting(true);
 
     try {
+      const effectiveStatusId = selectedStatusId || (isRole3 ? '1' : '3');
       const payload = {
         company: 'CRM',
         id: formId,
@@ -431,7 +504,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         audience: audienceList,
         materials: materialsList,
         budget: budgetList,
-        status_id: selectedStatusId || (isRole3 ? '1' : '3'),
+        status_id: effectiveStatusId,
         user_id: user?.id || '',
         role_id: user?.role_id || '2',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
@@ -439,12 +512,70 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
       const response = await postWorkshopData(payload).unwrap();
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      const isSuccess = response && (
+        response.status === 'true' ||
+        response.status === true ||
+        response.status === 1 ||
+        response.status === '1' ||
+        response.status === 'success' ||
+        response.success === true
+      );
+
+      if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: formMode === 'update' ? 'Workshop Updated' : 'Workshop Saved',
-          text2: response.message || 'Workshop request processed successfully.',
+          text2: response?.message || 'Workshop request processed successfully.',
         });
+
+        // When status is Completed (6), also fire field expense payments API
+        if (String(effectiveStatusId) === '6') {
+          try {
+            const currentDate = formatToYYYYMMDD(new Date());
+            const loginUserId = user?.user_id || user?.username || '';
+            const parsedAmount = calculateWorkshopAmount(null, budgetList);
+
+            const workshopCommentParts = [
+              loginUserId ? `Workshop ${loginUserId}` : 'Workshop',
+            ];
+            if (title) workshopCommentParts.push(`Title: ${title}`);
+            if (requestDate) workshopCommentParts.push(`Date: ${requestDate}`);
+            if (selectedHospitalId) workshopCommentParts.push(`Hospital ID: ${selectedHospitalId}`);
+            if (hospitalDepart) workshopCommentParts.push(`Depart: ${hospitalDepart}`);
+            if (venue) workshopCommentParts.push(`Venue: ${venue}`);
+            if (objectives && objectives.trim()) workshopCommentParts.push(`Objectives: ${objectives.trim()}`);
+            if (managerRemarks && managerRemarks.trim()) workshopCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
+
+            const expensePayload = {
+              company: 'ANS',
+              user_id: String(user?.id || user?.user_id || ''),
+              employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
+              from_city: '0',
+              to_city: '0',
+              leave_date: currentDate,
+              return_date: currentDate,
+              fuel: '0',
+              expense_detail: JSON.stringify([
+                {
+                  account_code: '606002',
+                  line_date: currentDate,
+                  amount: parsedAmount,
+                  line_memo: 'Workshop Request Claim',
+                },
+              ]),
+              expense_type: '2',
+              trans_date: currentDate,
+              comments: workshopCommentParts.join(' | '),
+              amount: String(parsedAmount),
+              filename: null,
+            };
+
+            await postFieldExpensePayments(expensePayload).unwrap();
+          } catch (expErr) {
+            // Handled non-blocking
+          }
+        }
+
         setIsModalVisible(false);
         loadWorkshopData();
       } else {
@@ -495,12 +626,96 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
       const response = await postWorkshopData(payload).unwrap();
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      const isSuccess = response && (
+        response.status === 'true' ||
+        response.status === true ||
+        response.status === 1 ||
+        response.status === '1' ||
+        response.status === 'success' ||
+        response.success === true
+      );
+
+      if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: 'Status Updated',
           text2: response.message || 'Workshop status updated successfully.',
         });
+
+        // When status is Completed (6), also fire field expense payments API
+        if (String(managerStatusId) === '6') {
+          try {
+            const currentDate = formatToYYYYMMDD(new Date());
+            const loginUserId = user?.user_id || user?.username || '';
+
+            let itemDetail = selectedManagerItem;
+            // If budget array or total_budget is missing from item, fetch from workshop_get_api
+            if ((!itemDetail?.budget || !Array.isArray(itemDetail.budget) || itemDetail.budget.length === 0) && itemDetail?.id) {
+              try {
+                const detailRes = await getWorkshopData({
+                  user_id: user?.id,
+                  role_id: user?.role_id || '2',
+                  id: itemDetail.id,
+                }).unwrap();
+
+                if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+                  let d = detailRes.data;
+                  if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+                    d = d.workshops[0];
+                  }
+                  itemDetail = { ...(itemDetail || {}), ...d };
+                }
+              } catch (detailErr) {
+                // Handled non-blocking
+              }
+            }
+
+            const parsedAmount = calculateWorkshopAmount(itemDetail, itemDetail?.budget);
+
+            const workshopCommentParts = [
+              loginUserId ? `Workshop ${loginUserId}` : 'Workshop',
+            ];
+            if (selectedManagerItem.title) workshopCommentParts.push(`Title: ${selectedManagerItem.title}`);
+            if (selectedManagerItem.date || selectedManagerItem.tran_date) workshopCommentParts.push(`Date: ${formatToYYYYMMDD(selectedManagerItem.date || selectedManagerItem.tran_date)}`);
+            if (selectedManagerItem.hospital_id) workshopCommentParts.push(`Hospital ID: ${selectedManagerItem.hospital_id}`);
+            if (selectedManagerItem.hospital_depart) workshopCommentParts.push(`Depart: ${selectedManagerItem.hospital_depart}`);
+            if (selectedManagerItem.venue) workshopCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
+            if (selectedManagerItem.objectives && selectedManagerItem.objectives.trim()) workshopCommentParts.push(`Objectives: ${selectedManagerItem.objectives.trim()}`);
+            if (managerRemarksText && managerRemarksText.trim()) workshopCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
+
+            const targetUserId = String(selectedManagerItem?.user_id || user?.id || user?.user_id || '');
+            const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
+
+            const expensePayload = {
+              company: 'ANS',
+              user_id: targetUserId,
+              employee_id: targetEmployeeId,
+              from_city: '0',
+              to_city: '0',
+              leave_date: currentDate,
+              return_date: currentDate,
+              fuel: '0',
+              expense_detail: JSON.stringify([
+                {
+                  account_code: '606002',
+                  line_date: currentDate,
+                  amount: parsedAmount,
+                  line_memo: 'Workshop Request Claim',
+                },
+              ]),
+              expense_type: '2',
+              trans_date: currentDate,
+              comments: workshopCommentParts.join(' | '),
+              amount: String(parsedAmount),
+              filename: null,
+            };
+
+            await postFieldExpensePayments(expensePayload).unwrap();
+          } catch (expErr) {
+            // Handled non-blocking
+          }
+        }
+
         setIsManagerStatusModalVisible(false);
         loadWorkshopData();
       } else {
