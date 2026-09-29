@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -30,6 +30,15 @@ export default function ExpenseClaimScreen({ navigation, route }) {
   const userId = userData?.id || userData?.user_id;
   const employeeId = userData?.employee_id || userData?.emp_code || userData?.id;
   const onRefresh = route?.params?.onRefresh;
+  const customTitle = route?.params?.title;
+
+  useLayoutEffect(() => {
+    if (customTitle) {
+      navigation.setOptions({
+        title: customTitle,
+      });
+    }
+  }, [navigation, customTitle]);
 
   // Selected Dimension
   const [selectedDimensionId, setSelectedDimensionId] = useState(0);

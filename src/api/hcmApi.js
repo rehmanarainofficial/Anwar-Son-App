@@ -70,21 +70,11 @@ export const hcmApi = baseApi.injectEndpoints({
           });
         }
 
-        console.log('[hcmApi] getExpenseClaimInquiry request body:', {
-          company: 'ANS',
-          from_date: body?.from_date,
-          to_date: body?.to_date,
-          employee_id: body?.employee_id,
-          ...body,
-        });
-
         const result = await baseQuery({
           url: 'portal/expense_claim_inquiry.php',
           method: 'POST',
           body: formData,
         });
-
-        console.log('[hcmApi] getExpenseClaimInquiry response:', result);
 
         return result.data ? { data: result.data } : { error: result.error };
       },
@@ -272,6 +262,43 @@ export const hcmApi = baseApi.injectEndpoints({
         return result.data ? { data: result.data } : { error: result.error };
       },
     }),
+    getFieldExpensePaymentsInquiry: builder.mutation({
+      queryFn: async (body, api, extraOptions, baseQuery) => {
+        let formData;
+        if (body instanceof FormData) {
+          formData = body;
+        } else {
+          formData = new FormData();
+          formData.append('company', body?.company || 'ANS');
+          formData.append('from_date', String(body?.from_date || ''));
+          formData.append('to_date', String(body?.to_date || ''));
+          formData.append('employee_id', String(body?.employee_id || ''));
+
+          if (body && typeof body === 'object') {
+            Object.keys(body).forEach(key => {
+              if (
+                key !== 'company' &&
+                key !== 'from_date' &&
+                key !== 'to_date' &&
+                key !== 'employee_id' &&
+                body[key] !== undefined &&
+                body[key] !== null
+              ) {
+                formData.append(key, String(body[key]));
+              }
+            });
+          }
+        }
+
+        const result = await baseQuery({
+          url: 'field_activity/field_expense_payments_inquiry.php',
+          method: 'POST',
+          body: formData,
+        });
+
+        return result.data ? { data: result.data } : { error: result.error };
+      },
+    }),
 
     // --- Leave Management APIs ---
     getEmployeeLeaveHistory: builder.mutation({
@@ -381,6 +408,7 @@ export const {
   useGetOutstationExpenseInquiryMutation,
   usePostExpenseApprovalMutation,
   usePostOutstationExpenseClaimMutation,
+  useGetFieldExpensePaymentsInquiryMutation,
   useGetEmployeeLeaveHistoryMutation,
   usePostEmployeeLeaveMutation,
   useGetEmpSelfLeavesMutation,

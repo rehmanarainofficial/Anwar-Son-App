@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  Modal,
+  Image,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
@@ -16,7 +18,7 @@ import { useTheme } from '@config/useTheme';
 import Toast from 'react-native-toast-message';
 import { CustomDatePicker } from '@components/common';
 import {
-  useGetExpenseClaimInquiryMutation,
+  useGetFieldExpensePaymentsInquiryMutation,
   usePostExpenseApprovalMutation,
 } from '@api/hcmApi';
 import { useGetViewGLMutation } from '@api/voidApi';
@@ -27,21 +29,22 @@ const getDefaultDateRange = () => {
   return { fromDate, toDate: today };
 };
 
-export default function FieldExpenseApprovalScreen({ navigation }) {
+export default function FieldExpenseApprovalScreen({ navigation, route }) {
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
-  const isRole2 =
-    userData?.role_id !== undefined &&
-    userData?.role_id !== null &&
-    (String(userData.role_id) === '2' || Number(userData.role_id) === 2);
 
-  // Tabs: 'accounts' | 'manager'
-  const [activeTab, setActiveTab] = useState('manager');
+  const initialCategory = route?.params?.selectedCategory || 'All';
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+
+  // Status Filter: 'pending' | 'approved' | 'all'
+  const [statusFilter, setStatusFilter] = useState('pending');
 
   // Inquiry State
   const [inquiryData, setInquiryData] = useState([]);
   const [loadingTransNo, setLoadingTransNo] = useState(null);
   const [actionLoadingKey, setActionLoadingKey] = useState(null);
+  const [expandedTransNos, setExpandedTransNos] = useState(new Set());
+  const [previewAttachment, setPreviewAttachment] = useState(null);
 
   const { fromDate: defaultFromDate, toDate: defaultToDate } =
     getDefaultDateRange();
@@ -52,14 +55,26 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
   const [showFilterToDatePicker, setShowFilterToDatePicker] = useState(false);
 
   // Mutations
-  const [getExpenseClaimInquiry, { isLoading: inquiryLoading }] =
-    useGetExpenseClaimInquiryMutation();
+  const [getFieldExpensePaymentsInquiry, { isLoading: inquiryLoading }] =
+    useGetFieldExpensePaymentsInquiryMutation();
   const [getViewGL] = useGetViewGLMutation();
   const [postExpenseApproval] = usePostExpenseApprovalMutation();
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title:
+        selectedCategory && selectedCategory !== 'All'
+          ? `${selectedCategory} Approvals`
+          : 'All Expense Approvals',
+    });
+  }, [navigation, selectedCategory]);
+
   const formatDateForApi = date => {
+    if (!date) return new Date().toISOString().split('T')[0];
     const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    return isNaN(d.getTime())
+      ? new Date().toISOString().split('T')[0]
+      : d.toISOString().split('T')[0];
   };
 
   const formatNumber = num => {
@@ -73,7 +88,7 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
   const formatDisplayDate = dateString => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
+    if (isNaN(date.getTime())) return String(dateString);
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
@@ -86,14 +101,10 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
         company: 'ANS',
         from_date: formatDateForApi(filterFromDate),
         to_date: formatDateForApi(filterToDate),
-        employee_id: String(userData?.employee_id || ''),
-        role_id:
-          userData?.role_id !== undefined && userData?.role_id !== null
-            ? String(userData.role_id)
-            : '',
+        employee_id: String(userData?.employee_id || userData?.id || ''),
       };
 
-      const response = await getExpenseClaimInquiry(payload).unwrap();
+      const response = await getFieldExpensePaymentsInquiry(payload).unwrap();
       const rawList = Array.isArray(response)
         ? response
         : response?.status === 'true' || response?.status === true
@@ -107,11 +118,11 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
       console.log('--- [FIELD EXPENSE APPROVAL ERROR] ---', error);
       Toast.show({
         type: 'error',
-        text1: 'Error loading field expenses',
+        text1: 'Error loading expenses',
       });
       setInquiryData([]);
     }
-  }, [filterFromDate, filterToDate, userData, getExpenseClaimInquiry]);
+  }, [filterFromDate, filterToDate, userData, getFieldExpensePaymentsInquiry]);
 
   useEffect(() => {
     fetchInquiryData();
@@ -123,14 +134,14 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
       const response = await getViewGL({
         company: 'ANS',
         trans_no: item.trans_no,
-        type: item.type,
+        type: item.type || '1',
       }).unwrap();
 
       navigation.navigate('FinanceViewLedger', {
         glData: response,
         reference: item.reference,
         trans_no: item.trans_no,
-        type: item.type,
+        type: item.type || '1',
       });
     } catch (error) {
       console.log('GL View API Error:', error);
@@ -149,7 +160,7 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
       isApprove ? 'Approve Expense' : 'Unapprove Expense',
       `Are you sure you want to ${
         isApprove ? 'approve' : 'unapprove'
-      } this expense claim (${item.reference || item.trans_no})?`,
+      } this expense (${item.reference || item.trans_no})?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -162,7 +173,7 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
               const res = await postExpenseApproval({
                 company: 'ANS',
                 trans_no: item.trans_no,
-                type: item.type || '0',
+                type: String(item.type !== undefined ? item.type : '1'),
                 approval: approvalValue, // '0' for Approved, '1' for Unapproved
               }).unwrap();
 
@@ -171,7 +182,7 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
                 text1: isApprove ? 'Expense Approved' : 'Expense Unapproved',
                 text2:
                   res?.message ||
-                  `Claim ${isApprove ? 'approved' : 'unapproved'} successfully.`,
+                  `Expense ${isApprove ? 'approved' : 'unapproved'} successfully.`,
               });
               fetchInquiryData();
             } catch (err) {
@@ -190,72 +201,102 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
     );
   };
 
-  const getApprovalStatus = (val, isAccounts = false) => {
-    if (val === null || val === undefined || val === '') {
-      return {
-        label: isAccounts ? 'Unapproved' : 'Pending',
-        isApproved: false,
-        color: isAccounts ? '#EF4444' : '#D97706',
-        bg: isAccounts ? '#FEE2E2' : '#FEF3C7',
-        icon: isAccounts ? 'close-circle' : 'time',
-      };
+  const toggleExpand = transNo => {
+    setExpandedTransNos(prev => {
+      const next = new Set(prev);
+      if (next.has(transNo)) {
+        next.delete(transNo);
+      } else {
+        next.add(transNo);
+      }
+      return next;
+    });
+  };
+
+  // Status mapping: "0" = Approved, "1" or "" or null = Pending
+  const isApproved = statusVal => String(statusVal) === '0';
+
+  // Extract all categories dynamically from inquiryData
+  const availableCategories = ['All'];
+  inquiryData.forEach(item => {
+    const catName = item.expense_type_name || 'Other Expense';
+    if (!availableCategories.includes(catName)) {
+      availableCategories.push(catName);
     }
-    if (val === '0' || val === 0 || val === 'Approved' || val === 'approved') {
-      return {
-        label: 'Approved',
-        isApproved: true,
-        color: '#059669',
-        bg: '#D1FAE5',
-        icon: 'checkmark-circle',
-      };
+  });
+
+  // Filter by category
+  const categoryFilteredList = inquiryData.filter(item => {
+    if (selectedCategory === 'All') return true;
+    return (item.expense_type_name || 'Other Expense') === selectedCategory;
+  });
+
+  // Counts for status tabs
+  const pendingCount = categoryFilteredList.filter(
+    item => !isApproved(item.manager_status),
+  ).length;
+  const approvedCount = categoryFilteredList.filter(
+    item => isApproved(item.manager_status),
+  ).length;
+  const totalCategoryCount = categoryFilteredList.length;
+
+  // Filter by status tab
+  const displayedList = categoryFilteredList.filter(item => {
+    if (statusFilter === 'pending') {
+      return !isApproved(item.manager_status);
     }
+    if (statusFilter === 'approved') {
+      return isApproved(item.manager_status);
+    }
+    return true; // 'all'
+  });
+
+  const getStatusBadge = (val, labelPrefix) => {
+    const approved = isApproved(val);
     return {
-      label: 'Unapproved',
-      isApproved: false,
-      color: '#EF4444',
-      bg: '#FEE2E2',
-      icon: 'close-circle',
+      label: `${labelPrefix}: ${approved ? 'Approved' : 'Pending'}`,
+      isApproved: approved,
+      color: approved ? '#059669' : '#D97706',
+      bg: approved ? '#D1FAE5' : '#FEF3C7',
+      icon: approved ? 'checkmark-circle' : 'time',
     };
   };
 
-  const isManagerApproved = item =>
-    item.manager_approval === '0' ||
-    item.manager_approval === 0 ||
-    item.manager_approval === 'Approved' ||
-    item.manager_approval === 'approved';
-
-  const isAccountsApproved = item =>
-    item.approval === '0' ||
-    item.approval === 0 ||
-    item.approval === 'Approved' ||
-    item.approval === 'approved';
-
-  // Tab Filtering
-  // 1. Manager Tab: items NOT yet approved by manager
-  const managerUnapprovedList = inquiryData.filter(
-    item => !isManagerApproved(item),
-  );
-
-  // 2. Accounts Tab: items approved by manager BUT NOT yet approved by accounts
-  const accountsUnapprovedList = inquiryData.filter(
-    item => isManagerApproved(item) && !isAccountsApproved(item),
-  );
-
-  const displayedList =
-    activeTab === 'accounts' ? accountsUnapprovedList : managerUnapprovedList;
+  const getCategoryTheme = name => {
+    switch (name) {
+      case 'Field Expense':
+        return { color: theme.colors.primary, bg: theme.colors.primary + '18' };
+      case 'Outstation Expense':
+        return { color: '#D97706', bg: '#F59E0B20' };
+      case 'Promotional':
+        return { color: '#8B5CF6', bg: '#8B5CF620' };
+      case 'Workshop':
+        return { color: '#EC4899', bg: '#EC489920' };
+      case 'Conference':
+        return { color: '#10B981', bg: '#10B98120' };
+      default:
+        return { color: '#3B82F6', bg: '#3B82F620' };
+    }
+  };
 
   const renderCard = ({ item }) => {
-    const managerStatus = getApprovalStatus(item.manager_approval, false);
-    const accountsStatus = getApprovalStatus(item.approval, true);
-    const isActionLoadingApprove =
-      actionLoadingKey === `${item.trans_no}_0`;
-    const isActionLoadingUnapprove =
-      actionLoadingKey === `${item.trans_no}_1`;
+    const managerBadge = getStatusBadge(item.manager_status, 'Manager');
+    const accountsBadge = getStatusBadge(item.accounts_status, 'Accounts');
+    const isActionLoadingApprove = actionLoadingKey === `${item.trans_no}_0`;
+    const isActionLoadingUnapprove = actionLoadingKey === `${item.trans_no}_1`;
+    const isExpanded = expandedTransNos.has(item.trans_no);
+    const catTheme = getCategoryTheme(item.expense_type_name);
+    const hasAttachments = Array.isArray(item.attachments) && item.attachments.length > 0;
+    const hasDetails = Array.isArray(item.expense_detail) && item.expense_detail.length > 0;
+    const isOutstation =
+      (item.from_city && item.from_city !== '0') ||
+      (item.to_city && item.to_city !== '0');
 
     return (
       <View
         style={[styles.inquiryCard, { backgroundColor: theme.colors.surface }]}
       >
+        {/* Header */}
         <View
           style={[
             styles.inquiryHeader,
@@ -263,69 +304,124 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
           ]}
         >
           <View style={styles.headerLeft}>
-            <Text style={[styles.inquiryRef, { color: theme.colors.primary }]}>
-              {item.reference || `Claim #${item.trans_no || 'N/A'}`}
-            </Text>
+            <View style={styles.refRow}>
+              <Text style={[styles.inquiryRef, { color: theme.colors.primary }]}>
+                {item.reference || `Claim #${item.trans_no || 'N/A'}`}
+              </Text>
+              {item.expense_type_name ? (
+                <View
+                  style={[
+                    styles.categoryChip,
+                    { backgroundColor: catTheme.bg },
+                  ]}
+                >
+                  <Text style={[styles.categoryChipText, { color: catTheme.color }]}>
+                    {item.expense_type_name}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
             <Text style={[styles.inquiryName, { color: theme.colors.text }]}>
-              {item.name || 'N/A'}
+              {item.employee_name || 'N/A'}
             </Text>
-            {item.memo_ ? (
+
+            {item.comments ? (
               <Text
                 style={[
                   styles.inquiryMemo,
                   { color: theme.colors.textSecondary },
                 ]}
-                numberOfLines={2}
+                numberOfLines={isExpanded ? undefined : 2}
               >
-                {item.memo_}
+                {item.comments}
               </Text>
             ) : null}
           </View>
+
+          {/* Status Badges */}
           <View style={styles.badgesContainer}>
             <View
               style={[
                 styles.approvalBadge,
-                { backgroundColor: managerStatus.bg },
+                { backgroundColor: managerBadge.bg },
               ]}
             >
               <Ionicons
-                name={managerStatus.icon}
+                name={managerBadge.icon}
                 size={12}
-                color={managerStatus.color}
+                color={managerBadge.color}
               />
               <Text
                 style={[
                   styles.approvalText,
-                  { color: managerStatus.color },
+                  { color: managerBadge.color },
                 ]}
               >
-                Manager: {managerStatus.label}
+                {managerBadge.label}
               </Text>
             </View>
 
             <View
               style={[
                 styles.approvalBadge,
-                { backgroundColor: accountsStatus.bg, marginTop: 4 },
+                { backgroundColor: accountsBadge.bg, marginTop: 4 },
               ]}
             >
               <Ionicons
-                name={accountsStatus.icon}
+                name={accountsBadge.icon}
                 size={12}
-                color={accountsStatus.color}
+                color={accountsBadge.color}
               />
               <Text
                 style={[
                   styles.approvalText,
-                  { color: accountsStatus.color },
+                  { color: accountsBadge.color },
                 ]}
               >
-                Accounts: {accountsStatus.label}
+                {accountsBadge.label}
               </Text>
             </View>
           </View>
         </View>
 
+        {/* Outstation Trip Details if applicable */}
+        {isOutstation ? (
+          <View
+            style={[
+              styles.tripDetailsRow,
+              {
+                backgroundColor: theme.colors.background,
+                borderBottomColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={styles.tripItem}>
+              <Ionicons name="navigate-outline" size={14} color="#D97706" />
+              <Text style={[styles.tripText, { color: theme.colors.text }]}>
+                Trip: City {item.from_city} → {item.to_city}
+              </Text>
+            </View>
+            {item.leave_date ? (
+              <View style={styles.tripItem}>
+                <Ionicons name="calendar-outline" size={14} color={theme.colors.textSecondary} />
+                <Text style={[styles.tripText, { color: theme.colors.textSecondary }]}>
+                  {item.leave_date} to {item.return_date}
+                </Text>
+              </View>
+            ) : null}
+            {item.fuel && item.fuel !== '0' && item.fuel !== 0 ? (
+              <View style={styles.tripItem}>
+                <Ionicons name="speedometer-outline" size={14} color={theme.colors.textSecondary} />
+                <Text style={[styles.tripText, { color: theme.colors.textSecondary }]}>
+                  Fuel: {item.fuel} Ltrs
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Body (Date & Amount) */}
         <View style={styles.inquiryBody}>
           <View style={styles.inquiryRow}>
             <Ionicons
@@ -339,14 +435,100 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
                 { color: theme.colors.textSecondary },
               ]}
             >
-              {formatDisplayDate(item.ord_date || item.trans_date || item.date)}
+              {formatDisplayDate(item.trans_date)}
             </Text>
           </View>
           <Text style={[styles.inquiryTotal, { color: theme.colors.success }]}>
-            Rs. {formatNumber(item.total || item.amount || 0)}
+            Rs. {formatNumber(item.amount || 0)}
           </Text>
         </View>
 
+        {/* Expandable Expense Breakdown */}
+        {hasDetails ? (
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            <TouchableOpacity
+              style={styles.expandHeader}
+              onPress={() => toggleExpand(item.trans_no)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.expandHeaderText, { color: theme.colors.primary }]}>
+                {isExpanded ? 'Hide Line Items' : `View Line Items (${item.expense_detail.length})`}
+              </Text>
+              <Ionicons
+                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+
+            {isExpanded && (
+              <View style={[styles.detailsBox, { backgroundColor: theme.colors.background }]}>
+                {item.expense_detail.map((detail, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.detailItemRow,
+                      idx < item.expense_detail.length - 1 && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.detailAccount, { color: theme.colors.text }]}>
+                        {detail.account_name || detail.account_code}
+                      </Text>
+                      {detail.line_memo ? (
+                        <Text style={[styles.detailMemo, { color: theme.colors.textSecondary }]}>
+                          {detail.line_memo}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={[styles.detailAmount, { color: theme.colors.text }]}>
+                      Rs. {formatNumber(detail.amount)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {/* Attachments Section */}
+        {hasAttachments ? (
+          <View
+            style={[
+              styles.attachmentsRow,
+              {
+                backgroundColor: theme.colors.background,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="attach-outline" size={16} color={theme.colors.textSecondary} />
+            <Text style={[styles.attachmentsTitle, { color: theme.colors.textSecondary }]}>
+              Receipts:
+            </Text>
+            {item.attachments.map((att, aIdx) => (
+              <TouchableOpacity
+                key={aIdx}
+                style={[styles.attachmentChip, { backgroundColor: theme.colors.surface }]}
+                onPress={() => setPreviewAttachment(att)}
+              >
+                <Ionicons name="image-outline" size={14} color={theme.colors.primary} />
+                <Text
+                  style={[styles.attachmentChipText, { color: theme.colors.primary }]}
+                  numberOfLines={1}
+                >
+                  {att.filename || `Receipt #${att.id}`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Footer Actions */}
         <View
           style={[
             styles.inquiryFooter,
@@ -356,7 +538,7 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
             },
           ]}
         >
-          {/* View Button */}
+          {/* View GL Button */}
           <TouchableOpacity
             style={[
               styles.actionBtn,
@@ -386,12 +568,12 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
-          {/* Manager Action Buttons (Only in Manager Tab for role_id 2 / Manager) */}
-          {activeTab === 'manager' && isRole2 ? (
-            <View style={styles.managerActionRow}>
-              {/* Unapprove / Reject Button */}
+          {/* Manager Action Buttons (Always visible) */}
+          <View style={styles.managerActionRow}>
+            {/* Unapprove Button: shown if currently approved */}
+            {isApproved(item.manager_status) ? (
               <TouchableOpacity
-                style={[styles.rejectBtn, { backgroundColor: '#FEE2E2' }]}
+                style={[styles.rejectBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1 }]}
                 onPress={() => handleApprovalAction(item, '1')}
                 disabled={isActionLoadingUnapprove || isActionLoadingApprove}
               >
@@ -410,8 +592,8 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
                   </>
                 )}
               </TouchableOpacity>
-
-              {/* Approve Button */}
+            ) : (
+              /* Approve Button: shown if pending */
               <TouchableOpacity
                 style={[styles.approveBtn, { backgroundColor: '#059669' }]}
                 onPress={() => handleApprovalAction(item, '0')}
@@ -429,13 +611,13 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
                     <Text
                       style={[styles.actionBtnText, { color: '#FFFFFF' }]}
                     >
-                      Approve
+                      Manager Approve
                     </Text>
                   </>
                 )}
               </TouchableOpacity>
-            </View>
-          ) : null}
+            )}
+          </View>
         </View>
       </View>
     );
@@ -445,7 +627,137 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      {/* Top 2 Tabs */}
+      {/* Date Filter Bar */}
+      <View
+        style={[
+          styles.dateFilterContainer,
+          {
+            backgroundColor: theme.colors.surface,
+            borderBottomColor: theme.colors.border,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.dateBtn,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+          onPress={() => setShowFilterFromDatePicker(true)}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={16}
+            color={theme.colors.primary}
+          />
+          <Text style={[styles.dateBtnText, { color: theme.colors.text }]}>
+            From: {formatDisplayDate(filterFromDate)}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.dateBtn,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+          onPress={() => setShowFilterToDatePicker(true)}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={16}
+            color={theme.colors.primary}
+          />
+          <Text style={[styles.dateBtnText, { color: theme.colors.text }]}>
+            To: {formatDisplayDate(filterToDate)}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Categories Horizontal Filter Chips */}
+      <View
+        style={[
+          styles.categoryChipsContainer,
+          {
+            backgroundColor: theme.colors.surface,
+            borderBottomColor: theme.colors.border,
+          },
+        ]}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryChipsScroll}
+        >
+          {availableCategories.map((catName, index) => {
+            const isSelected = selectedCategory === catName;
+            const count =
+              catName === 'All'
+                ? inquiryData.length
+                : inquiryData.filter(
+                    i => (i.expense_type_name || 'Other Expense') === catName,
+                  ).length;
+
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: isSelected
+                      ? theme.colors.primary
+                      : theme.colors.background,
+                    borderColor: isSelected
+                      ? theme.colors.primary
+                      : theme.colors.border,
+                  },
+                ]}
+                onPress={() => setSelectedCategory(catName)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    {
+                      color: isSelected ? '#FFFFFF' : theme.colors.text,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {catName}
+                </Text>
+                <View
+                  style={[
+                    styles.chipCountBadge,
+                    {
+                      backgroundColor: isSelected
+                        ? '#FFFFFF30'
+                        : theme.colors.primary + '18',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipCountText,
+                      {
+                        color: isSelected ? '#FFFFFF' : theme.colors.primary,
+                      },
+                    ]}
+                  >
+                    {count}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Status Filter Tabs (Pending, Approved, All) */}
       <View
         style={[
           styles.tabContainer,
@@ -458,21 +770,19 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'manager' && [
+            statusFilter === 'pending' && [
               styles.tabButtonActive,
-              { borderBottomColor: theme.colors.primary },
+              { borderBottomColor: '#D97706' },
             ],
           ]}
-          onPress={() => setActiveTab('manager')}
+          onPress={() => setStatusFilter('pending')}
           activeOpacity={0.7}
         >
           <Ionicons
-            name="person-circle-outline"
-            size={18}
+            name="time-outline"
+            size={16}
             color={
-              activeTab === 'manager'
-                ? theme.colors.primary
-                : theme.colors.textSecondary
+              statusFilter === 'pending' ? '#D97706' : theme.colors.textSecondary
             }
           />
           <Text
@@ -480,25 +790,18 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
               styles.tabButtonText,
               {
                 color:
-                  activeTab === 'manager'
-                    ? theme.colors.primary
+                  statusFilter === 'pending'
+                    ? '#D97706'
                     : theme.colors.textSecondary,
-                fontWeight: activeTab === 'manager' ? '800' : '600',
+                fontWeight: statusFilter === 'pending' ? '800' : '600',
               },
             ]}
           >
-            Manager Approval
+            Pending
           </Text>
-          {managerUnapprovedList.length > 0 ? (
-            <View
-              style={[
-                styles.tabBadge,
-                { backgroundColor: theme.colors.primary },
-              ]}
-            >
-              <Text style={styles.tabBadgeText}>
-                {managerUnapprovedList.length}
-              </Text>
+          {pendingCount > 0 ? (
+            <View style={[styles.tabBadge, { backgroundColor: '#D97706' }]}>
+              <Text style={styles.tabBadgeText}>{pendingCount}</Text>
             </View>
           ) : null}
         </TouchableOpacity>
@@ -506,19 +809,58 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'accounts' && [
+            statusFilter === 'approved' && [
+              styles.tabButtonActive,
+              { borderBottomColor: '#059669' },
+            ],
+          ]}
+          onPress={() => setStatusFilter('approved')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={16}
+            color={
+              statusFilter === 'approved' ? '#059669' : theme.colors.textSecondary
+            }
+          />
+          <Text
+            style={[
+              styles.tabButtonText,
+              {
+                color:
+                  statusFilter === 'approved'
+                    ? '#059669'
+                    : theme.colors.textSecondary,
+                fontWeight: statusFilter === 'approved' ? '800' : '600',
+              },
+            ]}
+          >
+            Approved
+          </Text>
+          {approvedCount > 0 ? (
+            <View style={[styles.tabBadge, { backgroundColor: '#059669' }]}>
+              <Text style={styles.tabBadgeText}>{approvedCount}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            statusFilter === 'all' && [
               styles.tabButtonActive,
               { borderBottomColor: theme.colors.primary },
             ],
           ]}
-          onPress={() => setActiveTab('accounts')}
+          onPress={() => setStatusFilter('all')}
           activeOpacity={0.7}
         >
           <Ionicons
-            name="card-outline"
-            size={18}
+            name="layers-outline"
+            size={16}
             color={
-              activeTab === 'accounts'
+              statusFilter === 'all'
                 ? theme.colors.primary
                 : theme.colors.textSecondary
             }
@@ -528,126 +870,33 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
               styles.tabButtonText,
               {
                 color:
-                  activeTab === 'accounts'
+                  statusFilter === 'all'
                     ? theme.colors.primary
                     : theme.colors.textSecondary,
-                fontWeight: activeTab === 'accounts' ? '800' : '600',
+                fontWeight: statusFilter === 'all' ? '800' : '600',
               },
             ]}
           >
-            Accounts Approval
+            All
           </Text>
-          {accountsUnapprovedList.length > 0 ? (
-            <View style={[styles.tabBadge, { backgroundColor: '#D97706' }]}>
-              <Text style={styles.tabBadgeText}>
-                {accountsUnapprovedList.length}
-              </Text>
-            </View>
-          ) : null}
+          <View style={[styles.tabBadge, { backgroundColor: theme.colors.primary }]}>
+            <Text style={styles.tabBadgeText}>{totalCategoryCount}</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* Filter Section */}
-      <View
-        style={[
-          styles.filterCard,
-          {
-            backgroundColor: theme.colors.surface,
-            shadowColor: theme.colors.text,
-          },
-        ]}
-      >
-        <View style={styles.filterRow}>
-          <View style={styles.filterField}>
-            <Text
-              style={[
-                styles.filterLabel,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              From:
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.filterDateBtn,
-                {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              onPress={() => setShowFilterFromDatePicker(true)}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={16}
-                color={theme.colors.primary}
-              />
-              <Text
-                style={[styles.filterDateText, { color: theme.colors.text }]}
-              >
-                {formatDisplayDate(filterFromDate)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.filterField}>
-            <Text
-              style={[
-                styles.filterLabel,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              To:
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.filterDateBtn,
-                {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              onPress={() => setShowFilterToDatePicker(true)}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={16}
-                color={theme.colors.primary}
-              />
-              <Text
-                style={[styles.filterDateText, { color: theme.colors.text }]}
-              >
-                {formatDisplayDate(filterToDate)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={[
-              styles.filterSearchBtn,
-              { backgroundColor: theme.colors.primary },
-            ]}
-            onPress={fetchInquiryData}
-          >
-            <Ionicons name="search" size={18} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* List Content */}
-      {inquiryLoading ? (
+      {/* Main List */}
+      {inquiryLoading && !inquiryData.length ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text
-            style={[styles.loaderText, { color: theme.colors.textSecondary }]}
-          >
-            Loading field expenses...
+          <Text style={[styles.loaderText, { color: theme.colors.textSecondary }]}>
+            Loading expenses...
           </Text>
         </View>
-      ) : displayedList.length > 0 ? (
+      ) : (
         <FlatList
           data={displayedList}
-          keyExtractor={(item, index) =>
-            `field-approval-${item.trans_no || index}`
-          }
+          keyExtractor={item => String(item.trans_no)}
           renderItem={renderCard}
           contentContainerStyle={styles.inquiryList}
           showsVerticalScrollIndicator={false}
@@ -656,61 +905,106 @@ export default function FieldExpenseApprovalScreen({ navigation }) {
               refreshing={inquiryLoading}
               onRefresh={fetchInquiryData}
               colors={[theme.colors.primary]}
-              tintColor={theme.colors.primary}
             />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="receipt-outline"
+                size={54}
+                color={theme.colors.textSecondary}
+              />
+              <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+                No expenses found
+              </Text>
+              <Text
+                style={[
+                  styles.emptySubText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                {statusFilter === 'pending'
+                  ? 'All expenses are approved for this date range'
+                  : 'Try adjusting the date filter or category'}
+              </Text>
+            </View>
           }
         />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.emptyContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={inquiryLoading}
-              onRefresh={fetchInquiryData}
-              colors={[theme.colors.primary]}
-              tintColor={theme.colors.primary}
-            />
-          }
+      )}
+
+      {/* Attachment Image Preview Modal */}
+      {previewAttachment && (
+        <Modal
+          visible={!!previewAttachment}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPreviewAttachment(null)}
         >
-          <Ionicons
-            name="checkmark-done-circle-outline"
-            size={60}
-            color={theme.colors.textSecondary}
-          />
-          <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-            No pending claims in {activeTab === 'accounts' ? 'Accounts' : 'Manager'} Approval
-          </Text>
-          <Text
-            style={[
-              styles.emptySubText,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            All claims for the selected date range are up to date.
-          </Text>
-        </ScrollView>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { backgroundColor: theme.colors.surface }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                  {previewAttachment.filename || 'Receipt Preview'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setPreviewAttachment(null)}
+                  style={styles.modalCloseBtn}
+                >
+                  <Ionicons name="close" size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                {previewAttachment.filename ? (
+                  <Image
+                    source={{
+                      uri: `https://kmivo.com/mobile_ans/attachments/${previewAttachment.filename}`,
+                    }}
+                    style={styles.modalImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 40 }}>
+                    Image not available
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* Date Pickers */}
       <CustomDatePicker
         visible={showFilterFromDatePicker}
-        onClose={() => setShowFilterFromDatePicker(false)}
+        selectedDate={filterFromDate}
+        date={filterFromDate}
         onSelect={date => {
           setFilterFromDate(date);
           setShowFilterFromDatePicker(false);
         }}
-        selectedDate={filterFromDate}
-        title="From Date"
+        onDateChange={date => {
+          setFilterFromDate(date);
+          setShowFilterFromDatePicker(false);
+        }}
+        onClose={() => setShowFilterFromDatePicker(false)}
+        title="Select From Date"
       />
+
       <CustomDatePicker
         visible={showFilterToDatePicker}
-        onClose={() => setShowFilterToDatePicker(false)}
+        selectedDate={filterToDate}
+        date={filterToDate}
         onSelect={date => {
           setFilterToDate(date);
           setShowFilterToDatePicker(false);
         }}
-        selectedDate={filterToDate}
-        title="To Date"
+        onDateChange={date => {
+          setFilterToDate(date);
+          setShowFilterToDatePicker(false);
+        }}
+        onClose={() => setShowFilterToDatePicker(false)}
+        title="Select To Date"
       />
     </View>
   );
@@ -720,23 +1014,69 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  dateFilterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  dateBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+  },
+  dateBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  categoryChipsContainer: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  categoryChipsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  filterChipText: {
+    fontSize: 12,
+  },
+  chipCountBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  chipCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    elevation: 2,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
   },
   tabButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 11,
     gap: 6,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
   },
   tabButtonActive: {
     borderBottomWidth: 3,
@@ -745,57 +1085,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   tabBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
   },
   tabBadgeText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  filterCard: {
-    margin: 16,
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  filterField: {
-    flex: 1,
-  },
-  filterLabel: {
-    fontSize: 11,
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  filterDateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    gap: 6,
-  },
-  filterDateText: {
-    fontSize: 13,
-  },
-  filterSearchBtn: {
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 16,
+    fontSize: 10,
+    fontWeight: '700',
   },
   inquiryList: {
     padding: 16,
@@ -822,18 +1119,34 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 8,
   },
+  refRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+    flexWrap: 'wrap',
+  },
   inquiryRef: {
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 2,
+  },
+  categoryChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  categoryChipText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   inquiryName: {
     fontSize: 13,
     fontWeight: '600',
+    marginTop: 2,
   },
   inquiryMemo: {
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 3,
   },
   badgesContainer: {
     alignItems: 'flex-end',
@@ -849,6 +1162,23 @@ const styles = StyleSheet.create({
   approvalText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  tripDetailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  tripItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tripText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   inquiryBody: {
     flexDirection: 'row',
@@ -868,6 +1198,65 @@ const styles = StyleSheet.create({
   inquiryTotal: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  expandHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  expandHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  detailsBox: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  detailItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  detailAccount: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  detailMemo: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  detailAmount: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  attachmentsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  attachmentsTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  attachmentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+    maxWidth: 160,
+  },
+  attachmentChipText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   inquiryFooter: {
     flexDirection: 'row',
@@ -935,5 +1324,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8,
     textAlign: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    height: '75%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalBody: {
+    flex: 1,
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
   },
 });

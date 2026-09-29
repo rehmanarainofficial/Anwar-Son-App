@@ -25,8 +25,7 @@ import {
   useGetSampleDataMutation,
 } from '@api/baseApi';
 import {
-  useGetExpenseClaimInquiryMutation,
-  useGetOutstationExpenseInquiryMutation,
+  useGetFieldExpensePaymentsInquiryMutation,
 } from '@api/hcmApi';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -78,10 +77,8 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     useGetConferenceDataMutation();
   const [getSampleData, { isLoading: sampleLoading }] =
     useGetSampleDataMutation();
-  const [getExpenseClaimInquiry, { isLoading: fieldExpLoading }] =
-    useGetExpenseClaimInquiryMutation();
-  const [getOutstationExpenseInquiry, { isLoading: outExpLoading }] =
-    useGetOutstationExpenseInquiryMutation();
+  const [getFieldExpensePaymentsInquiry, { isLoading: allExpLoading }] =
+    useGetFieldExpensePaymentsInquiryMutation();
 
   // Data States
   const [promoList, setPromoList] = useState([]);
@@ -89,8 +86,7 @@ const ApprovalsDashboardTab = ({ navigation }) => {
   const [workshopList, setWorkshopList] = useState([]);
   const [conferenceList, setConferenceList] = useState([]);
   const [sampleList, setSampleList] = useState([]);
-  const [fieldExpenseList, setFieldExpenseList] = useState([]);
-  const [outstationExpenseList, setOutstationExpenseList] = useState([]);
+  const [allExpensesList, setAllExpensesList] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // Selected Active Field Activity Category (Default: promotional)
@@ -122,27 +118,18 @@ const ApprovalsDashboardTab = ({ navigation }) => {
         resWorkshop,
         resConference,
         resSample,
-        resFieldExp,
-        resOutExp,
+        resAllExp,
       ] = await Promise.allSettled([
         getPromotionalData(payload).unwrap(),
         getGiveawayData(payload).unwrap(),
         getWorkshopData(payload).unwrap(),
         getConferenceData(payload).unwrap(),
         getSampleData(payload).unwrap(),
-        getExpenseClaimInquiry({
+        getFieldExpensePaymentsInquiry({
           company: 'ANS',
           from_date: formatToYYYYMMDD(from),
           to_date: formatToYYYYMMDD(to),
-          employee_id: String(user?.employee_id || ''),
-          role_id: user?.role_id !== undefined ? String(user.role_id) : '2',
-        }).unwrap(),
-        getOutstationExpenseInquiry({
-          company: 'ANS',
-          from_date: formatToYYYYMMDD(from),
-          to_date: formatToYYYYMMDD(to),
-          employee_id: String(user?.employee_id || ''),
-          role_id: user?.role_id !== undefined ? String(user.role_id) : '2',
+          employee_id: String(user?.employee_id || user?.id || ''),
         }).unwrap(),
       ]);
 
@@ -192,32 +179,25 @@ const ApprovalsDashboardTab = ({ navigation }) => {
         );
       }
 
-      if (resFieldExp.status === 'fulfilled' && resFieldExp.value) {
-        const raw = Array.isArray(resFieldExp.value)
-          ? resFieldExp.value
-          : resFieldExp.value?.data || [];
-        setFieldExpenseList(Array.isArray(raw) ? raw : []);
-      }
-
-      if (resOutExp.status === 'fulfilled' && resOutExp.value) {
-        const raw = Array.isArray(resOutExp.value)
-          ? resOutExp.value
-          : resOutExp.value?.data || [];
-        setOutstationExpenseList(Array.isArray(raw) ? raw : []);
+      if (resAllExp.status === 'fulfilled' && resAllExp.value) {
+        const raw = Array.isArray(resAllExp.value)
+          ? resAllExp.value
+          : resAllExp.value?.data || [];
+        setAllExpensesList(Array.isArray(raw) ? raw : []);
       }
     } catch (error) {
       console.log('Error fetching approvals data:', error);
     }
   }, [
     user?.id,
+    user?.employee_id,
     user?.role_id,
     getPromotionalData,
     getGiveawayData,
     getWorkshopData,
     getConferenceData,
     getSampleData,
-    getExpenseClaimInquiry,
-    getOutstationExpenseInquiry,
+    getFieldExpensePaymentsInquiry,
   ]);
 
   useFocusEffect(
@@ -324,11 +304,86 @@ const ApprovalsDashboardTab = ({ navigation }) => {
     },
   ];
 
+  const getExpenseCategories = () => {
+    const defaultMeta = {
+      '4': {
+        name: 'Field Expense',
+        icon: 'wallet-outline',
+        color: theme.colors.primary,
+        bg: theme.colors.primary + '18',
+      },
+      '5': {
+        name: 'Outstation Expense',
+        icon: 'briefcase-outline',
+        color: '#D97706',
+        bg: '#F59E0B20',
+      },
+      '1': {
+        name: 'Promotional',
+        icon: 'megaphone-outline',
+        color: '#8B5CF6',
+        bg: '#8B5CF620',
+      },
+      '2': {
+        name: 'Workshop',
+        icon: 'construct-outline',
+        color: '#EC4899',
+        bg: '#EC489920',
+      },
+      '3': {
+        name: 'Conference',
+        icon: 'people-outline',
+        color: '#10B981',
+        bg: '#10B98120',
+      },
+    };
+
+    const map = new Map();
+
+    allExpensesList.forEach(item => {
+      const typeKey = String(item.expense_type || 'other');
+      const meta = defaultMeta[typeKey] || {
+        name: item.expense_type_name || 'Other Expense',
+        icon: 'receipt-outline',
+        color: '#3B82F6',
+        bg: '#3B82F620',
+      };
+
+      if (!map.has(typeKey)) {
+        map.set(typeKey, {
+          typeId: typeKey,
+          name: item.expense_type_name || meta.name,
+          icon: meta.icon,
+          color: meta.color,
+          bg: meta.bg,
+          items: [],
+        });
+      }
+      map.get(typeKey).items.push(item);
+    });
+
+    if (map.size === 0) {
+      ['4', '5'].forEach(key => {
+        const meta = defaultMeta[key];
+        map.set(key, {
+          typeId: key,
+          name: meta.name,
+          icon: meta.icon,
+          color: meta.color,
+          bg: meta.bg,
+          items: [],
+        });
+      });
+    }
+
+    return Array.from(map.values());
+  };
+
   const activeCategory =
     activityItems.find(a => a.id === selectedCategoryId) || activityItems[0];
 
   const isLoadingAll =
-    promoLoading || giveawayLoading || workshopLoading || conferenceLoading || sampleLoading;
+    promoLoading || giveawayLoading || workshopLoading || conferenceLoading || sampleLoading || allExpLoading;
 
   return (
     <View style={styles.container}>
@@ -469,151 +524,83 @@ const ApprovalsDashboardTab = ({ navigation }) => {
           })}
         </View>
 
-        {/* EXPENSE APPROVALS SECTION */}
+        {/* ALL EXPENSES SECTION */}
         <View style={[styles.sectionHeaderWrap, { marginTop: 22 }]}>
           <View style={styles.accentBar} />
-          <Text style={styles.sectionTitle}>EXPENSE APPROVALS</Text>
+          <Text style={styles.sectionTitle}>ALL EXPENSES</Text>
         </View>
 
         <View style={styles.expenseCardsList}>
-          {/* Field Expense Approval Card */}
-          <TouchableOpacity
-            style={styles.statusOptionCard}
-            onPress={() => navigation.navigate('FieldExpenseApproval')}
-            activeOpacity={0.75}
-          >
-            <View style={styles.statusOptionLeft}>
-              <View
-                style={[
-                  styles.statusIconWrap,
-                  { backgroundColor: theme.colors.primary + '18' },
-                ]}
-              >
-                <Icon
-                  name="wallet-outline"
-                  size={20}
-                  color={theme.colors.primary}
-                />
-              </View>
-              <View>
-                <Text style={styles.statusOptionName}>Field Expense</Text>
-                <Text
-                  style={[
-                    styles.expenseSubText,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  Accounts & Manager Approval
-                </Text>
-              </View>
-            </View>
+          {getExpenseCategories().map(cat => {
+            const pendingCount = cat.items.filter(
+              i => String(i.manager_status) !== '0',
+            ).length;
 
-            <View style={styles.expenseRightWrap}>
-              {fieldExpenseList.filter(
-                i =>
-                  i.manager_approval !== '0' &&
-                  i.manager_approval !== 0 &&
-                  i.manager_approval !== 'Approved' &&
-                  i.manager_approval !== 'approved',
-              ).length > 0 ? (
-                <View
-                  style={[
-                    styles.statusCountBadge,
-                    { backgroundColor: theme.colors.primary + '18' },
-                  ]}
-                >
-                  <Text
+            return (
+              <TouchableOpacity
+                key={cat.typeId}
+                style={styles.statusOptionCard}
+                onPress={() =>
+                  navigation.navigate('FieldExpenseApproval', {
+                    selectedCategory: cat.name,
+                    expenseType: cat.typeId,
+                  })
+                }
+                activeOpacity={0.75}
+              >
+                <View style={styles.statusOptionLeft}>
+                  <View
                     style={[
-                      styles.statusCountText,
-                      { color: theme.colors.primary },
+                      styles.statusIconWrap,
+                      { backgroundColor: cat.bg },
                     ]}
                   >
-                    {
-                      fieldExpenseList.filter(
-                        i =>
-                          i.manager_approval !== '0' &&
-                          i.manager_approval !== 0 &&
-                          i.manager_approval !== 'Approved' &&
-                          i.manager_approval !== 'approved',
-                      ).length
-                    }
-                  </Text>
+                    <Icon
+                      name={cat.icon}
+                      size={20}
+                      color={cat.color}
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.statusOptionName}>{cat.name}</Text>
+                    <Text
+                      style={[
+                        styles.expenseSubText,
+                        { color: theme.colors.textSecondary },
+                      ]}
+                    >
+                      Accounts & Manager Approval
+                    </Text>
+                  </View>
                 </View>
-              ) : null}
-              <Icon
-                name="chevron-forward"
-                size={18}
-                color={theme.colors.textSecondary}
-              />
-            </View>
-          </TouchableOpacity>
 
-          {/* Outstation Expense Approval Card */}
-          <TouchableOpacity
-            style={styles.statusOptionCard}
-            onPress={() => navigation.navigate('OutstationExpenseApproval')}
-            activeOpacity={0.75}
-          >
-            <View style={styles.statusOptionLeft}>
-              <View
-                style={[
-                  styles.statusIconWrap,
-                  { backgroundColor: '#F59E0B20' },
-                ]}
-              >
-                <Icon
-                  name="briefcase-outline"
-                  size={20}
-                  color="#D97706"
-                />
-              </View>
-              <View>
-                <Text style={styles.statusOptionName}>Outstation Expense</Text>
-                <Text
-                  style={[
-                    styles.expenseSubText,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  Accounts & Manager Approval
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.expenseRightWrap}>
-              {outstationExpenseList.filter(
-                i =>
-                  i.manager_approval !== '0' &&
-                  i.manager_approval !== 0 &&
-                  i.manager_approval !== 'Approved' &&
-                  i.manager_approval !== 'approved',
-              ).length > 0 ? (
-                <View
-                  style={[
-                    styles.statusCountBadge,
-                    { backgroundColor: '#FEF3C7' },
-                  ]}
-                >
-                  <Text style={[styles.statusCountText, { color: '#D97706' }]}>
-                    {
-                      outstationExpenseList.filter(
-                        i =>
-                          i.manager_approval !== '0' &&
-                          i.manager_approval !== 0 &&
-                          i.manager_approval !== 'Approved' &&
-                          i.manager_approval !== 'approved',
-                      ).length
-                    }
-                  </Text>
+                <View style={styles.expenseRightWrap}>
+                  {pendingCount > 0 ? (
+                    <View
+                      style={[
+                        styles.statusCountBadge,
+                        { backgroundColor: cat.bg },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusCountText,
+                          { color: cat.color },
+                        ]}
+                      >
+                        {pendingCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Icon
+                    name="chevron-forward"
+                    size={18}
+                    color={theme.colors.textSecondary}
+                  />
                 </View>
-              ) : null}
-              <Icon
-                name="chevron-forward"
-                size={18}
-                color={theme.colors.textSecondary}
-              />
-            </View>
-          </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </View>

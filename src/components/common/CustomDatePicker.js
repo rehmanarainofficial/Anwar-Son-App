@@ -57,7 +57,10 @@ const CustomDatePicker = ({
   visible,
   onClose,
   onSelect,
+  onDateChange,
+  onChange,
   selectedDate,
+  date,
   minimumDate,
   maximumDate,
   title,
@@ -67,10 +70,11 @@ const CustomDatePicker = ({
   const isLandscape = width > height;
   const activeWidth = isLandscape ? Math.min(width, 340) : width;
   const today = new Date();
-  
+
+  const actualDate = selectedDate || date;
   const validSelectedDate =
-    selectedDate && selectedDate instanceof Date && !isNaN(selectedDate.getTime())
-      ? selectedDate
+    actualDate && actualDate instanceof Date && !isNaN(actualDate.getTime())
+      ? actualDate
       : today;
 
   const [viewYear, setViewYear] = useState(validSelectedDate.getFullYear());
@@ -81,14 +85,14 @@ const CustomDatePicker = ({
   React.useEffect(() => {
     if (visible) {
       const d =
-        selectedDate && selectedDate instanceof Date && !isNaN(selectedDate.getTime())
-          ? selectedDate
+        actualDate && actualDate instanceof Date && !isNaN(actualDate.getTime())
+          ? actualDate
           : new Date();
       setViewYear(d.getFullYear());
       setViewMonth(d.getMonth());
       setViewMode('calendar');
     }
-  }, [visible, selectedDate]);
+  }, [visible, actualDate]);
 
   const daysInMonth = useMemo(() => {
     return new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -138,11 +142,11 @@ const CustomDatePicker = ({
   };
 
   const isSelected = day => {
-    if (!day || !selectedDate) return false;
+    if (!day || !actualDate) return false;
     return (
-      selectedDate.getDate() === day &&
-      selectedDate.getMonth() === viewMonth &&
-      selectedDate.getFullYear() === viewYear
+      actualDate.getDate() === day &&
+      actualDate.getMonth() === viewMonth &&
+      actualDate.getFullYear() === viewYear
     );
   };
 
@@ -176,7 +180,10 @@ const CustomDatePicker = ({
   const handleDayPress = day => {
     if (isDateDisabled(day)) return;
     const selected = new Date(viewYear, viewMonth, day);
-    onSelect(selected);
+    const callback = onSelect || onDateChange || onChange;
+    if (typeof callback === 'function') {
+      callback(selected);
+    }
   };
 
   const handleMonthSelect = monthIndex => {

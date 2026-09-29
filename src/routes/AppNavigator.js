@@ -20,7 +20,6 @@ import CRMAddLeadScreen from '@screens/crm/CRMAddLeadScreen';
 import CRMContactListScreen from '@screens/crm/CRMContactListScreen';
 import CRMHospitalListScreen from '@screens/crm/CRMHospitalListScreen';
 import CRMAddHospitalScreen from '@screens/crm/CRMAddHospitalScreen';
-import CRMMonthlyExpenseScreen from '@screens/crm/CRMMonthlyExpenseScreen';
 import CRMSampleRequestScreen from '@screens/crm/CRMSampleRequestScreen';
 import CRMPromotionalRequestScreen from '@screens/crm/CRMPromotionalRequestScreen';
 import CRMGiveawayRequestScreen from '@screens/crm/CRMGiveawayRequestScreen';
@@ -356,7 +355,8 @@ const AppNavigator = () => {
             />
             <Stack.Screen
               name="CRMMonthlyExpense"
-              component={CRMMonthlyExpenseScreen}
+              component={ExpenseClaimScreen}
+              options={{ title: 'Monthly Expense Request' }}
             />
             <Stack.Screen
               name="CRMSampleRequest"
@@ -428,7 +428,7 @@ const AppNavigator = () => {
             <Stack.Screen
               name="FieldExpenseApproval"
               component={FieldExpenseApprovalScreen}
-              options={{ title: 'Field Expense Approval' }}
+              options={{ title: 'All Expenses Approval' }}
             />
             <Stack.Screen
               name="OutstationExpenseApproval"
@@ -459,5 +459,4 @@ const AppNavigator = () => {
     </NavigationContainer>
   );
 };
-
 export default AppNavigator;
