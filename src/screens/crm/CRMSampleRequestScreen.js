@@ -391,8 +391,12 @@ const CRMSampleRequestScreen = ({ navigation }) => {
       purch_order_details: purchOrderDetails,
     };
 
+    console.log('📌 [SAMPLE FORM SUBMIT] user_id sent:', payload.user_id);
+    console.log('📌 [SAMPLE FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+
     try {
       const response = await postSampleData(payload).unwrap();
+      console.log('📥 [SAMPLE FORM SUBMIT RESPONSE]:', response);
       if (String(response.status) === 'true' || response.status === true) {
         Toast.show({
           type: 'success',

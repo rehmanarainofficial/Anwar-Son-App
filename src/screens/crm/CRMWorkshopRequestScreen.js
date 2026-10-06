@@ -512,12 +512,16 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         materials: materialsList,
         budget: budgetList,
         status_id: effectiveStatusId,
-        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || ''),
+        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
+      console.log('📌 [WORKSHOP FORM SUBMIT] Status:', effectiveStatusId, '| user_id sent:', payload.user_id);
+      console.log('📌 [WORKSHOP FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+
       const response = await postWorkshopData(payload).unwrap();
+      console.log('📥 [WORKSHOP FORM SUBMIT RESPONSE]:', response);
 
       const isSuccess = response && (
         response.status === 'true' ||
@@ -642,20 +646,21 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         materials: selectedManagerItem.materials || [],
         budget: selectedManagerItem.budget || [],
         status_id: managerStatusId,
-        user_id: (String(managerStatusId) === '6' && (selectedManagerItem.created_by || selectedManagerItem.user_id)) ? (selectedManagerItem.created_by || selectedManagerItem.user_id) : (user?.user_id || user?.id || ''),
+        user_id: (String(managerStatusId) === '6' && (selectedManagerItem.created_by)) ? (selectedManagerItem.created_by) : (user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 
+      console.log('📌 [APPROVAL STATUS UPDATE] Workshop ID:', selectedManagerItem.id);
+      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
+      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+
       const response = await postWorkshopData(payload).unwrap();
+      console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
       const isSuccess = response && (
         response.status === 'true' ||
-        response.status === true ||
-        response.status === 1 ||
-        response.status === '1' ||
-        response.status === 'success' ||
-        response.success === true
+        response.status === true 
       );
 
       if (isSuccess) {
@@ -688,7 +693,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                   itemDetail = { ...(itemDetail || {}), ...d };
                 }
               } catch (detailErr) {
-                // Handled non-blocking
+                console.log('Error fetching workshop details:', detailErr);
               }
             }
 
@@ -746,9 +751,13 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               filename: null,
             };
 
-            await postFieldExpensePayments(expensePayload).unwrap();
+            console.log('💰 [WORKSHOP FIELD EXPENSE PAYMENTS] user_id:', expensePayload.user_id, '| employee_id:', expensePayload.employee_id);
+            console.log('💰 [WORKSHOP FIELD EXPENSE PAYMENTS] Payload:', JSON.stringify(expensePayload, null, 2));
+
+            const expRes = await postFieldExpensePayments(expensePayload).unwrap();
+            console.log('📥 [FIELD EXPENSE PAYMENTS RESPONSE]:', expRes);
           } catch (expErr) {
-            // Handled non-blocking
+            console.log('❌ Error posting field expense payments:', expErr);
           }
         }
 

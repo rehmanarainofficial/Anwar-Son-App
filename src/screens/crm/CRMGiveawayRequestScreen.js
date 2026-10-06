@@ -344,7 +344,11 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
+      console.log('📌 [GIVEAWAY FORM SUBMIT] Status:', payload.status_id, '| user_id sent:', payload.user_id);
+      console.log('📌 [GIVEAWAY FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+
       const response = await postGiveawayData(payload).unwrap();
+      console.log('📥 [GIVEAWAY FORM SUBMIT RESPONSE]:', response);
 
       if (response && (response.status === 'true' || response.status === true)) {
         Toast.show({
@@ -396,7 +400,12 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         manager_remarks: managerRemarksText,
       };
 
+      console.log('📌 [APPROVAL STATUS UPDATE] Giveaway ID:', selectedManagerItem.id);
+      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
+      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+
       const response = await postGiveawayData(payload).unwrap();
+      console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
       if (response && (response.status === 'true' || response.status === true)) {
         Toast.show({

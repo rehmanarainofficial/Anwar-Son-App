@@ -169,12 +169,17 @@ export default function FieldExpenseApprovalScreen({ navigation, route }) {
             const actionKey = `${item.trans_no}_${approvalValue}`;
             setActionLoadingKey(actionKey);
             try {
-              const res = await postExpenseApproval({
+              const approvalPayload = {
                 company: 'ANS',
                 trans_no: item.trans_no,
                 type: String(item.type !== undefined ? item.type : '1'),
                 approval: approvalValue,
-              }).unwrap();
+              };
+              console.log('📌 [FIELD EXPENSE APPROVAL] Action:', isApprove ? 'APPROVE' : 'UNAPPROVE', '| trans_no:', item.trans_no);
+              console.log('📌 [FIELD EXPENSE APPROVAL] Payload:', JSON.stringify(approvalPayload, null, 2));
+
+              const res = await postExpenseApproval(approvalPayload).unwrap();
+              console.log('📥 [FIELD EXPENSE APPROVAL RESPONSE]:', res);
 
               Toast.show({
                 type: 'success',

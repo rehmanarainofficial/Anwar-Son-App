@@ -6,32 +6,10 @@ export const baseApi = createApi({
   baseQuery: async (args, api, extraOptions) => {
     const baseUrl = API_BASE_URL;
     try {
-      if (args) {
-        const url = typeof args === 'string' ? args : args.url;
-        let payload = {};
-        if (args.body && args.body._parts) {
-          args.body._parts.forEach(([key, val]) => {
-            payload[key] = val;
-          });
-        } else if (args.body && typeof args.body === 'object') {
-          payload = args.body;
-        }
-        console.log(
-          `🚀 [API POST REQUEST] URL: ${url}`,
-          JSON.stringify(payload, null, 2),
-        );
-      }
-
       const result = await fetchBaseQuery({
         baseUrl: baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`,
       })(args, api, extraOptions);
 
-      const requestUrl = typeof args === 'string' ? args : args?.url;
-      if (result.error) {
-        console.log(`❌ [API Error] URL: ${requestUrl}`, result.error);
-      } else {
-        console.log(`✅ [API Success] URL: ${requestUrl}`, result.data);
-      }
       return result;
     } catch (err) {
       console.error('[baseApi Catch Error]', err);

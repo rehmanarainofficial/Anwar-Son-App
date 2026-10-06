@@ -131,8 +131,6 @@ const ApprovalsDashboardTab = ({ navigation }) => {
           employee_id: String(user?.employee_id || ''),
         }).unwrap(),
       ]);
-      console.log("resPromo", resPromo);
-
 
       if (resPromo.status === 'fulfilled' && resPromo.value) {
         setPromoList(

@@ -346,12 +346,16 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         amount: amount,
         receipt_file: receiptFile,
         status_id: effectiveStatusId,
-        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || ''),
+        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
+      console.log('📌 [PROMOTIONAL FORM SUBMIT] Status:', effectiveStatusId, '| user_id sent:', payload.user_id);
+      console.log('📌 [PROMOTIONAL FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+
       const response = await postPromotionalData(payload).unwrap();
+      console.log('📥 [PROMOTIONAL FORM SUBMIT RESPONSE]:', response);
 
       const isSuccess = response && response.status === 'true' || response.status === true;
 
@@ -474,7 +478,12 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         manager_remarks: managerRemarksText,
       };
 
+      console.log('📌 [APPROVAL STATUS UPDATE] Promotional ID:', selectedManagerItem.id);
+      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
+      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+
       const response = await postPromotionalData(payload).unwrap();
+      console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
       const isSuccess = response && (
         response.status === 'true' || response.status === true
@@ -548,9 +557,13 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               filename: null,
             };
 
-            await postFieldExpensePayments(expensePayload).unwrap();
+            console.log('💰 [PROMOTIONAL FIELD EXPENSE PAYMENTS] user_id:', expensePayload.user_id, '| employee_id:', expensePayload.employee_id);
+            console.log('💰 [PROMOTIONAL FIELD EXPENSE PAYMENTS] Payload:', JSON.stringify(expensePayload, null, 2));
+
+            const expRes = await postFieldExpensePayments(expensePayload).unwrap();
+            console.log('📥 [FIELD EXPENSE PAYMENTS RESPONSE]:', expRes);
           } catch (expErr) {
-            console.log('Error posting field expense payments:', expErr);
+            console.log('❌ Error posting field expense payments:', expErr);
           }
         }
 

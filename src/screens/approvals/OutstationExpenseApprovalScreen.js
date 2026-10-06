@@ -175,12 +175,17 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
             const actionKey = `${item.trans_no}_${approvalValue}`;
             setActionLoadingKey(actionKey);
             try {
-              const res = await postExpenseApproval({
+              const approvalPayload = {
                 company: 'ANS',
                 trans_no: item.trans_no,
                 type: item.type || '0',
                 approval: approvalValue, // '0' for Approved, '1' for Unapproved
-              }).unwrap();
+              };
+              console.log('📌 [OUTSTATION EXPENSE APPROVAL] Action:', isApprove ? 'APPROVE' : 'UNAPPROVE', '| trans_no:', item.trans_no);
+              console.log('📌 [OUTSTATION EXPENSE APPROVAL] Payload:', JSON.stringify(approvalPayload, null, 2));
+
+              const res = await postExpenseApproval(approvalPayload).unwrap();
+              console.log('📥 [OUTSTATION EXPENSE APPROVAL RESPONSE]:', res);
 
               Toast.show({
                 type: 'success',
