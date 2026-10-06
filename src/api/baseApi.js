@@ -862,7 +862,7 @@ export const baseApi = createApi({
     postPromotionalData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'ANS');
+        formData.append('company', body.company || 'ANS');
         formData.append('id', String(body.id));
         formData.append('tran_date', body.tran_date || '');
         formData.append('hospital_id', body.hospital_id || '');
@@ -874,7 +874,7 @@ export const baseApi = createApi({
         formData.append('amount', body.amount || '');
         formData.append('status_id', String(body.status_id));
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id);
+        formData.append('role_id', body.role_id !== undefined && body.role_id !== null ? String(body.role_id) : '');
 
         if (
           body.manager_remarks !== undefined &&
@@ -932,7 +932,7 @@ export const baseApi = createApi({
     postGiveawayData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'ANS');
+        formData.append('company', body.company || 'ANS');
         formData.append('id', body.id !== undefined ? String(body.id) : '0');
         formData.append('tran_date', body.tran_date || '');
         formData.append('hospital_id', body.hospital_id || '');
@@ -947,7 +947,7 @@ export const baseApi = createApi({
           body.status_id !== undefined ? String(body.status_id) : '1',
         );
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', 'body.role_id');
+        formData.append('role_id', body.role_id !== undefined && body.role_id !== null ? String(body.role_id) : '');
 
         if (
           body.manager_remarks !== undefined &&

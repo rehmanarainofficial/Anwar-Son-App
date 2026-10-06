@@ -23,19 +23,26 @@ import { useGetViewGLMutation } from '@api/voidApi';
 
 const getDefaultDateRange = () => {
   const today = new Date();
-  const fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Default from 1st of previous month to cover recent claims
+  const fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   return { fromDate, toDate: today };
 };
 
 export default function OutstationExpenseApprovalScreen({ navigation }) {
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
+  const employeeId =
+    userData?.employee_id ||
+    userData?.emp_id ||
+    userData?.id ||
+    userData?.emp_code ||
+    '';
   const isRole2 =
     userData?.role_id !== undefined &&
     userData?.role_id !== null &&
     (String(userData.role_id) === '2' || Number(userData.role_id) === 2);
 
-  // Tabs: 'manager' | 'accounts'
+  // Tabs: 'manager' | 'accounts' | 'all'
   const [activeTab, setActiveTab] = useState('manager');
 
   // Inquiry State
@@ -58,8 +65,16 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
   const [postExpenseApproval] = usePostExpenseApprovalMutation();
 
   const formatDateForApi = date => {
-    const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    if (!date) return '';
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const formatNumber = num => {
@@ -86,12 +101,13 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
         company: 'ANS',
         from_date: formatDateForApi(filterFromDate),
         to_date: formatDateForApi(filterToDate),
-        employee_id: String(userData?.employee_id || ''),
+        employee_id: String(employeeId || ''),
         role_id:
           userData?.role_id !== undefined && userData?.role_id !== null
             ? String(userData.role_id)
             : '',
       };
+      console.log('--- [OUTSTATION EXPENSE APPROVAL PAYLOAD] ---', payload);
 
       const response = await getOutstationExpenseInquiry(payload).unwrap();
       const rawList = Array.isArray(response)
@@ -111,7 +127,7 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
       });
       setInquiryData([]);
     }
-  }, [filterFromDate, filterToDate, userData, getOutstationExpenseInquiry]);
+  }, [filterFromDate, filterToDate, employeeId, userData, getOutstationExpenseInquiry]);
 
   useEffect(() => {
     fetchInquiryData();
@@ -242,7 +258,11 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
   );
 
   const displayedList =
-    activeTab === 'accounts' ? accountsUnapprovedList : managerUnapprovedList;
+    activeTab === 'accounts'
+      ? accountsUnapprovedList
+      : activeTab === 'all'
+      ? inquiryData
+      : managerUnapprovedList;
 
   const totalFuel = displayedList.reduce(
     (sum, item) =>
@@ -595,6 +615,47 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
             </View>
           ) : null}
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'all' && [
+              styles.tabButtonActive,
+              { borderBottomColor: theme.colors.primary },
+            ],
+          ]}
+          onPress={() => setActiveTab('all')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="layers-outline"
+            size={18}
+            color={
+              activeTab === 'all'
+                ? theme.colors.primary
+                : theme.colors.textSecondary
+            }
+          />
+          <Text
+            style={[
+              styles.tabButtonText,
+              {
+                color:
+                  activeTab === 'all'
+                    ? theme.colors.primary
+                    : theme.colors.textSecondary,
+                fontWeight: activeTab === 'all' ? '800' : '600',
+              },
+            ]}
+          >
+            All Claims
+          </Text>
+          {inquiryData.length > 0 ? (
+            <View style={[styles.tabBadge, { backgroundColor: '#10B981' }]}>
+              <Text style={styles.tabBadgeText}>{inquiryData.length}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
       </View>
 
       {/* Filter Section */}
@@ -815,7 +876,11 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
             color={theme.colors.textSecondary}
           />
           <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-            No pending claims in {activeTab === 'accounts' ? 'Accounts' : 'Manager'} Approval
+            {activeTab === 'all'
+              ? 'No outstation claims found'
+              : `No pending claims in ${
+                  activeTab === 'accounts' ? 'Accounts' : 'Manager'
+                } Approval`}
           </Text>
           <Text
             style={[
@@ -823,7 +888,9 @@ export default function OutstationExpenseApprovalScreen({ navigation }) {
               { color: theme.colors.textSecondary },
             ]}
           >
-            All outstation claims for the selected date range are up to date.
+            {activeTab === 'all'
+              ? 'Try adjusting the date range filter.'
+              : 'All outstation claims for the selected date range are up to date.'}
           </Text>
         </ScrollView>
       )}

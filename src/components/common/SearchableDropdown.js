@@ -38,12 +38,12 @@ const SearchableDropdown = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredData = data.filter(item => {
-    const val = item[labelKey] || '';
+    const val = item[labelKey] || item.name || item.description || item.title || '';
     return val.toString().toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const checkIsSelected = item => {
-    const itemId = item[idKey];
+    const itemId = item[idKey] !== undefined && item[idKey] !== null ? item[idKey] : (item.id || item.debtor_no || item.combo_code || item.contact_id);
     if (itemId === null || itemId === undefined || itemId === '') return false;
 
     if (isMultiSelect) {
@@ -63,9 +63,19 @@ const SearchableDropdown = ({
   const getDisplayText = () => {
     if (isMultiSelect) {
       if (selectedMultiItems.length === 0) return placeholder;
-      return selectedMultiItems.map(item => item[labelKey]).join(', ');
+      return selectedMultiItems
+        .map(item => item[labelKey] || item.name || item.description || item.title || '')
+        .filter(Boolean)
+        .join(', ');
     }
-    return selectedItem ? selectedItem[labelKey] : placeholder;
+    if (!selectedItem) return placeholder;
+    return (
+      selectedItem[labelKey] ||
+      selectedItem.name ||
+      selectedItem.description ||
+      selectedItem.title ||
+      placeholder
+    );
   };
 
   const hasSelection = isMultiSelect ? selectedMultiItems.length > 0 : !!selectedItem;
@@ -193,7 +203,7 @@ const SearchableDropdown = ({
                   >
                     <View style={[s.modalItemDot, { backgroundColor: theme.colors.primary }]} />
                     <Text style={[s.modalItemName, { color: theme.colors.text }]} numberOfLines={1}>
-                      {item[labelKey]}
+                      {item[labelKey] || item.name || item.description || item.title || 'Option'}
                     </Text>
                     {isMultiSelect ? (
                       <Icon

@@ -11,8 +11,11 @@ import {
   Modal,
   FlatList,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -88,6 +91,8 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -140,6 +145,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const [managerStatusId, setManagerStatusId] = useState('3');
   const [managerRemarksText, setManagerRemarksText] = useState('');
   const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
+  const [formCreatedBy, setFormCreatedBy] = useState(null);
 
   // API Hooks
   const [getPromotionalData, { isLoading: dataLoading }] = useGetPromotionalDataMutation();
@@ -220,6 +226,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     setFormMode(mode);
     if (mode === 'update' && item) {
       setFormId(item.id || 0);
+      setFormCreatedBy(item.created_by || item.user_id || null);
       setRequestDate(formatToYYYYMMDD(item.tran_date || new Date()));
       setSelectedHospitalId(item.hospital_id || null);
       setSelectedCommunityId(item.community_id || null);
@@ -240,6 +247,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     } else {
       // New Add Mode
       setFormId(0);
+      setFormCreatedBy(null);
       setRequestDate(formatToYYYYMMDD(new Date()));
       setSelectedHospitalId(null);
       setSelectedCommunityId(null);
@@ -267,7 +275,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   // When Hospital selection changes
   const handleHospitalSelect = item => {
     const hospId = item.id || item.debtor_no;
-    setSelectedHospitalId(hospId);
+    setSelectedHospitalId(String(hospId || ''));
     setSelectedContactId(null);
     getHospitalContacts({
       user_id: user?.id,
@@ -278,8 +286,8 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
   // When Community selection changes
   const handleCommunitySelect = item => {
-    const commId = item.combo_code || item.id;
-    setSelectedCommunityId(commId);
+    const commId = item.id || item.combo_code;
+    setSelectedCommunityId(String(commId || ''));
     setSelectedContactId(null);
     getHospitalContacts({
       user_id: user?.id,
@@ -338,7 +346,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         amount: amount,
         receipt_file: receiptFile,
         status_id: effectiveStatusId,
-        user_id: user?.id || '',
+        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
@@ -357,25 +365,41 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         if (String(effectiveStatusId) === '6') {
           try {
             const currentDate = formatToYYYYMMDD(new Date());
-            const loginUserId = user?.user_id || user?.username || '';
+            const loginUserId = user?.user_id || '';
             const parsedAmount = parseFloat(String(amount).replace(/,/g, '')) || 0;
+
+            const hospName = hospitalOptions.find(h => String(h.id) === String(selectedHospitalId))?.name || '';
+            const commName = communityOptions.find(c => String(c.id) === String(selectedCommunityId))?.name || '';
+            const contName = contactOptions.find(c => String(c.id) === String(selectedContactId))?.name || '';
+            const actName = activityTypeOptions.find(a => String(a.id) === String(selectedActivityTypeId))?.name || '';
+            const purpName = purposeOptions.find(p => String(p.id) === String(selectedPurposeId))?.name || '';
+
+            const memoParts = [];
+            if (hospName) memoParts.push(`Hospital: ${hospName}`);
+            if (commName) memoParts.push(`Community: ${commName}`);
+            if (contName) memoParts.push(`Contact: ${contName}`);
+            if (actName) memoParts.push(`Activity: ${actName}`);
+            if (purpName) memoParts.push(`Purpose: ${purpName}`);
+            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Promotional Activity';
 
             const promoCommentParts = [
               loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
             ];
             if (requestDate) promoCommentParts.push(`Date: ${requestDate}`);
-            if (selectedHospitalId) promoCommentParts.push(`Hospital ID: ${selectedHospitalId}`);
-            if (selectedCommunityId) promoCommentParts.push(`Community ID: ${selectedCommunityId}`);
-            if (selectedContactId) promoCommentParts.push(`Contact ID: ${selectedContactId}`);
-            if (selectedActivityTypeId) promoCommentParts.push(`Activity Type ID: ${selectedActivityTypeId}`);
-            if (selectedPurposeId) promoCommentParts.push(`Purpose ID: ${selectedPurposeId}`);
+            if (hospName) promoCommentParts.push(`Hospital: ${hospName}`);
+            if (commName) promoCommentParts.push(`Community: ${commName}`);
+            if (contName) promoCommentParts.push(`Contact: ${contName}`);
+            if (actName) promoCommentParts.push(`Activity: ${actName}`);
+            if (purpName) promoCommentParts.push(`Purpose: ${purpName}`);
             if (remarks && remarks.trim()) promoCommentParts.push(`Remarks: ${remarks.trim()}`);
             if (managerRemarks && managerRemarks.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
 
+            const targetUserId = (formMode === 'update' && formCreatedBy) ? formCreatedBy : String(user?.user_id || user?.id || '');
+
             const expensePayload = {
               company: 'ANS',
-              user_id: String(user?.id || user?.user_id || ''),
-              employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
+              user_id: targetUserId,
+              employee_id: targetUserId,
               from_city: '0',
               to_city: '0',
               leave_date: currentDate,
@@ -386,7 +410,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                   account_code: '606003',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: 'Promotional Activity',
+                  line_memo: lineMemo,
                 },
               ]),
               expense_type: '1',
@@ -429,6 +453,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     setIsManagerSubmitting(true);
 
     try {
+      const cardUserId = (String(managerStatusId) === '6' && (selectedManagerItem?.created_by || selectedManagerItem?.user_id))
+        ? (selectedManagerItem.created_by || selectedManagerItem.user_id)
+        : (user?.user_id || user?.id || '');
       const payload = {
         company: 'CRM',
         id: selectedManagerItem.id,
@@ -442,7 +469,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         amount: selectedManagerItem.amount || '',
         receipt_file: selectedManagerItem.receipt_file || '',
         status_id: managerStatusId,
-        user_id: user?.id || '',
+        user_id: cardUserId,
         role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
@@ -467,21 +494,35 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
             const parsedAmount = parseFloat(String(selectedManagerItem?.amount || '0').replace(/,/g, '')) || 0;
 
+            const hospName = selectedManagerItem.hospital_name || hospitalOptions.find(h => String(h.id) === String(selectedManagerItem.hospital_id))?.name || '';
+            const commName = selectedManagerItem.community || communityOptions.find(c => String(c.id) === String(selectedManagerItem.community_id))?.name || '';
+            const contName = selectedManagerItem.contact_person || contactOptions.find(c => String(c.id) === String(selectedManagerItem.contact_id))?.name || '';
+            const actName = selectedManagerItem.activity_name || activityTypeOptions.find(a => String(a.id) === String(selectedManagerItem.activity_type_id))?.name || '';
+            const purpName = selectedManagerItem.purpose_name || purposeOptions.find(p => String(p.id) === String(selectedManagerItem.purpose_id))?.name || '';
+
+            const memoParts = [];
+            if (hospName) memoParts.push(`Hospital: ${hospName}`);
+            if (commName) memoParts.push(`Community: ${commName}`);
+            if (contName) memoParts.push(`Contact: ${contName}`);
+            if (actName) memoParts.push(`Activity: ${actName}`);
+            if (purpName) memoParts.push(`Purpose: ${purpName}`);
+            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Promotional Activity';
+
             // Build comments from manager item data
             const promoCommentParts = [
               loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
             ];
             if (selectedManagerItem.tran_date) promoCommentParts.push(`Date: ${formatToYYYYMMDD(selectedManagerItem.tran_date)}`);
-            if (selectedManagerItem.hospital_id) promoCommentParts.push(`Hospital ID: ${selectedManagerItem.hospital_id}`);
-            if (selectedManagerItem.community_id) promoCommentParts.push(`Community ID: ${selectedManagerItem.community_id}`);
-            if (selectedManagerItem.contact_id) promoCommentParts.push(`Contact ID: ${selectedManagerItem.contact_id}`);
-            if (selectedManagerItem.activity_type_id) promoCommentParts.push(`Activity Type ID: ${selectedManagerItem.activity_type_id}`);
-            if (selectedManagerItem.purpose_id) promoCommentParts.push(`Purpose ID: ${selectedManagerItem.purpose_id}`);
+            if (hospName) promoCommentParts.push(`Hospital: ${hospName}`);
+            if (commName) promoCommentParts.push(`Community: ${commName}`);
+            if (contName) promoCommentParts.push(`Contact: ${contName}`);
+            if (actName) promoCommentParts.push(`Activity: ${actName}`);
+            if (purpName) promoCommentParts.push(`Purpose: ${purpName}`);
             if (selectedManagerItem.remarks && selectedManagerItem.remarks.trim()) promoCommentParts.push(`Remarks: ${selectedManagerItem.remarks.trim()}`);
             if (managerRemarksText && managerRemarksText.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
 
-            const targetUserId = String(selectedManagerItem?.user_id || '');
-            const targetEmployeeId = String(selectedManagerItem?.employee_id || '');
+            const targetUserId = String(selectedManagerItem?.created_by || selectedManagerItem?.user_id || '');
+            const targetEmployeeId = String(selectedManagerItem?.employee_id || selectedManagerItem?.created_by || '');
 
             const expensePayload = {
               company: 'ANS',
@@ -497,7 +538,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                   account_code: '606003',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: 'Promotional Activity Claim',
+                  line_memo: lineMemo,
                 },
               ]),
               expense_type: '1',
@@ -509,7 +550,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
             await postFieldExpensePayments(expensePayload).unwrap();
           } catch (expErr) {
-            // Handled non-blocking
+            console.log('Error posting field expense payments:', expErr);
           }
         }
 
@@ -537,14 +578,35 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   // Dropdown Lists Data Formatting
   const hospitalList = (hospRes && (hospRes.data || Array.isArray(hospRes))) ? (Array.isArray(hospRes) ? hospRes : hospRes.data) : [];
   const hospitalOptions = hospitalList.map(h => ({
-    id: String(h.id || ''),
-    name: h.name || h.hospital_name || h.title || 'Hospital',
+    id: String(h.id || h.debtor_no || h.hospital_id || ''),
+    name: h.name || h.hospital_name || h.title || h.description || 'Hospital',
+    debtor_no: h.debtor_no,
   }));
 
   const communityList = (commRes && (commRes.data || Array.isArray(commRes))) ? (Array.isArray(commRes) ? commRes : commRes.data) : [];
+  const communityOptions = communityList.map(c => ({
+    id: String(c.combo_code !== undefined && c.combo_code !== null ? c.combo_code : (c.id || '')),
+    name: c.description || c.name || c.title || 'Community',
+    combo_code: c.combo_code,
+  }));
+
   const contactList = (contactRes && (contactRes.data || Array.isArray(contactRes))) ? (Array.isArray(contactRes) ? contactRes : contactRes.data) : [];
+  const contactOptions = contactList.map(cp => ({
+    id: String(cp.id !== undefined && cp.id !== null ? cp.id : (cp.contact_id || '')),
+    name: cp.person_name || cp.name || cp.contact_person || cp.contact_name || cp.title || 'Contact Person',
+  }));
+
   const activityTypeList = (activityRes && (activityRes.data || Array.isArray(activityRes))) ? (Array.isArray(activityRes) ? activityRes : activityRes.data) : [];
+  const activityTypeOptions = activityTypeList.map(a => ({
+    id: String(a.id !== undefined && a.id !== null ? a.id : (a.activity_type_id || '')),
+    name: a.activity_name || a.name || a.description || a.title || 'Activity Type',
+  }));
+
   const purposeList = (purposeRes && (purposeRes.data || Array.isArray(purposeRes))) ? (Array.isArray(purposeRes) ? purposeRes : purposeRes.data) : [];
+  const purposeOptions = purposeList.map(p => ({
+    id: String(p.id !== undefined && p.id !== null ? p.id : (p.purpose_id || '')),
+    name: p.purpose_name || p.name || p.description || p.title || 'Purpose',
+  }));
 
   // Helper function for status styling
   const renderStatusBadge = statusId => {
@@ -767,17 +829,45 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalContainer}>
           {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalHeaderTitle}>
-              {formMode === 'update' ? 'Update Promotional Activity' : 'Add Promotional Activity'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setIsModalVisible(false)}
-              style={styles.closeModalBtn}
-              activeOpacity={0.7}
-            >
-              <Icon name="close" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
+          <View
+            style={[
+              styles.customModalHeader,
+              {
+                paddingTop: topInset,
+                backgroundColor: theme.colors.primary,
+              },
+            ]}
+          >
+            <StatusBar
+              barStyle="light-content"
+              backgroundColor={theme.colors.primary}
+              translucent={true}
+            />
+            <View style={styles.customModalHeaderContent}>
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <View style={styles.modalHeaderTitleContainer}>
+                <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
+                  {formMode === 'update' ? 'Update Promotional Activity' : 'Add Promotional Activity'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
@@ -801,6 +891,8 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                   label="Hospital"
                   placeholder="Select Hospital..."
                   data={hospitalOptions}
+                  idKey="id"
+                  labelKey="name"
                   selectedId={selectedHospitalId}
                   onSelect={handleHospitalSelect}
                   isLoading={hospLoading}
@@ -813,9 +905,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Community"
                   placeholder="Select Community..."
-                  data={communityList}
-                  idKey="combo_code"
-                  labelKey="description"
+                  data={communityOptions}
+                  idKey="id"
+                  labelKey="name"
                   selectedId={selectedCommunityId}
                   onSelect={handleCommunitySelect}
                   isLoading={commLoading}
@@ -828,11 +920,11 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Contact Person"
                   placeholder="Select Contact Person..."
-                  data={contactList}
+                  data={contactOptions}
                   idKey="id"
-                  labelKey="person_name"
+                  labelKey="name"
                   selectedId={selectedContactId}
-                  onSelect={item => setSelectedContactId(item.id)}
+                  onSelect={item => setSelectedContactId(String(item.id))}
                   isLoading={contactLoading}
                   iconName="person-outline"
                 />
@@ -843,11 +935,11 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Activity Type"
                   placeholder="Select Activity Type..."
-                  data={activityTypeList}
+                  data={activityTypeOptions}
                   idKey="id"
-                  labelKey="activity_name"
+                  labelKey="name"
                   selectedId={selectedActivityTypeId}
-                  onSelect={item => setSelectedActivityTypeId(item.id)}
+                  onSelect={item => setSelectedActivityTypeId(String(item.id))}
                   isLoading={activityLoading}
                   iconName="sparkles-outline"
                 />
@@ -858,11 +950,11 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Purpose"
                   placeholder="Select Purpose..."
-                  data={purposeList}
+                  data={purposeOptions}
                   idKey="id"
-                  labelKey="purpose_name"
+                  labelKey="name"
                   selectedId={selectedPurposeId}
-                  onSelect={item => setSelectedPurposeId(item.id)}
+                  onSelect={item => setSelectedPurposeId(String(item.id))}
                   isLoading={purposeLoading}
                   iconName="disc-outline"
                 />
@@ -877,7 +969,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                   idKey="id"
                   labelKey="name"
                   selectedId={selectedStatusId}
-                  onSelect={item => setSelectedStatusId(item.id)}
+                  onSelect={item => setSelectedStatusId(String(item.id))}
                   iconName="flag-outline"
                 />
               </View>
@@ -1312,7 +1404,42 @@ const getStyles = theme =>
     },
     modalContainer: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.surface,
+    },
+    customModalHeader: {
+      width: '100%',
+      backgroundColor: theme.colors.primary,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+    },
+    customModalHeaderContent: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+    },
+    modalHeaderIconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 20,
+    },
+    modalHeaderTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 8,
+    },
+    customModalHeaderTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      textAlign: 'center',
     },
     modalHeader: {
       flexDirection: 'row',
@@ -1325,12 +1452,14 @@ const getStyles = theme =>
       borderBottomColor: theme.colors.border,
     },
     modalHeaderTitle: {
+      flex: 1,
       fontSize: 17,
       fontWeight: '700',
       color: theme.colors.text,
+      marginRight: 12,
     },
     closeModalBtn: {
-      padding: 4,
+      padding: 6,
     },
     modalScrollContent: {
       padding: 16,

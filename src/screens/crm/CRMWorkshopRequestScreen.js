@@ -10,7 +10,10 @@ import {
   Modal,
   FlatList,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
@@ -114,6 +117,8 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -141,6 +146,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formId, setFormId] = useState(0);
+  const [formCreatedBy, setFormCreatedBy] = useState(null);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -250,6 +256,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
     setFormMode(mode);
     if (mode === 'update' && item) {
       setFormId(item.id || 0);
+      setFormCreatedBy(item.created_by || item.user_id || null);
       setTitle(item.title || '');
       setRequestDate(formatToYYYYMMDD(item.date || item.tran_date || new Date()));
       setSelectedHospitalId(item.hospital_id || null);
@@ -319,6 +326,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
     } else {
       // New Add
       setFormId(0);
+      setFormCreatedBy(null);
       setTitle('');
       setRequestDate(formatToYYYYMMDD(new Date()));
       setSelectedHospitalId(null);
@@ -504,7 +512,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         materials: materialsList,
         budget: budgetList,
         status_id: effectiveStatusId,
-        user_id: user?.id || '',
+        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
@@ -534,21 +542,37 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
             const parsedAmount = calculateWorkshopAmount(null, budgetList);
 
+            const hospName = selectedHospitalId ? ((hospitalList || []).find(h => String(h.id || h.debtor_no || h.hospital_id) === String(selectedHospitalId))?.name || '') : '';
+            const typeName = WORKSHOP_TYPES.find(w => String(w.id) === String(workshopType))?.name || '';
+            const segName = PRODUCT_SEGMENTS.find(p => String(p.id) === String(productSegment))?.name || '';
+
+            const memoParts = [];
+            if (title) memoParts.push(`Title: ${title}`);
+            if (hospName) memoParts.push(`Hospital: ${hospName}`);
+            if (typeName) memoParts.push(`Type: ${typeName}`);
+            if (segName) memoParts.push(`Segment: ${segName}`);
+            if (venue) memoParts.push(`Venue: ${venue}`);
+            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Workshop Request';
+
             const workshopCommentParts = [
               loginUserId ? `Workshop ${loginUserId}` : 'Workshop',
             ];
             if (title) workshopCommentParts.push(`Title: ${title}`);
             if (requestDate) workshopCommentParts.push(`Date: ${requestDate}`);
-            if (selectedHospitalId) workshopCommentParts.push(`Hospital ID: ${selectedHospitalId}`);
+            if (hospName) workshopCommentParts.push(`Hospital: ${hospName}`);
+            if (typeName) workshopCommentParts.push(`Type: ${typeName}`);
+            if (segName) workshopCommentParts.push(`Segment: ${segName}`);
             if (hospitalDepart) workshopCommentParts.push(`Depart: ${hospitalDepart}`);
             if (venue) workshopCommentParts.push(`Venue: ${venue}`);
             if (objectives && objectives.trim()) workshopCommentParts.push(`Objectives: ${objectives.trim()}`);
             if (managerRemarks && managerRemarks.trim()) workshopCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
 
+            const targetUserId = (formMode === 'update' && formCreatedBy) ? formCreatedBy : String(user?.user_id || user?.id || '');
+
             const expensePayload = {
               company: 'ANS',
-              user_id: String(user?.id || user?.user_id || ''),
-              employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
+              user_id: targetUserId,
+              employee_id: targetUserId,
               from_city: '0',
               to_city: '0',
               leave_date: currentDate,
@@ -559,7 +583,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                   account_code: '606002',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: 'Workshop Request Claim',
+                  line_memo: lineMemo,
                 },
               ]),
               expense_type: '2',
@@ -618,7 +642,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         materials: selectedManagerItem.materials || [],
         budget: selectedManagerItem.budget || [],
         status_id: managerStatusId,
-        user_id: user?.id || '',
+        user_id: (String(managerStatusId) === '6' && (selectedManagerItem.created_by || selectedManagerItem.user_id)) ? (selectedManagerItem.created_by || selectedManagerItem.user_id) : (user?.user_id || user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
@@ -670,19 +694,33 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
             const parsedAmount = calculateWorkshopAmount(itemDetail, itemDetail?.budget);
 
+            const hospName = selectedManagerItem.hospital_name || (hospitalList || []).find(h => String(h.id || h.debtor_no || h.hospital_id) === String(selectedManagerItem.hospital_id))?.name || '';
+            const typeName = WORKSHOP_TYPES.find(w => String(w.id) === String(selectedManagerItem.workshop_type))?.name || '';
+            const segName = PRODUCT_SEGMENTS.find(p => String(p.id) === String(selectedManagerItem.product_segment))?.name || '';
+
+            const memoParts = [];
+            if (selectedManagerItem.title) memoParts.push(`Title: ${selectedManagerItem.title}`);
+            if (hospName) memoParts.push(`Hospital: ${hospName}`);
+            if (typeName) memoParts.push(`Type: ${typeName}`);
+            if (segName) memoParts.push(`Segment: ${segName}`);
+            if (selectedManagerItem.venue) memoParts.push(`Venue: ${selectedManagerItem.venue}`);
+            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Workshop Request';
+
             const workshopCommentParts = [
               loginUserId ? `Workshop ${loginUserId}` : 'Workshop',
             ];
             if (selectedManagerItem.title) workshopCommentParts.push(`Title: ${selectedManagerItem.title}`);
             if (selectedManagerItem.date || selectedManagerItem.tran_date) workshopCommentParts.push(`Date: ${formatToYYYYMMDD(selectedManagerItem.date || selectedManagerItem.tran_date)}`);
-            if (selectedManagerItem.hospital_id) workshopCommentParts.push(`Hospital ID: ${selectedManagerItem.hospital_id}`);
+            if (hospName) workshopCommentParts.push(`Hospital: ${hospName}`);
+            if (typeName) workshopCommentParts.push(`Type: ${typeName}`);
+            if (segName) workshopCommentParts.push(`Segment: ${segName}`);
             if (selectedManagerItem.hospital_depart) workshopCommentParts.push(`Depart: ${selectedManagerItem.hospital_depart}`);
             if (selectedManagerItem.venue) workshopCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
             if (selectedManagerItem.objectives && selectedManagerItem.objectives.trim()) workshopCommentParts.push(`Objectives: ${selectedManagerItem.objectives.trim()}`);
             if (managerRemarksText && managerRemarksText.trim()) workshopCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
 
-            const targetUserId = String(selectedManagerItem?.user_id || user?.id || user?.user_id || '');
-            const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
+            const targetUserId = String(selectedManagerItem?.created_by || selectedManagerItem?.user_id || '');
+            const targetEmployeeId = String(selectedManagerItem?.employee_id || selectedManagerItem?.created_by || '');
 
             const expensePayload = {
               company: 'ANS',
@@ -698,7 +736,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                   account_code: '606002',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: 'Workshop Request Claim',
+                  line_memo: lineMemo,
                 },
               ]),
               expense_type: '2',
@@ -932,17 +970,46 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalHeaderTitle}>
-              {formMode === 'update' ? 'Update Workshop Request' : 'Add Workshop Request'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setIsModalVisible(false)}
-              style={styles.closeModalBtn}
-              activeOpacity={0.7}
-            >
-              <Icon name="close" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
+          {/* Modal Header */}
+          <View
+            style={[
+              styles.customModalHeader,
+              {
+                paddingTop: topInset,
+                backgroundColor: theme.colors.primary,
+              },
+            ]}
+          >
+            <StatusBar
+              barStyle="light-content"
+              backgroundColor={theme.colors.primary}
+              translucent={true}
+            />
+            <View style={styles.customModalHeaderContent}>
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <View style={styles.modalHeaderTitleContainer}>
+                <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
+                  {formMode === 'update' ? 'Update Workshop Request' : 'Add Workshop Request'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
@@ -1592,6 +1659,41 @@ const getStyles = theme =>
     modalContainer: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    customModalHeader: {
+      width: '100%',
+      backgroundColor: theme.colors.primary,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+    },
+    customModalHeaderContent: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+    },
+    modalHeaderIconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 20,
+    },
+    modalHeaderTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 8,
+    },
+    customModalHeaderTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      textAlign: 'center',
     },
     modalHeader: {
       flexDirection: 'row',

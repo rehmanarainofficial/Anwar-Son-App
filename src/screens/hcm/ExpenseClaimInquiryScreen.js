@@ -19,7 +19,8 @@ import { useGetViewGLMutation } from '@api/voidApi';
 
 const getDefaultDateRange = () => {
   const today = new Date();
-  const fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Default from 1st of previous month to cover recent claims
+  const fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   return { fromDate, toDate: today };
 };
 
@@ -27,7 +28,12 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
   const employeeId =
-    userData?.employee_id || userData?.emp_code || userData?.id;
+    route?.params?.employee_id ||
+    userData?.employee_id ||
+    userData?.emp_id ||
+    userData?.id ||
+    userData?.emp_code ||
+    '';
 
   // Inquiry State
   const [inquiryData, setInquiryData] = useState([]);
@@ -51,8 +57,16 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   }, [selectedDimensionId]);
 
   const formatDateForApi = date => {
-    const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    if (!date) return '';
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const formatNumber = num => {
@@ -66,11 +80,15 @@ export default function ExpenseClaimInquiryScreen({ navigation, route }) {
   const fetchInquiryData = async () => {
     try {
       const payload = {
+        company: 'ANS',
         from_date: formatDateForApi(filterFromDate),
         to_date: formatDateForApi(filterToDate),
-        employee_id: employeeId ? String(employeeId) : '',
-        dimension_id: selectedDimensionId ? String(selectedDimensionId) : '0',
+        employee_id: String(employeeId || ''),
       };
+      if (selectedDimensionId && String(selectedDimensionId) !== '0') {
+        payload.dimension_id = String(selectedDimensionId);
+      }
+      console.log('--- [EXPENSE CLAIM INQUIRY PAYLOAD] ---', payload);
 
       const response = await getExpenseClaimInquiry(payload).unwrap();
       const rawList = Array.isArray(response)

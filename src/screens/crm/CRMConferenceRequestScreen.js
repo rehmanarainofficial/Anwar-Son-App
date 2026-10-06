@@ -10,7 +10,10 @@ import {
   Modal,
   FlatList,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
@@ -111,6 +114,8 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -138,6 +143,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [formMode, setFormMode] = useState('add');
   const [formId, setFormId] = useState(0);
+  const [formCreatedBy, setFormCreatedBy] = useState(null);
 
   // Form Fields
   const [activityType, setActivityType] = useState('1');
@@ -254,6 +260,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
     setFormMode(formModeType);
     if (formModeType === 'update' && item) {
       setFormId(item.id || 0);
+      setFormCreatedBy(item?.created_by || item?.user_id || null);
 
       // Populate basic info from list item first
       setActivityType(String(item.activity_type || '1'));
@@ -346,6 +353,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               setAttendanceList(parsedAtt.map((att, i) => ({ ...att, id: att.id || (Date.now() + i + 200) })));
             } catch (e) {}
           }
+          if (d.created_by) setFormCreatedBy(d.created_by);
         }
       } catch (err) {
         console.log('Error fetching conference details:', err);
@@ -353,6 +361,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
     } else {
       // New Add
       setFormId(0);
+      setFormCreatedBy(null);
       setActivityType('1');
       setEventName('');
       setStartDate(formatToYYYYMMDD(new Date()));
@@ -552,7 +561,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         budget: budgetList,
         attendance: attendanceList,
         status_id: effectiveStatusId,
-        user_id: user?.id || '',
+        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
@@ -582,10 +591,23 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
             const parsedAmount = calculateConferenceAmount(null, budgetList);
 
+            const actTypeName = ACTIVITY_TYPES.find(a => String(a.id) === String(activityType))?.name || 'Conference';
+            const modeName = MODES.find(m => String(m.id) === String(mode))?.name || '';
+            const lineMemoParts = [
+              eventName ? `Event: ${eventName}` : actTypeName,
+            ];
+            if (actTypeName && eventName) lineMemoParts.push(`Type: ${actTypeName}`);
+            if (modeName) lineMemoParts.push(`Mode: ${modeName}`);
+            if (venue) lineMemoParts.push(`Venue: ${venue}`);
+            if (organizedBy) lineMemoParts.push(`Organized By: ${organizedBy}`);
+            const lineMemo = lineMemoParts.join(' | ') || 'Conference Request Claim';
+
             const confCommentParts = [
               loginUserId ? `Conference ${loginUserId}` : 'Conference',
             ];
             if (eventName) confCommentParts.push(`Event: ${eventName}`);
+            if (actTypeName) confCommentParts.push(`Type: ${actTypeName}`);
+            if (modeName) confCommentParts.push(`Mode: ${modeName}`);
             if (startDate) confCommentParts.push(`Start: ${startDate}`);
             if (endDate) confCommentParts.push(`End: ${endDate}`);
             if (venue) confCommentParts.push(`Venue: ${venue}`);
@@ -595,7 +617,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
             const expensePayload = {
               company: 'ANS',
-              user_id: String(user?.id || user?.user_id || ''),
+              user_id: String((String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || '')),
               employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
               from_city: '0',
               to_city: '0',
@@ -607,7 +629,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                   account_code: '606001',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: 'Conference Request Claim',
+                  line_memo: lineMemo,
                 },
               ]),
               expense_type: '3',
@@ -670,7 +692,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         budget: selectedManagerItem.budget || [],
         attendance: selectedManagerItem.attendance || [],
         status_id: managerStatusId,
-        user_id: user?.id || '',
+        user_id: (String(managerStatusId) === '6' && (selectedManagerItem.created_by || selectedManagerItem.user_id))
+          ? (selectedManagerItem.created_by || selectedManagerItem.user_id)
+          : (user?.user_id || user?.id || ''),
         role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
@@ -725,10 +749,23 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
             const parsedAmount = calculateConferenceAmount(itemDetail, itemDetail?.budget);
 
+            const mgrActTypeName = ACTIVITY_TYPES.find(a => String(a.id) === String(selectedManagerItem.activity_type))?.name || 'Conference';
+            const mgrModeName = MODES.find(m => String(m.id) === String(selectedManagerItem.mode))?.name || '';
+            const mgrLineMemoParts = [
+              selectedManagerItem.event_name ? `Event: ${selectedManagerItem.event_name}` : mgrActTypeName,
+            ];
+            if (mgrActTypeName && selectedManagerItem.event_name) mgrLineMemoParts.push(`Type: ${mgrActTypeName}`);
+            if (mgrModeName) mgrLineMemoParts.push(`Mode: ${mgrModeName}`);
+            if (selectedManagerItem.venue) mgrLineMemoParts.push(`Venue: ${selectedManagerItem.venue}`);
+            if (selectedManagerItem.organized_by || selectedManagerItem.organizedBy) mgrLineMemoParts.push(`Organized By: ${selectedManagerItem.organized_by || selectedManagerItem.organizedBy}`);
+            const mgrLineMemo = mgrLineMemoParts.join(' | ') || 'Conference Request Claim';
+
             const confCommentParts = [
               loginUserId ? `Conference ${loginUserId}` : 'Conference',
             ];
             if (selectedManagerItem.event_name) confCommentParts.push(`Event: ${selectedManagerItem.event_name}`);
+            if (mgrActTypeName) confCommentParts.push(`Type: ${mgrActTypeName}`);
+            if (mgrModeName) confCommentParts.push(`Mode: ${mgrModeName}`);
             if (selectedManagerItem.start_date) confCommentParts.push(`Start: ${formatToYYYYMMDD(selectedManagerItem.start_date)}`);
             if (selectedManagerItem.end_date) confCommentParts.push(`End: ${formatToYYYYMMDD(selectedManagerItem.end_date)}`);
             if (selectedManagerItem.venue) confCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
@@ -736,7 +773,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             if (selectedManagerItem.purpose && selectedManagerItem.purpose.trim()) confCommentParts.push(`Purpose: ${selectedManagerItem.purpose.trim()}`);
             if (managerRemarksText && managerRemarksText.trim()) confCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
 
-            const targetUserId = String(selectedManagerItem?.user_id || user?.id || user?.user_id || '');
+            const targetUserId = String(selectedManagerItem?.created_by || selectedManagerItem?.user_id || user?.id || user?.user_id || '');
             const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
 
             const expensePayload = {
@@ -753,7 +790,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                   account_code: '606001',
                   line_date: currentDate,
                   amount: parsedAmount,
-                  line_memo: 'Conference Request Claim',
+                  line_memo: mgrLineMemo,
                 },
               ]),
               expense_type: '3',
@@ -983,17 +1020,46 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalHeaderTitle}>
-              {formMode === 'update' ? 'Update Conference Request' : 'Add Conference Request'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setIsModalVisible(false)}
-              style={styles.closeModalBtn}
-              activeOpacity={0.7}
-            >
-              <Icon name="close" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
+          {/* Modal Header */}
+          <View
+            style={[
+              styles.customModalHeader,
+              {
+                paddingTop: topInset,
+                backgroundColor: theme.colors.primary,
+              },
+            ]}
+          >
+            <StatusBar
+              barStyle="light-content"
+              backgroundColor={theme.colors.primary}
+              translucent={true}
+            />
+            <View style={styles.customModalHeaderContent}>
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <View style={styles.modalHeaderTitleContainer}>
+                <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
+                  {formMode === 'update' ? 'Update Conference Request' : 'Add Conference Request'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
@@ -1722,6 +1788,41 @@ const getStyles = theme =>
     modalContainer: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    customModalHeader: {
+      width: '100%',
+      backgroundColor: theme.colors.primary,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+    },
+    customModalHeaderContent: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+    },
+    modalHeaderIconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 20,
+    },
+    modalHeaderTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 8,
+    },
+    customModalHeaderTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      textAlign: 'center',
     },
     modalHeader: {
       flexDirection: 'row',

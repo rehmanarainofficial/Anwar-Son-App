@@ -19,7 +19,8 @@ import { useGetViewGLMutation } from '@api/voidApi';
 
 const getDefaultDateRange = () => {
   const today = new Date();
-  const fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Default from 1st of previous month to cover recent claims
+  const fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   return { fromDate, toDate: today };
 };
 
@@ -30,9 +31,12 @@ export default function OutstationExpenseInquiryScreen({
   const { theme } = useTheme();
   const userData = useSelector(state => state.auth.user);
   const employeeId =
-    userData?.employee_id !== undefined && userData?.employee_id !== null
-      ? userData.employee_id
-      : userData?.emp_code || '';
+    route?.params?.employee_id ||
+    userData?.employee_id ||
+    userData?.emp_id ||
+    userData?.id ||
+    userData?.emp_code ||
+    '';
 
   // Inquiry State
   const [inquiryData, setInquiryData] = useState([]);
@@ -55,8 +59,16 @@ export default function OutstationExpenseInquiryScreen({
   }, []);
 
   const formatDateForApi = date => {
-    const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    if (!date) return '';
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const formatNumber = num => {
@@ -75,6 +87,7 @@ export default function OutstationExpenseInquiryScreen({
         to_date: formatDateForApi(filterToDate),
         employee_id: String(employeeId || ''),
       };
+      console.log('--- [OUTSTATION INQUIRY PAYLOAD] ---', payload);
 
       const response = await getOutstationExpenseInquiry(payload).unwrap();
       const rawList = Array.isArray(response)

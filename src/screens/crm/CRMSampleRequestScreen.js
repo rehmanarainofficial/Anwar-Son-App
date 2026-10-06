@@ -16,7 +16,10 @@ import {
   Modal,
   FlatList,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
@@ -74,6 +77,8 @@ const CRMSampleRequestScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
 
   const [sampleList, setSampleList] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -786,18 +791,48 @@ const CRMSampleRequestScreen = ({ navigation }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalHeaderTitle}>
-              {formMode === 'add'
-                ? 'Add Sample Request'
-                : 'Edit Sample Request'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setIsModalVisible(false)}
-              style={styles.modalCloseBtn}
-            >
-              <Icon name="close" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
+          {/* Modal Header */}
+          <View
+            style={[
+              styles.customModalHeader,
+              {
+                paddingTop: topInset,
+                backgroundColor: theme.colors.primary,
+              },
+            ]}
+          >
+            <StatusBar
+              barStyle="light-content"
+              backgroundColor={theme.colors.primary}
+              translucent={true}
+            />
+            <View style={styles.customModalHeaderContent}>
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <View style={styles.modalHeaderTitleContainer}>
+                <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
+                  {formMode === 'add'
+                    ? 'Add Sample Request'
+                    : 'Edit Sample Request'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                style={styles.modalHeaderIconBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Icon name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView
@@ -1222,6 +1257,41 @@ const getStyles = theme =>
     modalContainer: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    customModalHeader: {
+      width: '100%',
+      backgroundColor: theme.colors.primary,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+    },
+    customModalHeaderContent: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+    },
+    modalHeaderIconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 20,
+    },
+    modalHeaderTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 8,
+    },
+    customModalHeaderTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      textAlign: 'center',
     },
     modalHeader: {
       flexDirection: 'row',
