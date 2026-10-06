@@ -16,7 +16,10 @@ export const baseApi = createApi({
         } else if (args.body && typeof args.body === 'object') {
           payload = args.body;
         }
-        console.log(`🚀 [API POST REQUEST] URL: ${url}`, JSON.stringify(payload, null, 2));
+        console.log(
+          `🚀 [API POST REQUEST] URL: ${url}`,
+          JSON.stringify(payload, null, 2),
+        );
       }
 
       const result = await fetchBaseQuery({
@@ -89,7 +92,7 @@ export const baseApi = createApi({
     getSalesCategory: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         return {
           url: 'dropdown/sales_category.php',
@@ -104,7 +107,7 @@ export const baseApi = createApi({
     getStockCategory: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -123,7 +126,7 @@ export const baseApi = createApi({
     getSalesTargetCategory: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -158,7 +161,7 @@ export const baseApi = createApi({
     getSalesActivity: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('sales_category', body.sales_category);
 
         return {
@@ -174,7 +177,7 @@ export const baseApi = createApi({
     getHospital: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.id || body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -205,13 +208,14 @@ export const baseApi = createApi({
     getHospitalContacts: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         if (body?.user_id) formData.append('user_id', body.user_id);
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
         }
         if (body?.hospital_id) formData.append('hospital_id', body.hospital_id);
-        if (body?.community_id) formData.append('community_id', body.community_id);
+        if (body?.community_id)
+          formData.append('community_id', body.community_id);
 
         return {
           url: 'dropdown/hospital_contacts.php',
@@ -226,7 +230,7 @@ export const baseApi = createApi({
     getDailyWorkingPlan: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id);
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -246,7 +250,7 @@ export const baseApi = createApi({
     addDailyWorkingPlan: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('id', body.id || '');
         formData.append('user_id', body.user_id);
         if (body?.role_id !== undefined && body?.role_id !== null) {
@@ -287,7 +291,7 @@ export const baseApi = createApi({
     getSalesProgressStatus: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('activity', body.activity);
 
         return {
@@ -319,7 +323,7 @@ export const baseApi = createApi({
     deleteDailyWorkingPlan: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('id', body.id);
 
         return {
@@ -395,7 +399,7 @@ export const baseApi = createApi({
     getCityDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.id || body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -414,7 +418,7 @@ export const baseApi = createApi({
     getTitleDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.id || body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -430,8 +434,11 @@ export const baseApi = createApi({
     getCommunityDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
-        formData.append('community', body.community !== undefined ? body.community : '');
+        formData.append('company', 'ANS');
+        formData.append(
+          'community',
+          body.community !== undefined ? body.community : '',
+        );
         return {
           url: 'dropdown/community.php',
           method: 'POST',
@@ -443,8 +450,13 @@ export const baseApi = createApi({
     getAdministrativeRoleDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
-        formData.append('administrative_role', body.administrative_role !== undefined ? body.administrative_role : '');
+        formData.append('company', 'ANS');
+        formData.append(
+          'administrative_role',
+          body.administrative_role !== undefined
+            ? body.administrative_role
+            : '',
+        );
         return {
           url: 'dropdown/administrative_role.php',
           method: 'POST',
@@ -456,7 +468,7 @@ export const baseApi = createApi({
     addHospitalContact: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -502,7 +514,7 @@ export const baseApi = createApi({
     getStockMasterMainDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/stock_master_main.php',
           method: 'POST',
@@ -514,7 +526,7 @@ export const baseApi = createApi({
     getDepartmentDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         if (body.community_id) {
           formData.append('community_id', body.community_id);
         }
@@ -532,7 +544,7 @@ export const baseApi = createApi({
     getHospitalCategoryDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/hospital_category.php',
           method: 'POST',
@@ -544,7 +556,7 @@ export const baseApi = createApi({
     getSurgicalSpecialityDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         if (body.department_id) {
           formData.append('department_id', body.department_id);
         }
@@ -562,7 +574,7 @@ export const baseApi = createApi({
     getHospitalDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || body.id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -578,7 +590,7 @@ export const baseApi = createApi({
     getProcedureFocusDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('surgery_id', body.surgery_id);
         return {
           url: 'dropdown/procedure_focus.php',
@@ -591,7 +603,7 @@ export const baseApi = createApi({
     getSurgicalRoleDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('community_id', body.community_id);
         return {
           url: 'dropdown/surgical_role.php',
@@ -604,7 +616,7 @@ export const baseApi = createApi({
     getContactTierDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/contact_tier.php',
           method: 'POST',
@@ -616,7 +628,7 @@ export const baseApi = createApi({
     getFocusProductDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/focus_product.php',
           method: 'POST',
@@ -628,7 +640,7 @@ export const baseApi = createApi({
     getProductPlanCategoryDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -690,7 +702,7 @@ export const baseApi = createApi({
     getPaymentTermsDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/payment_terms.php',
           method: 'POST',
@@ -717,7 +729,7 @@ export const baseApi = createApi({
     getCustomerTypeDropdown: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/customer_type.php',
           method: 'POST',
@@ -744,7 +756,7 @@ export const baseApi = createApi({
     getHospitalTierDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/hospital_tier.php',
           method: 'POST',
@@ -756,7 +768,7 @@ export const baseApi = createApi({
     getProductOpportunityDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/product_opportunity.php',
           method: 'POST',
@@ -768,9 +780,13 @@ export const baseApi = createApi({
     addHospital: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         Object.keys(body).forEach(key => {
-          if (key !== 'company' && body[key] !== undefined && body[key] !== null) {
+          if (
+            key !== 'company' &&
+            body[key] !== undefined &&
+            body[key] !== null
+          ) {
             if (Array.isArray(body[key])) {
               formData.append(key, JSON.stringify(body[key]));
             } else {
@@ -790,7 +806,7 @@ export const baseApi = createApi({
     getPromotionalActivityTypeDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/promotional_activity_type.php',
           method: 'POST',
@@ -802,7 +818,7 @@ export const baseApi = createApi({
     getPromotionalPurposeDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/promotional_purpose.php',
           method: 'POST',
@@ -814,7 +830,7 @@ export const baseApi = createApi({
     getFieldActivityStatusDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/field_activity_status.php',
           method: 'POST',
@@ -826,9 +842,9 @@ export const baseApi = createApi({
     getPromotionalData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        formData.append('role_id', 'body.role_id');
         if (body?.from_date) {
           formData.append('from_date', String(body.from_date));
         }
@@ -846,8 +862,8 @@ export const baseApi = createApi({
     postPromotionalData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
-        formData.append('id', body.id !== undefined ? String(body.id) : '0');
+        formData.append('company', 'ANS');
+        formData.append('id', String(body.id));
         formData.append('tran_date', body.tran_date || '');
         formData.append('hospital_id', body.hospital_id || '');
         formData.append('community_id', body.community_id || '');
@@ -856,11 +872,14 @@ export const baseApi = createApi({
         formData.append('purpose_id', body.purpose_id || '');
         formData.append('remarks', body.remarks || '');
         formData.append('amount', body.amount || '');
-        formData.append('status_id', body.status_id !== undefined ? String(body.status_id) : '1');
+        formData.append('status_id', String(body.status_id));
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        formData.append('role_id', body.role_id);
 
-        if (body.manager_remarks !== undefined && body.manager_remarks !== null) {
+        if (
+          body.manager_remarks !== undefined &&
+          body.manager_remarks !== null
+        ) {
           formData.append('manager_remarks', body.manager_remarks);
         }
 
@@ -869,9 +888,15 @@ export const baseApi = createApi({
             formData.append('receipt_file', {
               uri: body.receipt_file.uri,
               type: body.receipt_file.type || 'image/jpeg',
-              name: body.receipt_file.fileName || body.receipt_file.name || 'receipt.jpg',
+              name:
+                body.receipt_file.fileName ||
+                body.receipt_file.name ||
+                'receipt.jpg',
             });
-          } else if (typeof body.receipt_file === 'string' && body.receipt_file.length > 0) {
+          } else if (
+            typeof body.receipt_file === 'string' &&
+            body.receipt_file.length > 0
+          ) {
             formData.append('receipt_file', body.receipt_file);
           }
         }
@@ -887,9 +912,9 @@ export const baseApi = createApi({
     getGiveawayData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '');
+        formData.append('role_id', 'body.role_id');
         if (body?.from_date) {
           formData.append('from_date', String(body.from_date));
         }
@@ -907,7 +932,7 @@ export const baseApi = createApi({
     postGiveawayData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('id', body.id !== undefined ? String(body.id) : '0');
         formData.append('tran_date', body.tran_date || '');
         formData.append('hospital_id', body.hospital_id || '');
@@ -917,11 +942,17 @@ export const baseApi = createApi({
         formData.append('qty_requested', body.qty_requested || '');
         formData.append('unit_price', body.unit_price || '');
         formData.append('remarks', body.remarks || '');
-        formData.append('status_id', body.status_id !== undefined ? String(body.status_id) : '1');
+        formData.append(
+          'status_id',
+          body.status_id !== undefined ? String(body.status_id) : '1',
+        );
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        formData.append('role_id', 'body.role_id');
 
-        if (body.manager_remarks !== undefined && body.manager_remarks !== null) {
+        if (
+          body.manager_remarks !== undefined &&
+          body.manager_remarks !== null
+        ) {
           formData.append('manager_remarks', body.manager_remarks);
         }
 
@@ -936,7 +967,7 @@ export const baseApi = createApi({
     getGiveawayCategoryDropdown: builder.mutation({
       query: () => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         return {
           url: 'dropdown/giveaway_category.php',
           method: 'POST',
@@ -948,10 +979,15 @@ export const baseApi = createApi({
     getWorkshopData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
-        if (body.id !== undefined && body.id !== null && String(body.id) !== '0' && String(body.id) !== '') {
+        formData.append('role_id', 'body.role_id');
+        if (
+          body.id !== undefined &&
+          body.id !== null &&
+          String(body.id) !== '0' &&
+          String(body.id) !== ''
+        ) {
           formData.append('id', String(body.id));
         }
         if (body?.from_date) {
@@ -971,8 +1007,13 @@ export const baseApi = createApi({
     postWorkshopData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
-        formData.append('id', body.id !== undefined && body.id !== null && String(body.id) !== '' ? String(body.id) : '0');
+        formData.append('company', 'ANS');
+        formData.append(
+          'id',
+          body.id !== undefined && body.id !== null && String(body.id) !== ''
+            ? String(body.id)
+            : '0',
+        );
         formData.append('title', body.title || '');
         formData.append('date', body.date || '');
         formData.append('hospital_id', body.hospital_id || '');
@@ -1007,11 +1048,28 @@ export const baseApi = createApi({
             : JSON.stringify(body.budget || []),
         );
 
-        formData.append('status_id', body.status_id !== undefined && body.status_id !== null && String(body.status_id) !== '' ? String(body.status_id) : '1');
+        formData.append(
+          'status_id',
+          body.status_id !== undefined &&
+            body.status_id !== null &&
+            String(body.status_id) !== ''
+            ? String(body.status_id)
+            : '1',
+        );
         formData.append('user_id', body.user_id ? String(body.user_id) : '');
-        formData.append('role_id', body.role_id !== undefined && body.role_id !== null && String(body.role_id) !== '' ? String(body.role_id) : '2');
+        formData.append(
+          'role_id',
+          body.role_id !== undefined &&
+            body.role_id !== null &&
+            String(body.role_id) !== ''
+            ? String(body.role_id)
+            : '2',
+        );
 
-        if (body.manager_remarks !== undefined && body.manager_remarks !== null) {
+        if (
+          body.manager_remarks !== undefined &&
+          body.manager_remarks !== null
+        ) {
           formData.append('manager_remarks', String(body.manager_remarks));
         }
 
@@ -1026,10 +1084,15 @@ export const baseApi = createApi({
     getConferenceData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
-        if (body.id !== undefined && body.id !== null && String(body.id) !== '0' && String(body.id) !== '') {
+        formData.append('role_id', 'body.role_id');
+        if (
+          body.id !== undefined &&
+          body.id !== null &&
+          String(body.id) !== '0' &&
+          String(body.id) !== ''
+        ) {
           formData.append('id', String(body.id));
         }
         if (body?.from_date) {
@@ -1049,7 +1112,7 @@ export const baseApi = createApi({
     postConferenceData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('id', body.id !== undefined ? String(body.id) : '0');
         formData.append('activity_type', body.activity_type || '1');
         formData.append('event_name', body.event_name || '');
@@ -1094,11 +1157,17 @@ export const baseApi = createApi({
             : JSON.stringify(body.attendance || []),
         );
 
-        formData.append('status_id', body.status_id !== undefined ? String(body.status_id) : '1');
+        formData.append(
+          'status_id',
+          body.status_id !== undefined ? String(body.status_id) : '1',
+        );
         formData.append('user_id', body.user_id || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '2');
+        formData.append('role_id', 'body.role_id');
 
-        if (body.manager_remarks !== undefined && body.manager_remarks !== null) {
+        if (
+          body.manager_remarks !== undefined &&
+          body.manager_remarks !== null
+        ) {
           formData.append('manager_remarks', body.manager_remarks);
         }
 

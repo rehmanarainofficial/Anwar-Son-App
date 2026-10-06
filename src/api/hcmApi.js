@@ -7,7 +7,7 @@ export const hcmApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('emp_code', body.emp_code);
         formData.append('date', body.date);
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'portal/get_attendence_detail.php',
@@ -28,7 +28,10 @@ export const hcmApi = baseApi.injectEndpoints({
         formData.append('current_location', body.current_location || '');
         formData.append('latitude', body.latitude || '');
         formData.append('longitude', body.longitude || '');
-        formData.append('in_out', body.in_out !== undefined ? String(body.in_out) : '0');
+        formData.append(
+          'in_out',
+          body.in_out !== undefined ? String(body.in_out) : '0',
+        );
         formData.append('status1', '1');
         formData.append('id', '0');
         formData.append('company', 'ANS');
@@ -128,10 +131,18 @@ export const hcmApi = baseApi.injectEndpoints({
         if (body?.to_date) {
           formData.append('to_date', String(body.to_date));
         }
-        if (body?.employee_id !== undefined && body?.employee_id !== null && body?.employee_id !== '') {
+        if (
+          body?.employee_id !== undefined &&
+          body?.employee_id !== null &&
+          body?.employee_id !== ''
+        ) {
           formData.append('employee_id', String(body.employee_id));
         }
-        if (body?.role_id !== undefined && body?.role_id !== null && body?.role_id !== '') {
+        if (
+          body?.role_id !== undefined &&
+          body?.role_id !== null &&
+          body?.role_id !== ''
+        ) {
           formData.append('role_id', String(body.role_id));
         }
         if (body) {
@@ -305,7 +316,7 @@ export const hcmApi = baseApi.injectEndpoints({
       queryFn: async (body, api, extraOptions, baseQuery) => {
         const formData = new FormData();
         formData.append('emp_id', String(body.emp_id || ''));
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'leave/get_employee_leave_history.php',
@@ -324,7 +335,7 @@ export const hcmApi = baseApi.injectEndpoints({
         formData.append('emp_id', String(body.emp_id || ''));
         formData.append('reason', String(body.reason || ''));
         formData.append('leave_type', String(body.leave_type || ''));
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'leave/post_employee_leave.php',
@@ -339,7 +350,7 @@ export const hcmApi = baseApi.injectEndpoints({
       queryFn: async (body, api, extraOptions, baseQuery) => {
         const formData = new FormData();
         formData.append('emp_id', String(body.emp_id || ''));
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'leave/get_emp_self_leaves.php',
@@ -357,7 +368,7 @@ export const hcmApi = baseApi.injectEndpoints({
         formData.append('employee_id', String(body.employee_id || ''));
         formData.append('from_date', String(body.from_date || ''));
         formData.append('to_date', String(body.to_date || ''));
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'leave/dept_leave_approval.php',
@@ -373,7 +384,7 @@ export const hcmApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('emp_id', String(body.emp_id || ''));
         formData.append('approve', String(body.approve || ''));
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
 
         const result = await baseQuery({
           url: 'leave/post_leave_approval_manager.php',

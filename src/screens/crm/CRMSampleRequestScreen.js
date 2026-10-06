@@ -134,8 +134,8 @@ const CRMSampleRequestScreen = ({ navigation }) => {
     try {
       const payload = {
         company: 'ANS',
-        user_id: String(userId),
-        role_id: String(user?.role_id || user?.company_role_id || '2'),
+        user_id: userId,
+        role_id: user?.role_id,
       };
 
       const res = await getSampleData(payload).unwrap();
@@ -371,10 +371,10 @@ const CRMSampleRequestScreen = ({ navigation }) => {
 
     const payload = {
       company: 'ANS',
-      id: String(formId || '0'),
-      person_id: user?.person_id || userId || '1',
+      id: String(formId || ''),
+      person_id: user?.person_id ,
       user_id: userId,
-      role_id: String(user?.role_id || '2'),
+      role_id: String(user?.role_id || ''),
       branch_code: user?.branch_code || '',
       ord_date: todayStr,
       hospital_name: hospitalName || '',

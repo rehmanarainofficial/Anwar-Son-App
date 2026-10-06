@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -91,7 +91,6 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
   const isRole3 = String(user?.role_id) === '3';
 
-  // Route Status Filter Initializer
   const routeStatusId = route?.params?.statusId;
   const [selectedStatusFilter, setSelectedStatusFilter] = useState(
     routeStatusId ? String(routeStatusId) : 'all',
@@ -174,7 +173,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     try {
       const payload = {
         user_id: user.id,
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
       };
       if (fromDate) {
         payload.from_date = formatToYYYYMMDD(fromDate);
@@ -196,12 +195,10 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     }
   }, [user?.id, user?.role_id, fromDate, toDate, getPromotionalData]);
 
-  // Initial Data Fetch
   useEffect(() => {
     loadPromotionalData();
   }, [loadPromotionalData]);
 
-  // Load Dropdown Options on mount
   useEffect(() => {
     if (user?.id) {
       getHospital({ id: user.id });
@@ -260,7 +257,6 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     setIsModalVisible(true);
   };
 
-  // Open Dedicated Manager Status Modal (for non-role 3 managers)
   const openManagerStatusModal = item => {
     setSelectedManagerItem(item);
     setManagerStatusId(String(item.status_id || '3'));
@@ -447,19 +443,14 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         receipt_file: selectedManagerItem.receipt_file || '',
         status_id: managerStatusId,
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 
       const response = await postPromotionalData(payload).unwrap();
 
       const isSuccess = response && (
-        response.status === 'true' ||
-        response.status === true ||
-        response.status === 1 ||
-        response.status === '1' ||
-        response.status === 'success' ||
-        response.success === true
+        response.status === 'true' || response.status === true
       );
 
       if (isSuccess) {
@@ -489,8 +480,8 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             if (selectedManagerItem.remarks && selectedManagerItem.remarks.trim()) promoCommentParts.push(`Remarks: ${selectedManagerItem.remarks.trim()}`);
             if (managerRemarksText && managerRemarksText.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
 
-            const targetUserId = String(selectedManagerItem?.user_id || user?.id || user?.user_id || '');
-            const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
+            const targetUserId = String(selectedManagerItem?.user_id || '');
+            const targetEmployeeId = String(selectedManagerItem?.employee_id || '');
 
             const expensePayload = {
               company: 'ANS',
@@ -546,9 +537,8 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   // Dropdown Lists Data Formatting
   const hospitalList = (hospRes && (hospRes.data || Array.isArray(hospRes))) ? (Array.isArray(hospRes) ? hospRes : hospRes.data) : [];
   const hospitalOptions = hospitalList.map(h => ({
-    id: String(h.id || h.debtor_no || h.hospital_id || ''),
+    id: String(h.id || ''),
     name: h.name || h.hospital_name || h.title || 'Hospital',
-    debtor_no: h.debtor_no,
   }));
 
   const communityList = (commRes && (commRes.data || Array.isArray(commRes))) ? (Array.isArray(commRes) ? commRes : commRes.data) : [];

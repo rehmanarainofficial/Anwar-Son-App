@@ -152,7 +152,7 @@ export const portalApi = baseApi.injectEndpoints({
     getContactsData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('user_id', body.user_id);
         if (body?.role_id !== undefined && body?.role_id !== null) {
           formData.append('role_id', String(body.role_id));
@@ -160,7 +160,10 @@ export const portalApi = baseApi.injectEndpoints({
         if (body.contact_tier !== undefined && body.contact_tier !== null) {
           formData.append('contact_tier', body.contact_tier);
         }
-        if (body.surgical_speciality !== undefined && body.surgical_speciality !== null) {
+        if (
+          body.surgical_speciality !== undefined &&
+          body.surgical_speciality !== null
+        ) {
           formData.append('surgical_speciality', body.surgical_speciality);
         }
         return {
@@ -176,7 +179,7 @@ export const portalApi = baseApi.injectEndpoints({
     getHospitalData: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         Object.keys(body).forEach(key => {
           if (
             key !== 'company' &&
@@ -282,7 +285,7 @@ export const portalApi = baseApi.injectEndpoints({
         const formData = new FormData();
         formData.append('user_id', body.user_id || '');
         formData.append('company', body.company || '');
-        formData.append('role_id', body.role_id !== undefined ? String(body.role_id) : '');
+        formData.append('role_id', 'body.role_id');
         return {
           url: 'dropdown/salesman.php',
           method: 'POST',
@@ -338,7 +341,7 @@ export const portalApi = baseApi.injectEndpoints({
     getLiveTracking: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('emp_code', body?.emp_code || '');
         formData.append(
           'date',
@@ -357,7 +360,7 @@ export const portalApi = baseApi.injectEndpoints({
     updateLiveTrackingPost: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('code', body?.code || body?.emp_code || '');
         formData.append('latitude', body?.latitude || '');
         formData.append('longitude', body?.longitude || '');
@@ -380,7 +383,7 @@ export const portalApi = baseApi.injectEndpoints({
     getSalesmanFuelSummary: builder.mutation({
       query: body => {
         const formData = new FormData();
-        formData.append('company', 'CRM');
+        formData.append('company', 'ANS');
         formData.append('emp_code', body.emp_code || '');
         formData.append('user_id', body.user_id || '');
         if (body?.role_id !== undefined && body?.role_id !== null) {

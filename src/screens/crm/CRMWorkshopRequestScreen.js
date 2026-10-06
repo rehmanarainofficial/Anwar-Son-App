@@ -117,7 +117,6 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
   const isRole3 = String(user?.role_id) === '3';
 
-  // Route Status Filter Initializer
   const routeStatusId = route?.params?.statusId;
   const [selectedStatusFilter, setSelectedStatusFilter] = useState(
     routeStatusId ? String(routeStatusId) : 'all',
@@ -268,7 +267,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
       try {
         const detailRes = await getWorkshopData({
           user_id: user?.id,
-          role_id: user?.role_id || '2',
+          role_id: user?.role_id || '',
           id: item.id,
         }).unwrap();
 
@@ -349,7 +348,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
       try {
         const detailRes = await getWorkshopData({
           user_id: user?.id,
-          role_id: user?.role_id || '2',
+          role_id: user?.role_id || '',
           id: item.id,
         }).unwrap();
 
@@ -506,7 +505,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         budget: budgetList,
         status_id: effectiveStatusId,
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
       };
 
@@ -620,7 +619,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         budget: selectedManagerItem.budget || [],
         status_id: managerStatusId,
         user_id: user?.id || '',
-        role_id: user?.role_id || '2',
+        role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 
@@ -649,12 +648,11 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
 
             let itemDetail = selectedManagerItem;
-            // If budget array or total_budget is missing from item, fetch from workshop_get_api
             if ((!itemDetail?.budget || !Array.isArray(itemDetail.budget) || itemDetail.budget.length === 0) && itemDetail?.id) {
               try {
                 const detailRes = await getWorkshopData({
                   user_id: user?.id,
-                  role_id: user?.role_id || '2',
+                  role_id: user?.role_id || '',
                   id: itemDetail.id,
                 }).unwrap();
 

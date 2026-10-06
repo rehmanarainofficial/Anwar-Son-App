@@ -89,7 +89,7 @@ const sendLiveLocationUpdate = async empCode => {
       const addressName = await getAddressFromCoords(latitude, longitude);
 
       const formData = new FormData();
-      formData.append('company', 'CRM');
+      formData.append('company', 'ANS');
       formData.append('code', empCode);
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));

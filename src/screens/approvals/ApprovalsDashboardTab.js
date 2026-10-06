@@ -89,7 +89,6 @@ const ApprovalsDashboardTab = ({ navigation }) => {
   const [allExpensesList, setAllExpensesList] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Selected Active Field Activity Category (Default: promotional)
   const [selectedCategoryId, setSelectedCategoryId] = useState('promotional');
 
   const fetchAllActivities = useCallback(async () => {
@@ -105,8 +104,8 @@ const ApprovalsDashboardTab = ({ navigation }) => {
 
     const payload = {
       user_id: user.id,
-      role_id: user?.role_id !== undefined ? String(user.role_id) : '2',
-      company: 'CRM',
+      role_id: user?.role_id,
+      company: 'ANS',
       from_date: formatToYYYYMMDD(from),
       to_date: formatToYYYYMMDD(to),
     };
@@ -129,9 +128,11 @@ const ApprovalsDashboardTab = ({ navigation }) => {
           company: 'ANS',
           from_date: formatToYYYYMMDD(from),
           to_date: formatToYYYYMMDD(to),
-          employee_id: String(user?.employee_id || user?.id || ''),
+          employee_id: String(user?.employee_id || ''),
         }).unwrap(),
       ]);
+      console.log("resPromo", resPromo);
+
 
       if (resPromo.status === 'fulfilled' && resPromo.value) {
         setPromoList(

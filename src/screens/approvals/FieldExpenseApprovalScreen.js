@@ -36,7 +36,6 @@ export default function FieldExpenseApprovalScreen({ navigation, route }) {
   const initialCategory = route?.params?.selectedCategory || 'All';
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
 
-  // Status Filter: 'pending' | 'approved' | 'all'
   const [statusFilter, setStatusFilter] = useState('pending');
 
   // Inquiry State
@@ -174,7 +173,7 @@ export default function FieldExpenseApprovalScreen({ navigation, route }) {
                 company: 'ANS',
                 trans_no: item.trans_no,
                 type: String(item.type !== undefined ? item.type : '1'),
-                approval: approvalValue, // '0' for Approved, '1' for Unapproved
+                approval: approvalValue,
               }).unwrap();
 
               Toast.show({
@@ -757,7 +756,6 @@ export default function FieldExpenseApprovalScreen({ navigation, route }) {
         </ScrollView>
       </View>
 
-      {/* Status Filter Tabs (Pending, Approved, All) */}
       <View
         style={[
           styles.tabContainer,

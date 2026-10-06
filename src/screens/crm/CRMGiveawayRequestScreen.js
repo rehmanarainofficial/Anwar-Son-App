@@ -87,7 +87,6 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
   const isRole3 = String(user?.role_id) === '3';
 
-  // Route Status Filter Initializer
   const routeStatusId = route?.params?.statusId;
   const [selectedStatusFilter, setSelectedStatusFilter] = useState(
     routeStatusId ? String(routeStatusId) : 'all',

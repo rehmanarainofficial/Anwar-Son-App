@@ -145,7 +145,7 @@ const CRMCustomerSalesScreen = () => {
     try {
       const companyCode = user?.company_user_code || '';
       const userId = user?.company_user_id || '';
-      const roleId = user?.role_id || '2';
+      const roleId = user?.role_id || '';
 
       // 1. Salesman (only fetch if allowed)
       if (showSalesman) {
