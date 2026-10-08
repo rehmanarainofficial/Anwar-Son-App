@@ -20,7 +20,11 @@ import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
+import {
+  CustomDatePicker,
+  SearchableDropdown,
+  DateFilter,
+} from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
@@ -79,12 +83,12 @@ const STATUS_OPTIONS_MANAGER = [
 ];
 
 const STATUS_MAP = {
-  '1': { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
-  '2': { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
-  '3': { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
-  '4': { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
-  '5': { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
-  '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
+  1: { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
+  2: { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
+  3: { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
+  4: { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
+  5: { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
+  6: { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
 };
 
 const CRMPromotionalRequestScreen = ({ navigation, route }) => {
@@ -92,7 +96,10 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
   const insets = useSafeAreaInsets();
-  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
+  );
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -140,7 +147,8 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Manager Status Modal State (For role_id !== 3 manager status updates)
-  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] = useState(false);
+  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] =
+    useState(false);
   const [selectedManagerItem, setSelectedManagerItem] = useState(null);
   const [managerStatusId, setManagerStatusId] = useState('3');
   const [managerRemarksText, setManagerRemarksText] = useState('');
@@ -148,12 +156,20 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   const [formCreatedBy, setFormCreatedBy] = useState(null);
 
   // API Hooks
-  const [getPromotionalData, { isLoading: dataLoading }] = useGetPromotionalDataMutation();
-  const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
-  const [getCommunityDropdown, { data: commRes, isLoading: commLoading }] = useGetCommunityDropdownMutation();
-  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] = useGetHospitalContactsMutation();
-  const [getActivityTypeDropdown, { data: activityRes, isLoading: activityLoading }] = useGetPromotionalActivityTypeDropdownMutation();
-  const [getPurposeDropdown, { data: purposeRes, isLoading: purposeLoading }] = useGetPromotionalPurposeDropdownMutation();
+  const [getPromotionalData, { isLoading: dataLoading }] =
+    useGetPromotionalDataMutation();
+  const [getHospital, { data: hospRes, isLoading: hospLoading }] =
+    useGetHospitalMutation();
+  const [getCommunityDropdown, { data: commRes, isLoading: commLoading }] =
+    useGetCommunityDropdownMutation();
+  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] =
+    useGetHospitalContactsMutation();
+  const [
+    getActivityTypeDropdown,
+    { data: activityRes, isLoading: activityLoading },
+  ] = useGetPromotionalActivityTypeDropdownMutation();
+  const [getPurposeDropdown, { data: purposeRes, isLoading: purposeLoading }] =
+    useGetPromotionalPurposeDropdownMutation();
   const [postPromotionalData] = usePostPromotionalDataMutation();
   const [postFieldExpensePayments] = usePostOutstationExpenseClaimMutation();
 
@@ -190,7 +206,11 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
       const res = await getPromotionalData(payload).unwrap();
 
-      if (res && (res.status === 'true' || res.status === true) && Array.isArray(res.data)) {
+      if (
+        res &&
+        (res.status === 'true' || res.status === true) &&
+        Array.isArray(res.data)
+      ) {
         setPromotionalList(res.data);
       } else {
         setPromotionalList([]);
@@ -213,7 +233,14 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
       getPurposeDropdown({});
       getHospitalContacts({ user_id: user.id });
     }
-  }, [user?.id, getHospital, getCommunityDropdown, getActivityTypeDropdown, getPurposeDropdown, getHospitalContacts]);
+  }, [
+    user?.id,
+    getHospital,
+    getCommunityDropdown,
+    getActivityTypeDropdown,
+    getPurposeDropdown,
+    getHospitalContacts,
+  ]);
 
   // Pull to refresh handler
   const handleRefresh = async () => {
@@ -313,19 +340,35 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
   const handleSaveForm = async () => {
     if (!selectedHospitalId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a Hospital.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Hospital.',
+      });
       return;
     }
     if (!selectedActivityTypeId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select Activity Type.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select Activity Type.',
+      });
       return;
     }
     if (!selectedPurposeId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select Purpose.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select Purpose.',
+      });
       return;
     }
     if (!amount.trim()) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter Amount.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter Amount.',
+      });
       return;
     }
 
@@ -346,37 +389,70 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         amount: amount,
         receipt_file: receiptFile,
         status_id: effectiveStatusId,
-        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.id || ''),
+        user_id:
+          String(effectiveStatusId) === '6' && formCreatedBy
+            ? formCreatedBy
+            : user?.id || '',
         role_id: user?.role_id || '',
-        manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
+        manager_remarks: isRole3
+          ? formMode === 'update'
+            ? managerRemarks
+            : null
+          : managerRemarks,
       };
 
-      console.log('📌 [PROMOTIONAL FORM SUBMIT] Status:', effectiveStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [PROMOTIONAL FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [PROMOTIONAL FORM SUBMIT] Status:',
+        effectiveStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [PROMOTIONAL FORM SUBMIT] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postPromotionalData(payload).unwrap();
       console.log('📥 [PROMOTIONAL FORM SUBMIT RESPONSE]:', response);
 
-      const isSuccess = response && response.status === 'true' || response.status === true;
+      const isSuccess =
+        (response && response.status === 'true') || response.status === true;
 
       if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: formMode === 'update' ? 'Activity Updated' : 'Activity Saved',
-          text2: response?.message || 'Promotional record processed successfully.',
+          text2:
+            response?.message || 'Promotional record processed successfully.',
         });
 
         if (String(effectiveStatusId) === '6') {
           try {
             const currentDate = formatToYYYYMMDD(new Date());
             const loginUserId = user?.user_id || '';
-            const parsedAmount = parseFloat(String(amount).replace(/,/g, '')) || 0;
+            const parsedAmount =
+              parseFloat(String(amount).replace(/,/g, '')) || 0;
 
-            const hospName = hospitalOptions.find(h => String(h.id) === String(selectedHospitalId))?.name || '';
-            const commName = communityOptions.find(c => String(c.id) === String(selectedCommunityId))?.name || '';
-            const contName = contactOptions.find(c => String(c.id) === String(selectedContactId))?.name || '';
-            const actName = activityTypeOptions.find(a => String(a.id) === String(selectedActivityTypeId))?.name || '';
-            const purpName = purposeOptions.find(p => String(p.id) === String(selectedPurposeId))?.name || '';
+            const hospName =
+              hospitalOptions.find(
+                h => String(h.id) === String(selectedHospitalId),
+              )?.name || '';
+            const commName =
+              communityOptions.find(
+                c => String(c.id) === String(selectedCommunityId),
+              )?.name || '';
+            const contName =
+              contactOptions.find(
+                c => String(c.id) === String(selectedContactId),
+              )?.name || '';
+            const actName =
+              activityTypeOptions.find(
+                a => String(a.id) === String(selectedActivityTypeId),
+              )?.name || '';
+            const purpName =
+              purposeOptions.find(
+                p => String(p.id) === String(selectedPurposeId),
+              )?.name || '';
 
             const memoParts = [];
             if (hospName) memoParts.push(`Hospital: ${hospName}`);
@@ -384,7 +460,10 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             if (contName) memoParts.push(`Contact: ${contName}`);
             if (actName) memoParts.push(`Activity: ${actName}`);
             if (purpName) memoParts.push(`Purpose: ${purpName}`);
-            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Promotional Activity';
+            const lineMemo =
+              memoParts.length > 0
+                ? memoParts.join(' | ')
+                : 'Promotional Activity';
 
             const promoCommentParts = [
               loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
@@ -395,10 +474,17 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             if (contName) promoCommentParts.push(`Contact: ${contName}`);
             if (actName) promoCommentParts.push(`Activity: ${actName}`);
             if (purpName) promoCommentParts.push(`Purpose: ${purpName}`);
-            if (remarks && remarks.trim()) promoCommentParts.push(`Remarks: ${remarks.trim()}`);
-            if (managerRemarks && managerRemarks.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
+            if (remarks && remarks.trim())
+              promoCommentParts.push(`Remarks: ${remarks.trim()}`);
+            if (managerRemarks && managerRemarks.trim())
+              promoCommentParts.push(
+                `Manager Remarks: ${managerRemarks.trim()}`,
+              );
 
-            const targetUserId = (formMode === 'update' && formCreatedBy) ? formCreatedBy : String(user?.user_id || user?.id || '');
+            const targetUserId =
+              formMode === 'update' && formCreatedBy
+                ? formCreatedBy
+                : String(user?.user_id || user?.id || '');
 
             const expensePayload = {
               company: 'ANS',
@@ -457,9 +543,11 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
     setIsManagerSubmitting(true);
 
     try {
-      const cardUserId = (String(managerStatusId) === '6' && (selectedManagerItem?.created_by || selectedManagerItem?.user_id))
-        ? (selectedManagerItem.created_by || selectedManagerItem.user_id)
-        : (user?.user_id || user?.id || '');
+      const cardUserId =
+        String(managerStatusId) === '6' &&
+        (selectedManagerItem?.created_by || selectedManagerItem?.user_id)
+          ? selectedManagerItem.created_by || selectedManagerItem.user_id
+          : user?.user_id || user?.id || '';
       const payload = {
         company: 'CRM',
         id: selectedManagerItem.id,
@@ -478,16 +566,26 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         manager_remarks: managerRemarksText,
       };
 
-      console.log('📌 [APPROVAL STATUS UPDATE] Promotional ID:', selectedManagerItem.id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Promotional ID:',
+        selectedManagerItem.id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Status:',
+        managerStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postPromotionalData(payload).unwrap();
       console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
-      const isSuccess = response && (
-        response.status === 'true' || response.status === true
-      );
+      const isSuccess =
+        response && (response.status === 'true' || response.status === true);
 
       if (isSuccess) {
         Toast.show({
@@ -501,13 +599,42 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
           try {
             const currentDate = formatToYYYYMMDD(new Date());
             const loginUserId = user?.user_id || user?.username || '';
-            const parsedAmount = parseFloat(String(selectedManagerItem?.amount || '0').replace(/,/g, '')) || 0;
+            const parsedAmount =
+              parseFloat(
+                String(selectedManagerItem?.amount || '0').replace(/,/g, ''),
+              ) || 0;
 
-            const hospName = selectedManagerItem.hospital_name || hospitalOptions.find(h => String(h.id) === String(selectedManagerItem.hospital_id))?.name || '';
-            const commName = selectedManagerItem.community || communityOptions.find(c => String(c.id) === String(selectedManagerItem.community_id))?.name || '';
-            const contName = selectedManagerItem.contact_person || contactOptions.find(c => String(c.id) === String(selectedManagerItem.contact_id))?.name || '';
-            const actName = selectedManagerItem.activity_name || activityTypeOptions.find(a => String(a.id) === String(selectedManagerItem.activity_type_id))?.name || '';
-            const purpName = selectedManagerItem.purpose_name || purposeOptions.find(p => String(p.id) === String(selectedManagerItem.purpose_id))?.name || '';
+            const hospName =
+              selectedManagerItem.hospital_name ||
+              hospitalOptions.find(
+                h => String(h.id) === String(selectedManagerItem.hospital_id),
+              )?.name ||
+              '';
+            const commName =
+              selectedManagerItem.community ||
+              communityOptions.find(
+                c => String(c.id) === String(selectedManagerItem.community_id),
+              )?.name ||
+              '';
+            const contName =
+              selectedManagerItem.contact_person ||
+              contactOptions.find(
+                c => String(c.id) === String(selectedManagerItem.contact_id),
+              )?.name ||
+              '';
+            const actName =
+              selectedManagerItem.activity_name ||
+              activityTypeOptions.find(
+                a =>
+                  String(a.id) === String(selectedManagerItem.activity_type_id),
+              )?.name ||
+              '';
+            const purpName =
+              selectedManagerItem.purpose_name ||
+              purposeOptions.find(
+                p => String(p.id) === String(selectedManagerItem.purpose_id),
+              )?.name ||
+              '';
 
             const memoParts = [];
             if (hospName) memoParts.push(`Hospital: ${hospName}`);
@@ -515,23 +642,46 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             if (contName) memoParts.push(`Contact: ${contName}`);
             if (actName) memoParts.push(`Activity: ${actName}`);
             if (purpName) memoParts.push(`Purpose: ${purpName}`);
-            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Promotional Activity';
+            const lineMemo =
+              memoParts.length > 0
+                ? memoParts.join(' | ')
+                : 'Promotional Activity';
 
             // Build comments from manager item data
             const promoCommentParts = [
               loginUserId ? `Promotional ${loginUserId}` : 'Promotional',
             ];
-            if (selectedManagerItem.tran_date) promoCommentParts.push(`Date: ${formatToYYYYMMDD(selectedManagerItem.tran_date)}`);
+            if (selectedManagerItem.tran_date)
+              promoCommentParts.push(
+                `Date: ${formatToYYYYMMDD(selectedManagerItem.tran_date)}`,
+              );
             if (hospName) promoCommentParts.push(`Hospital: ${hospName}`);
             if (commName) promoCommentParts.push(`Community: ${commName}`);
             if (contName) promoCommentParts.push(`Contact: ${contName}`);
             if (actName) promoCommentParts.push(`Activity: ${actName}`);
             if (purpName) promoCommentParts.push(`Purpose: ${purpName}`);
-            if (selectedManagerItem.remarks && selectedManagerItem.remarks.trim()) promoCommentParts.push(`Remarks: ${selectedManagerItem.remarks.trim()}`);
-            if (managerRemarksText && managerRemarksText.trim()) promoCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
+            if (
+              selectedManagerItem.remarks &&
+              selectedManagerItem.remarks.trim()
+            )
+              promoCommentParts.push(
+                `Remarks: ${selectedManagerItem.remarks.trim()}`,
+              );
+            if (managerRemarksText && managerRemarksText.trim())
+              promoCommentParts.push(
+                `Manager Remarks: ${managerRemarksText.trim()}`,
+              );
 
-            const targetUserId = String(selectedManagerItem?.created_by || selectedManagerItem?.user_id || '');
-            const targetEmployeeId = String(selectedManagerItem?.employee_id || selectedManagerItem?.created_by || '');
+            const targetUserId = String(
+              selectedManagerItem?.created_by ||
+                selectedManagerItem?.user_id ||
+                '',
+            );
+            const targetEmployeeId = String(
+              selectedManagerItem?.employee_id ||
+                selectedManagerItem?.created_by ||
+                '',
+            );
 
             const expensePayload = {
               company: 'ANS',
@@ -557,10 +707,20 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               filename: null,
             };
 
-            console.log('💰 [PROMOTIONAL FIELD EXPENSE PAYMENTS] user_id:', expensePayload.user_id, '| employee_id:', expensePayload.employee_id);
-            console.log('💰 [PROMOTIONAL FIELD EXPENSE PAYMENTS] Payload:', JSON.stringify(expensePayload, null, 2));
+            console.log(
+              '💰 [PROMOTIONAL FIELD EXPENSE PAYMENTS] user_id:',
+              expensePayload.user_id,
+              '| employee_id:',
+              expensePayload.employee_id,
+            );
+            console.log(
+              '💰 [PROMOTIONAL FIELD EXPENSE PAYMENTS] Payload:',
+              JSON.stringify(expensePayload, null, 2),
+            );
 
-            const expRes = await postFieldExpensePayments(expensePayload).unwrap();
+            const expRes = await postFieldExpensePayments(
+              expensePayload,
+            ).unwrap();
             console.log('📥 [FIELD EXPENSE PAYMENTS RESPONSE]:', expRes);
           } catch (expErr) {
             console.log('❌ Error posting field expense payments:', expErr);
@@ -589,44 +749,90 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
   };
 
   // Dropdown Lists Data Formatting
-  const hospitalList = (hospRes && (hospRes.data || Array.isArray(hospRes))) ? (Array.isArray(hospRes) ? hospRes : hospRes.data) : [];
+  const hospitalList =
+    hospRes && (hospRes.data || Array.isArray(hospRes))
+      ? Array.isArray(hospRes)
+        ? hospRes
+        : hospRes.data
+      : [];
   const hospitalOptions = hospitalList.map(h => ({
     id: String(h.id || h.debtor_no || h.hospital_id || ''),
     name: h.name || h.hospital_name || h.title || h.description || 'Hospital',
     debtor_no: h.debtor_no,
   }));
 
-  const communityList = (commRes && (commRes.data || Array.isArray(commRes))) ? (Array.isArray(commRes) ? commRes : commRes.data) : [];
+  const communityList =
+    commRes && (commRes.data || Array.isArray(commRes))
+      ? Array.isArray(commRes)
+        ? commRes
+        : commRes.data
+      : [];
   const communityOptions = communityList.map(c => ({
-    id: String(c.combo_code !== undefined && c.combo_code !== null ? c.combo_code : (c.id || '')),
+    id: String(
+      c.combo_code !== undefined && c.combo_code !== null
+        ? c.combo_code
+        : c.id || '',
+    ),
     name: c.description || c.name || c.title || 'Community',
     combo_code: c.combo_code,
   }));
 
-  const contactList = (contactRes && (contactRes.data || Array.isArray(contactRes))) ? (Array.isArray(contactRes) ? contactRes : contactRes.data) : [];
+  const contactList =
+    contactRes && (contactRes.data || Array.isArray(contactRes))
+      ? Array.isArray(contactRes)
+        ? contactRes
+        : contactRes.data
+      : [];
   const contactOptions = contactList.map(cp => ({
-    id: String(cp.id !== undefined && cp.id !== null ? cp.id : (cp.contact_id || '')),
-    name: cp.person_name || cp.name || cp.contact_person || cp.contact_name || cp.title || 'Contact Person',
+    id: String(
+      cp.id !== undefined && cp.id !== null ? cp.id : cp.contact_id || '',
+    ),
+    name:
+      cp.person_name ||
+      cp.name ||
+      cp.contact_person ||
+      cp.contact_name ||
+      cp.title ||
+      'Contact Person',
   }));
 
-  const activityTypeList = (activityRes && (activityRes.data || Array.isArray(activityRes))) ? (Array.isArray(activityRes) ? activityRes : activityRes.data) : [];
+  const activityTypeList =
+    activityRes && (activityRes.data || Array.isArray(activityRes))
+      ? Array.isArray(activityRes)
+        ? activityRes
+        : activityRes.data
+      : [];
   const activityTypeOptions = activityTypeList.map(a => ({
-    id: String(a.id !== undefined && a.id !== null ? a.id : (a.activity_type_id || '')),
-    name: a.activity_name || a.name || a.description || a.title || 'Activity Type',
+    id: String(
+      a.id !== undefined && a.id !== null ? a.id : a.activity_type_id || '',
+    ),
+    name:
+      a.activity_name || a.name || a.description || a.title || 'Activity Type',
   }));
 
-  const purposeList = (purposeRes && (purposeRes.data || Array.isArray(purposeRes))) ? (Array.isArray(purposeRes) ? purposeRes : purposeRes.data) : [];
+  const purposeList =
+    purposeRes && (purposeRes.data || Array.isArray(purposeRes))
+      ? Array.isArray(purposeRes)
+        ? purposeRes
+        : purposeRes.data
+      : [];
   const purposeOptions = purposeList.map(p => ({
-    id: String(p.id !== undefined && p.id !== null ? p.id : (p.purpose_id || '')),
+    id: String(p.id !== undefined && p.id !== null ? p.id : p.purpose_id || ''),
     name: p.purpose_name || p.name || p.description || p.title || 'Purpose',
   }));
 
   // Helper function for status styling
   const renderStatusBadge = statusId => {
-    const info = STATUS_MAP[String(statusId)] || { label: 'Draft', bg: '#FEF3C7', text: '#92400E' };
+    const info = STATUS_MAP[String(statusId)] || {
+      label: 'Draft',
+      bg: '#FEF3C7',
+      text: '#92400E',
+    };
     return (
       <View style={[styles.statusBadge, { backgroundColor: info.bg }]}>
-        <Text style={[styles.statusText, { color: info.text }]}>{info.label}</Text>
+        <Text style={[styles.statusText, { color: info.text }]}>
+          {info.label}
+        </Text>
       </View>
     );
   };
@@ -638,12 +844,21 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         {/* Header Row */}
         <View style={styles.cardHeaderRow}>
           <View style={styles.referenceContainer}>
-            <Icon name="megaphone-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.referenceText}>{item.reference || `PROMO-${item.id}`}</Text>
+            <Icon
+              name="megaphone-outline"
+              size={16}
+              color={theme.colors.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.referenceText}>
+              {item.reference || `PROMO-${item.id}`}
+            </Text>
           </View>
           <View style={styles.headerRightRow}>
             {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.tran_date, false)}</Text>
+            <Text style={styles.cardDateText}>
+              {formatToAsiaDateTime(item.tran_date, false)}
+            </Text>
           </View>
         </View>
 
@@ -651,20 +866,35 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
         {/* Card Body Information */}
         <View style={styles.infoRow}>
-          <Icon name="business-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="business-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Hospital:</Text>
           <Text style={styles.infoValue}>{item.hospital_name || 'N/A'}</Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Icon name="person-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="person-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Contact:</Text>
           <Text style={styles.infoValue}>{item.contact_person || 'N/A'}</Text>
         </View>
 
         {item.community ? (
           <View style={styles.infoRow}>
-            <Icon name="map-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="map-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Community:</Text>
             <Text style={styles.infoValue}>{item.community}</Text>
           </View>
@@ -672,31 +902,65 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
         <View style={styles.infoGridRow}>
           <View style={[styles.infoRow, { flex: 1 }]}>
-            <Icon name="sparkles-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="sparkles-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Type:</Text>
-            <Text style={styles.infoValue}>{item.activity_name || item.activity_type_id || 'N/A'}</Text>
+            <Text style={styles.infoValue}>
+              {item.activity_name || item.activity_type_id || 'N/A'}
+            </Text>
           </View>
 
           <View style={[styles.infoRow, { flex: 1 }]}>
-            <Icon name="disc-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="disc-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Purpose:</Text>
-            <Text style={styles.infoValue}>{item.purpose_name || item.purpose_id || 'N/A'}</Text>
+            <Text style={styles.infoValue}>
+              {item.purpose_name || item.purpose_id || 'N/A'}
+            </Text>
           </View>
         </View>
 
         <View style={styles.infoRow}>
-          <Icon name="cash-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="cash-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Amount:</Text>
-          <Text style={[styles.infoValue, { fontWeight: '700', color: theme.colors.primary }]}>
-            Rs. {parseFloat(item.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          <Text
+            style={[
+              styles.infoValue,
+              { fontWeight: '700', color: theme.colors.primary },
+            ]}
+          >
+            Rs.{' '}
+            {parseFloat(item.amount || 0).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+            })}
           </Text>
         </View>
 
-        {(item.created_by_name || item.created_by) ? (
+        {item.created_by_name || item.created_by ? (
           <View style={styles.infoRow}>
-            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="person-circle-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Created By:</Text>
-            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.created_by}</Text>
+            <Text style={[styles.infoValue, { fontWeight: '700' }]}>
+              {item.created_by_name || item.created_by}
+            </Text>
           </View>
         ) : null}
 
@@ -710,15 +974,22 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
         {item.manager_remarks ? (
           <View style={styles.managerRemarksBox}>
             <Text style={styles.managerRemarksLabel}>Manager Remarks:</Text>
-            <Text style={styles.managerRemarksText}>{item.manager_remarks}</Text>
+            <Text style={styles.managerRemarksText}>
+              {item.manager_remarks}
+            </Text>
           </View>
         ) : null}
 
         {item.receipt_file ? (
           <View style={styles.receiptContainer}>
             <Text style={styles.receiptLabel}>Receipt File Attached</Text>
-            {typeof item.receipt_file === 'string' && (item.receipt_file.startsWith('http') || item.receipt_file.startsWith('file')) ? (
-              <Image source={{ uri: item.receipt_file }} style={styles.receiptThumbnail} />
+            {typeof item.receipt_file === 'string' &&
+            (item.receipt_file.startsWith('http') ||
+              item.receipt_file.startsWith('file')) ? (
+              <Image
+                source={{ uri: item.receipt_file }}
+                style={styles.receiptThumbnail}
+              />
             ) : null}
           </View>
         ) : null}
@@ -732,7 +1003,12 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               onPress={() => openFormModal('update', item)}
               activeOpacity={0.7}
             >
-              <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <Icon
+                name="create-outline"
+                size={18}
+                color={theme.colors.primary}
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.updateCardBtnText}>Update</Text>
             </TouchableOpacity>
           ) : (
@@ -742,7 +1018,12 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               onPress={() => openManagerStatusModal(item)}
               activeOpacity={0.7}
             >
-              <Icon name="options-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Icon
+                name="options-outline"
+                size={18}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.statusManagerCardBtnText}>Status</Text>
             </TouchableOpacity>
           )}
@@ -753,15 +1034,31 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
   const filteredPromotionalList = promotionalList.filter(item => {
     if (selectedStatusFilter && selectedStatusFilter !== 'all') {
-      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
-      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
+      const sId = String(
+        item.status_id !== undefined && item.status_id !== null
+          ? item.status_id
+          : '',
+      ).trim();
+      const statusName = String(item.status || item.status_name || '')
+        .trim()
+        .toLowerCase();
 
-      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
-      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
-      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
-      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
-      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
-      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
+      if (selectedStatusFilter === '1')
+        return sId === '1' || statusName === 'draft';
+      if (selectedStatusFilter === '2')
+        return (
+          sId === '2' ||
+          statusName === 'submit for approval' ||
+          statusName === 'pending'
+        );
+      if (selectedStatusFilter === '3')
+        return sId === '3' || statusName === 'approved';
+      if (selectedStatusFilter === '4')
+        return sId === '4' || statusName === 'rejected';
+      if (selectedStatusFilter === '5')
+        return sId === '5' || statusName === 'resubmit';
+      if (selectedStatusFilter === '6')
+        return sId === '6' || statusName === 'completed';
 
       return sId === String(selectedStatusFilter);
     }
@@ -789,7 +1086,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
       {dataLoading && !isRefreshing ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loaderText}>Loading promotional activities...</Text>
+          <Text style={styles.loaderText}>
+            Loading promotional activities...
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -806,18 +1105,30 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Icon name="megaphone-outline" size={48} color={theme.colors.textSecondary} />
+              <Icon
+                name="megaphone-outline"
+                size={48}
+                color={theme.colors.textSecondary}
+              />
               <Text style={styles.emptyTitle}>No Promotional Activities</Text>
               <Text style={styles.emptySubtext}>
-                Tap the (+) icon in the top right header to add a new promotional request.
+                Tap the (+) icon in the top right header to add a new
+                promotional request.
               </Text>
               <TouchableOpacity
                 style={styles.addFirstBtn}
                 onPress={() => openFormModal('add')}
                 activeOpacity={0.8}
               >
-                <Icon name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.addFirstBtnText}>Add Promotional Activity</Text>
+                <Icon
+                  name="add"
+                  size={20}
+                  color="#FFFFFF"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.addFirstBtnText}>
+                  Add Promotional Activity
+                </Text>
               </TouchableOpacity>
             </View>
           }
@@ -868,7 +1179,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
 
               <View style={styles.modalHeaderTitleContainer}>
                 <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
-                  {formMode === 'update' ? 'Update Promotional Activity' : 'Add Promotional Activity'}
+                  {formMode === 'update'
+                    ? 'Update Promotional Activity'
+                    : 'Add Promotional Activity'}
                 </Text>
               </View>
 
@@ -883,7 +1196,10 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalCard}>
               {/* Date Input */}
               <Text style={styles.fieldLabel}>
@@ -894,8 +1210,14 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.dateText}>{requestDate || 'Select Date'}</Text>
-                <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.dateText}>
+                  {requestDate || 'Select Date'}
+                </Text>
+                <Icon
+                  name="calendar-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
 
               {/* Hospital Dropdown */}
@@ -978,7 +1300,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Status"
                   placeholder="Select Status..."
-                  data={isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER}
+                  data={
+                    isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER
+                  }
                   idKey="id"
                   labelKey="name"
                   selectedId={selectedStatusId}
@@ -988,7 +1312,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               </View>
 
               {/* Remarks Text Input */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Remarks</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Remarks
+              </Text>
               <TextInput
                 style={styles.textArea}
                 placeholder="Remarks or activity details..."
@@ -1034,7 +1360,7 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
               </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Amount e.g. 1000"
+                placeholder="Amount  1000"
                 placeholderTextColor={theme.colors.textSecondary}
                 keyboardType="numeric"
                 value={amount}
@@ -1048,20 +1374,36 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                   onPress={handlePickReceipt}
                   activeOpacity={0.8}
                 >
-                  <Icon name="cloud-upload-outline" size={20} color="#854D0E" style={{ marginRight: 8 }} />
+                  <Icon
+                    name="cloud-upload-outline"
+                    size={20}
+                    color="#854D0E"
+                    style={{ marginRight: 8 }}
+                  />
                   <Text style={styles.uploadBtnText}>
-                    {receiptFile ? 'Change Receipt Photo' : 'Upload Receipt Photo'}
+                    {receiptFile
+                      ? 'Change Receipt Photo'
+                      : 'Upload Receipt Photo'}
                   </Text>
                 </TouchableOpacity>
 
                 {receiptFile ? (
                   <View style={styles.receiptPreviewRow}>
                     {typeof receiptFile === 'object' && receiptFile.uri ? (
-                      <Image source={{ uri: receiptFile.uri }} style={styles.receiptImage} />
-                    ) : typeof receiptFile === 'string' && receiptFile.length > 0 ? (
-                      <Image source={{ uri: receiptFile }} style={styles.receiptImage} />
+                      <Image
+                        source={{ uri: receiptFile.uri }}
+                        style={styles.receiptImage}
+                      />
+                    ) : typeof receiptFile === 'string' &&
+                      receiptFile.length > 0 ? (
+                      <Image
+                        source={{ uri: receiptFile }}
+                        style={styles.receiptImage}
+                      />
                     ) : (
-                      <Text style={styles.receiptAttachedText}>File attached</Text>
+                      <Text style={styles.receiptAttachedText}>
+                        File attached
+                      </Text>
                     )}
                     <TouchableOpacity
                       onPress={() => setReceiptFile(null)}
@@ -1085,9 +1427,16 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Icon name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Icon
+                        name="checkmark-done-outline"
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
                       <Text style={styles.submitText}>
-                        {formMode === 'update' ? 'Update Activity' : 'Save Promotional Activity'}
+                        {formMode === 'update'
+                          ? 'Update Activity'
+                          : 'Save Promotional Activity'}
                       </Text>
                     </>
                   )}
@@ -1110,19 +1459,34 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             style={styles.statusModalBg}
             onPress={() => setIsManagerStatusModalVisible(false)}
           />
-          <View style={[styles.statusModalSheet, { backgroundColor: theme.colors.surface }]}>
-            <View style={[styles.modalSheetHandle, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.statusModalTitle, { color: theme.colors.text }]}>
+          <View
+            style={[
+              styles.statusModalSheet,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalSheetHandle,
+                { backgroundColor: theme.colors.border },
+              ]}
+            />
+            <Text
+              style={[styles.statusModalTitle, { color: theme.colors.text }]}
+            >
               Update Activity Status
             </Text>
 
             {selectedManagerItem ? (
               <View style={styles.managerSummaryBox}>
                 <Text style={styles.summaryRefText}>
-                  {selectedManagerItem.reference || `PROMO-${selectedManagerItem.id}`} - {selectedManagerItem.hospital_name || 'Hospital'}
+                  {selectedManagerItem.reference ||
+                    `PROMO-${selectedManagerItem.id}`}{' '}
+                  - {selectedManagerItem.hospital_name || 'Hospital'}
                 </Text>
                 <Text style={styles.summaryAmountText}>
-                  Amount: Rs. {parseFloat(selectedManagerItem.amount || 0).toLocaleString()}
+                  Amount: Rs.{' '}
+                  {parseFloat(selectedManagerItem.amount || 0).toLocaleString()}
                 </Text>
               </View>
             ) : null}
@@ -1142,7 +1506,9 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
             </View>
 
             {/* Manager Remarks Input */}
-            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Manager Remarks</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
+              Manager Remarks
+            </Text>
             <TextInput
               style={styles.textArea}
               placeholder="Enter remarks for status change..."
@@ -1165,8 +1531,15 @@ const CRMPromotionalRequestScreen = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Icon name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.saveManagerStatusBtnText}>Update Status</Text>
+                  <Icon
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.saveManagerStatusBtnText}>
+                    Update Status
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

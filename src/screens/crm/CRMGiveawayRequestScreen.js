@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -18,7 +23,11 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
+import {
+  CustomDatePicker,
+  SearchableDropdown,
+  DateFilter,
+} from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
@@ -75,12 +84,12 @@ const STATUS_OPTIONS_MANAGER = [
 ];
 
 const STATUS_MAP = {
-  '1': { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
-  '2': { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
-  '3': { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
-  '4': { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
-  '5': { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
-  '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
+  1: { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
+  2: { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
+  3: { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
+  4: { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
+  5: { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
+  6: { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
 };
 
 const CRMGiveawayRequestScreen = ({ navigation, route }) => {
@@ -88,7 +97,10 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
   const insets = useSafeAreaInsets();
-  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
+  );
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -136,18 +148,24 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Manager Status Modal State (For non-role 3 status updates)
-  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] = useState(false);
+  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] =
+    useState(false);
   const [selectedManagerItem, setSelectedManagerItem] = useState(null);
   const [managerStatusId, setManagerStatusId] = useState('3');
   const [managerRemarksText, setManagerRemarksText] = useState('');
   const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
   // API Hooks
-  const [getGiveawayData, { isLoading: dataLoading }] = useGetGiveawayDataMutation();
-  const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
-  const [getCommunityDropdown, { data: commRes, isLoading: commLoading }] = useGetCommunityDropdownMutation();
-  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] = useGetHospitalContactsMutation();
-  const [getGiveawayCategory, { data: stockRes, isLoading: stockLoading }] = useGetGiveawayCategoryDropdownMutation();
+  const [getGiveawayData, { isLoading: dataLoading }] =
+    useGetGiveawayDataMutation();
+  const [getHospital, { data: hospRes, isLoading: hospLoading }] =
+    useGetHospitalMutation();
+  const [getCommunityDropdown, { data: commRes, isLoading: commLoading }] =
+    useGetCommunityDropdownMutation();
+  const [getHospitalContacts, { data: contactRes, isLoading: contactLoading }] =
+    useGetHospitalContactsMutation();
+  const [getGiveawayCategory, { data: stockRes, isLoading: stockLoading }] =
+    useGetGiveawayCategoryDropdownMutation();
   const [postGiveawayData] = usePostGiveawayDataMutation();
 
   // Header options with (+) button on the right
@@ -183,7 +201,11 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
       const res = await getGiveawayData(payload).unwrap();
 
-      if (res && (res.status === 'true' || res.status === true) && Array.isArray(res.data)) {
+      if (
+        res &&
+        (res.status === 'true' || res.status === true) &&
+        Array.isArray(res.data)
+      ) {
         setGiveawayList(res.data);
       } else {
         setGiveawayList([]);
@@ -207,7 +229,13 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
       getHospitalContacts({ user_id: user.id });
       getGiveawayCategory({});
     }
-  }, [user?.id, getHospital, getCommunityDropdown, getHospitalContacts, getGiveawayCategory]);
+  }, [
+    user?.id,
+    getHospital,
+    getCommunityDropdown,
+    getHospitalContacts,
+    getGiveawayCategory,
+  ]);
 
   // Pull to refresh handler
   const handleRefresh = async () => {
@@ -312,15 +340,27 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
   // Save / Update Handler from Main Form Modal
   const handleSaveForm = async () => {
     if (!selectedHospitalId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a Hospital.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Hospital.',
+      });
       return;
     }
     if (!selectedStockId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a Stock/Giveaway Item.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Stock/Giveaway Item.',
+      });
       return;
     }
     if (!qtyRequested.trim() || parseFloat(qtyRequested) <= 0) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter valid requested quantity.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter valid requested quantity.',
+      });
       return;
     }
 
@@ -341,16 +381,31 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         status_id: selectedStatusId || (isRole3 ? '1' : '3'),
         user_id: user?.id || '',
         role_id: user?.role_id || '',
-        manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
+        manager_remarks: isRole3
+          ? formMode === 'update'
+            ? managerRemarks
+            : null
+          : managerRemarks,
       };
 
-      console.log('📌 [GIVEAWAY FORM SUBMIT] Status:', payload.status_id, '| user_id sent:', payload.user_id);
-      console.log('📌 [GIVEAWAY FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [GIVEAWAY FORM SUBMIT] Status:',
+        payload.status_id,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [GIVEAWAY FORM SUBMIT] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postGiveawayData(payload).unwrap();
       console.log('📥 [GIVEAWAY FORM SUBMIT RESPONSE]:', response);
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      if (
+        response &&
+        (response.status === 'true' || response.status === true)
+      ) {
         Toast.show({
           type: 'success',
           text1: formMode === 'update' ? 'Giveaway Updated' : 'Giveaway Saved',
@@ -400,14 +455,28 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         manager_remarks: managerRemarksText,
       };
 
-      console.log('📌 [APPROVAL STATUS UPDATE] Giveaway ID:', selectedManagerItem.id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Giveaway ID:',
+        selectedManagerItem.id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Status:',
+        managerStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postGiveawayData(payload).unwrap();
       console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
-      if (response && (response.status === 'true' || response.status === true)) {
+      if (
+        response &&
+        (response.status === 'true' || response.status === true)
+      ) {
         Toast.show({
           type: 'success',
           text1: 'Status Updated',
@@ -435,16 +504,36 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
   };
 
   // Dropdown Lists Data Formatting
-  const hospitalList = (hospRes && (hospRes.data || Array.isArray(hospRes))) ? (Array.isArray(hospRes) ? hospRes : hospRes.data) : [];
+  const hospitalList =
+    hospRes && (hospRes.data || Array.isArray(hospRes))
+      ? Array.isArray(hospRes)
+        ? hospRes
+        : hospRes.data
+      : [];
   const hospitalOptions = hospitalList.map(h => ({
     id: String(h.id || h.debtor_no || h.hospital_id || ''),
     name: h.name || h.hospital_name || h.title || 'Hospital',
     debtor_no: h.debtor_no,
   }));
 
-  const communityList = (commRes && (commRes.data || Array.isArray(commRes))) ? (Array.isArray(commRes) ? commRes : commRes.data) : [];
-  const contactList = (contactRes && (contactRes.data || Array.isArray(contactRes))) ? (Array.isArray(contactRes) ? contactRes : contactRes.data) : [];
-  const stockList = (stockRes && (stockRes.data || Array.isArray(stockRes))) ? (Array.isArray(stockRes) ? stockRes : stockRes.data) : [];
+  const communityList =
+    commRes && (commRes.data || Array.isArray(commRes))
+      ? Array.isArray(commRes)
+        ? commRes
+        : commRes.data
+      : [];
+  const contactList =
+    contactRes && (contactRes.data || Array.isArray(contactRes))
+      ? Array.isArray(contactRes)
+        ? contactRes
+        : contactRes.data
+      : [];
+  const stockList =
+    stockRes && (stockRes.data || Array.isArray(stockRes))
+      ? Array.isArray(stockRes)
+        ? stockRes
+        : stockRes.data
+      : [];
   const stockOptions = stockList.map(st => ({
     id: String(st.id || st.stock_id || st.item_code || ''),
     name: st.description || st.name || st.title || 'Giveaway Item',
@@ -452,10 +541,16 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
   // Helper function for status styling
   const renderStatusBadge = statusId => {
-    const info = STATUS_MAP[String(statusId)] || { label: 'Draft', bg: '#FEF3C7', text: '#92400E' };
+    const info = STATUS_MAP[String(statusId)] || {
+      label: 'Draft',
+      bg: '#FEF3C7',
+      text: '#92400E',
+    };
     return (
       <View style={[styles.statusBadge, { backgroundColor: info.bg }]}>
-        <Text style={[styles.statusText, { color: info.text }]}>{info.label}</Text>
+        <Text style={[styles.statusText, { color: info.text }]}>
+          {info.label}
+        </Text>
       </View>
     );
   };
@@ -467,12 +562,21 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         {/* Header Row */}
         <View style={styles.cardHeaderRow}>
           <View style={styles.referenceContainer}>
-            <Icon name="gift-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.referenceText}>{item.reference || `GAW-${item.id}`}</Text>
+            <Icon
+              name="gift-outline"
+              size={16}
+              color={theme.colors.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.referenceText}>
+              {item.reference || `GAW-${item.id}`}
+            </Text>
           </View>
           <View style={styles.headerRightRow}>
             {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.tran_date, false)}</Text>
+            <Text style={styles.cardDateText}>
+              {formatToAsiaDateTime(item.tran_date, false)}
+            </Text>
           </View>
         </View>
 
@@ -480,20 +584,35 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
         {/* Card Body Information */}
         <View style={styles.infoRow}>
-          <Icon name="business-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="business-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Hospital:</Text>
           <Text style={styles.infoValue}>{item.hospital_name || 'N/A'}</Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Icon name="person-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="person-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Contact:</Text>
           <Text style={styles.infoValue}>{item.contact_person || 'N/A'}</Text>
         </View>
 
         {item.community ? (
           <View style={styles.infoRow}>
-            <Icon name="map-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="map-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Community:</Text>
             <Text style={styles.infoValue}>{item.community}</Text>
           </View>
@@ -501,31 +620,67 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
         <View style={styles.infoGridRow}>
           <View style={[styles.infoRow, { flex: 1 }]}>
-            <Icon name="cube-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="cube-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Qty:</Text>
-            <Text style={styles.infoValue}>{parseFloat(item.qty_requested || 0)}</Text>
+            <Text style={styles.infoValue}>
+              {parseFloat(item.qty_requested || 0)}
+            </Text>
           </View>
 
           <View style={[styles.infoRow, { flex: 1 }]}>
-            <Icon name="cash-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="cash-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Unit Price:</Text>
-            <Text style={styles.infoValue}>Rs. {parseFloat(item.unit_price || 0).toLocaleString()}</Text>
+            <Text style={styles.infoValue}>
+              Rs. {parseFloat(item.unit_price || 0).toLocaleString()}
+            </Text>
           </View>
         </View>
 
         <View style={styles.infoRow}>
-          <Icon name="wallet-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="wallet-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Total Amount:</Text>
-          <Text style={[styles.infoValue, { fontWeight: '700', color: theme.colors.primary }]}>
-            Rs. {parseFloat(item.amount || (parseFloat(item.qty_requested || 0) * parseFloat(item.unit_price || 0))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          <Text
+            style={[
+              styles.infoValue,
+              { fontWeight: '700', color: theme.colors.primary },
+            ]}
+          >
+            Rs.{' '}
+            {parseFloat(
+              item.amount ||
+                parseFloat(item.qty_requested || 0) *
+                  parseFloat(item.unit_price || 0),
+            ).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </Text>
         </View>
 
-        {(item.created_by_name || item.created_by) ? (
+        {item.created_by_name || item.created_by ? (
           <View style={styles.infoRow}>
-            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="person-circle-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Created By:</Text>
-            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.created_by}</Text>
+            <Text style={[styles.infoValue, { fontWeight: '700' }]}>
+              {item.created_by_name || item.created_by}
+            </Text>
           </View>
         ) : null}
 
@@ -539,7 +694,9 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
         {item.manager_remarks ? (
           <View style={styles.managerRemarksBox}>
             <Text style={styles.managerRemarksLabel}>Manager Remarks:</Text>
-            <Text style={styles.managerRemarksText}>{item.manager_remarks}</Text>
+            <Text style={styles.managerRemarksText}>
+              {item.manager_remarks}
+            </Text>
           </View>
         ) : null}
 
@@ -552,7 +709,12 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
               onPress={() => openFormModal('update', item)}
               activeOpacity={0.7}
             >
-              <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <Icon
+                name="create-outline"
+                size={18}
+                color={theme.colors.primary}
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.updateCardBtnText}>Update</Text>
             </TouchableOpacity>
           ) : (
@@ -562,7 +724,12 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
               onPress={() => openManagerStatusModal(item)}
               activeOpacity={0.7}
             >
-              <Icon name="options-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Icon
+                name="options-outline"
+                size={18}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.statusManagerCardBtnText}>Status</Text>
             </TouchableOpacity>
           )}
@@ -573,15 +740,31 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
   const filteredGiveawayList = giveawayList.filter(item => {
     if (selectedStatusFilter && selectedStatusFilter !== 'all') {
-      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
-      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
+      const sId = String(
+        item.status_id !== undefined && item.status_id !== null
+          ? item.status_id
+          : '',
+      ).trim();
+      const statusName = String(item.status || item.status_name || '')
+        .trim()
+        .toLowerCase();
 
-      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
-      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
-      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
-      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
-      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
-      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
+      if (selectedStatusFilter === '1')
+        return sId === '1' || statusName === 'draft';
+      if (selectedStatusFilter === '2')
+        return (
+          sId === '2' ||
+          statusName === 'submit for approval' ||
+          statusName === 'pending'
+        );
+      if (selectedStatusFilter === '3')
+        return sId === '3' || statusName === 'approved';
+      if (selectedStatusFilter === '4')
+        return sId === '4' || statusName === 'rejected';
+      if (selectedStatusFilter === '5')
+        return sId === '5' || statusName === 'resubmit';
+      if (selectedStatusFilter === '6')
+        return sId === '6' || statusName === 'completed';
 
       return sId === String(selectedStatusFilter);
     }
@@ -626,17 +809,27 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Icon name="gift-outline" size={48} color={theme.colors.textSecondary} />
+              <Icon
+                name="gift-outline"
+                size={48}
+                color={theme.colors.textSecondary}
+              />
               <Text style={styles.emptyTitle}>No Giveaway Requests</Text>
               <Text style={styles.emptySubtext}>
-                Tap the (+) icon in the top right header to add a new giveaway request.
+                Tap the (+) icon in the top right header to add a new giveaway
+                request.
               </Text>
               <TouchableOpacity
                 style={styles.addFirstBtn}
                 onPress={() => openFormModal('add')}
                 activeOpacity={0.8}
               >
-                <Icon name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Icon
+                  name="add"
+                  size={20}
+                  color="#FFFFFF"
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={styles.addFirstBtnText}>Add Giveaway Request</Text>
               </TouchableOpacity>
             </View>
@@ -688,7 +881,9 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
 
               <View style={styles.modalHeaderTitleContainer}>
                 <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
-                  {formMode === 'update' ? 'Update Giveaway Request' : 'Add Giveaway Request'}
+                  {formMode === 'update'
+                    ? 'Update Giveaway Request'
+                    : 'Add Giveaway Request'}
                 </Text>
               </View>
 
@@ -703,7 +898,10 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalCard}>
               {/* Date Input */}
               <Text style={styles.fieldLabel}>
@@ -714,8 +912,14 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.dateText}>{requestDate || 'Select Date'}</Text>
-                <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.dateText}>
+                  {requestDate || 'Select Date'}
+                </Text>
+                <Icon
+                  name="calendar-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
 
               {/* Hospital Dropdown */}
@@ -781,7 +985,9 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Status"
                   placeholder="Select Status..."
-                  data={isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER}
+                  data={
+                    isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER
+                  }
                   idKey="id"
                   labelKey="name"
                   selectedId={selectedStatusId}
@@ -796,7 +1002,7 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
               </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Quantity e.g. 5"
+                placeholder="Quantity  5"
                 placeholderTextColor={theme.colors.textSecondary}
                 keyboardType="numeric"
                 value={qtyRequested}
@@ -804,10 +1010,12 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
               />
 
               {/* Unit Price */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Unit Price (Rs.)</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Unit Price (Rs.)
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Unit Price e.g. 100"
+                placeholder="Unit Price  100"
                 placeholderTextColor={theme.colors.textSecondary}
                 keyboardType="numeric"
                 value={unitPrice}
@@ -815,15 +1023,28 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
               />
 
               {/* Total Amount (Read-only / Auto-calculated) */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Total Amount (Rs.)</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Total Amount (Rs.)
+              </Text>
               <View style={styles.readOnlyBox}>
-                <Text style={[styles.readOnlyText, { fontWeight: '700', color: theme.colors.primary }]}>
-                  {amount ? `Rs. ${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'Rs. 0.00'}
+                <Text
+                  style={[
+                    styles.readOnlyText,
+                    { fontWeight: '700', color: theme.colors.primary },
+                  ]}
+                >
+                  {amount
+                    ? `Rs. ${parseFloat(amount).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                      })}`
+                    : 'Rs. 0.00'}
                 </Text>
               </View>
 
               {/* Remarks Text Input */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Remarks</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Remarks
+              </Text>
               <TextInput
                 style={styles.textArea}
                 placeholder="Remarks or request details..."
@@ -873,9 +1094,16 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Icon name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Icon
+                        name="checkmark-done-outline"
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
                       <Text style={styles.submitText}>
-                        {formMode === 'update' ? 'Update Giveaway Request' : 'Save Giveaway Request'}
+                        {formMode === 'update'
+                          ? 'Update Giveaway Request'
+                          : 'Save Giveaway Request'}
                       </Text>
                     </>
                   )}
@@ -898,19 +1126,39 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
             style={styles.statusModalBg}
             onPress={() => setIsManagerStatusModalVisible(false)}
           />
-          <View style={[styles.statusModalSheet, { backgroundColor: theme.colors.surface }]}>
-            <View style={[styles.modalSheetHandle, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.statusModalTitle, { color: theme.colors.text }]}>
+          <View
+            style={[
+              styles.statusModalSheet,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalSheetHandle,
+                { backgroundColor: theme.colors.border },
+              ]}
+            />
+            <Text
+              style={[styles.statusModalTitle, { color: theme.colors.text }]}
+            >
               Update Giveaway Status
             </Text>
 
             {selectedManagerItem ? (
               <View style={styles.managerSummaryBox}>
                 <Text style={styles.summaryRefText}>
-                  {selectedManagerItem.reference || `GAW-${selectedManagerItem.id}`} - {selectedManagerItem.hospital_name || 'Hospital'}
+                  {selectedManagerItem.reference ||
+                    `GAW-${selectedManagerItem.id}`}{' '}
+                  - {selectedManagerItem.hospital_name || 'Hospital'}
                 </Text>
                 <Text style={styles.summaryAmountText}>
-                  Qty: {parseFloat(selectedManagerItem.qty_requested || 0)} | Amount: Rs. {parseFloat(selectedManagerItem.amount || (parseFloat(selectedManagerItem.qty_requested || 0) * parseFloat(selectedManagerItem.unit_price || 0))).toLocaleString()}
+                  Qty: {parseFloat(selectedManagerItem.qty_requested || 0)} |
+                  Amount: Rs.{' '}
+                  {parseFloat(
+                    selectedManagerItem.amount ||
+                      parseFloat(selectedManagerItem.qty_requested || 0) *
+                        parseFloat(selectedManagerItem.unit_price || 0),
+                  ).toLocaleString()}
                 </Text>
               </View>
             ) : null}
@@ -930,7 +1178,9 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
             </View>
 
             {/* Manager Remarks Input */}
-            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Manager Remarks</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
+              Manager Remarks
+            </Text>
             <TextInput
               style={styles.textArea}
               placeholder="Enter remarks for status change..."
@@ -953,8 +1203,15 @@ const CRMGiveawayRequestScreen = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Icon name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.saveManagerStatusBtnText}>Update Status</Text>
+                  <Icon
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.saveManagerStatusBtnText}>
+                    Update Status
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

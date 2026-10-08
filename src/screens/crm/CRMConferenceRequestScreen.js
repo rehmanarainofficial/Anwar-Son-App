@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -18,7 +23,11 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
+import {
+  CustomDatePicker,
+  SearchableDropdown,
+  DateFilter,
+} from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetStockCategoryMutation,
@@ -87,12 +96,12 @@ const STATUS_OPTIONS_MANAGER = [
 ];
 
 const STATUS_MAP = {
-  '1': { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
-  '2': { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
-  '3': { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
-  '4': { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
-  '5': { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
-  '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
+  1: { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
+  2: { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
+  3: { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
+  4: { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
+  5: { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
+  6: { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
 };
 
 const DEFAULT_AUDIENCE = [
@@ -115,7 +124,10 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
   const insets = useSafeAreaInsets();
-  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
+  );
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -161,7 +173,10 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const [managerRemarks, setManagerRemarks] = useState('');
 
   // Date Picker Modal
-  const [datePickerConfig, setDatePickerConfig] = useState({ visible: false, target: 'start' });
+  const [datePickerConfig, setDatePickerConfig] = useState({
+    visible: false,
+    target: 'start',
+  });
 
   // Dynamic Array States
   const [keyProducts, setKeyProducts] = useState([
@@ -169,7 +184,13 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   ]);
   const [audienceList, setAudienceList] = useState(DEFAULT_AUDIENCE);
   const [materialsList, setMaterialsList] = useState([
-    { id: Date.now() + 100, material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' },
+    {
+      id: Date.now() + 100,
+      material_agenda: '',
+      size_qty: '1',
+      agenda: '',
+      time: '10:00:00',
+    },
   ]);
   const [budgetList, setBudgetList] = useState(DEFAULT_BUDGET);
   const [attendanceList, setAttendanceList] = useState([
@@ -179,14 +200,17 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dedicated Manager Status Modal
-  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] = useState(false);
+  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] =
+    useState(false);
   const [selectedManagerItem, setSelectedManagerItem] = useState(null);
   const [managerStatusId, setManagerStatusId] = useState('3');
   const [managerRemarksText, setManagerRemarksText] = useState('');
   const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
-  const [getConferenceData, { isLoading: dataLoading }] = useGetConferenceDataMutation();
-  const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] = useGetStockCategoryMutation();
+  const [getConferenceData, { isLoading: dataLoading }] =
+    useGetConferenceDataMutation();
+  const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] =
+    useGetStockCategoryMutation();
   const [postConferenceData] = usePostConferenceDataMutation();
   const [postFieldExpensePayments] = usePostOutstationExpenseClaimMutation();
 
@@ -265,7 +289,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
       // Populate basic info from list item first
       setActivityType(String(item.activity_type || '1'));
       setEventName(item.event_name || '');
-      setStartDate(formatToYYYYMMDD(item.start_date || item.tran_date || new Date()));
+      setStartDate(
+        formatToYYYYMMDD(item.start_date || item.tran_date || new Date()),
+      );
       setEndDate(formatToYYYYMMDD(item.end_date || new Date()));
       setVenue(item.venue || '');
       setOrganizedBy(item.organized_by || '');
@@ -287,35 +313,57 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
           id: item.id,
         }).unwrap();
 
-        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+        if (
+          detailRes &&
+          (detailRes.status === 'true' || detailRes.status === true) &&
+          detailRes.data
+        ) {
           let d = detailRes.data;
           if (d && Array.isArray(d.conferences) && d.conferences.length > 0) {
             d = d.conferences[0];
-          } else if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+          } else if (
+            d &&
+            Array.isArray(d.workshops) &&
+            d.workshops.length > 0
+          ) {
             d = d.workshops[0];
           }
           setFormId(d.id || item.id);
-          if (d.activity_type !== undefined) setActivityType(String(d.activity_type));
+          if (d.activity_type !== undefined)
+            setActivityType(String(d.activity_type));
           if (d.event_name !== undefined) setEventName(d.event_name);
           if (d.start_date) setStartDate(formatToYYYYMMDD(d.start_date));
           if (d.end_date) setEndDate(formatToYYYYMMDD(d.end_date));
           if (d.venue !== undefined) setVenue(d.venue);
           if (d.organized_by !== undefined) setOrganizedBy(d.organized_by);
-          if (d.lead_organiser_name !== undefined) setLeadOrganiserName(d.lead_organiser_name);
+          if (d.lead_organiser_name !== undefined)
+            setLeadOrganiserName(d.lead_organiser_name);
           if (d.mode !== undefined) setMode(String(d.mode));
           if (d.web_link !== undefined) setWebLink(d.web_link);
           if (d.purpose !== undefined) setPurpose(d.purpose);
           if (d.benefits !== undefined) setBenefits(d.benefits);
-          if (d.status_id !== undefined) setSelectedStatusId(String(d.status_id));
-          if (d.manager_remarks !== undefined) setManagerRemarks(d.manager_remarks || '');
+          if (d.status_id !== undefined)
+            setSelectedStatusId(String(d.status_id));
+          if (d.manager_remarks !== undefined)
+            setManagerRemarks(d.manager_remarks || '');
 
           // Key Products
           if (Array.isArray(d.key_products)) {
-            setKeyProducts(d.key_products.map((kp, i) => ({ ...kp, id: kp.id || (Date.now() + i) })));
+            setKeyProducts(
+              d.key_products.map((kp, i) => ({
+                ...kp,
+                id: kp.id || Date.now() + i,
+              })),
+            );
           } else if (typeof d.key_products === 'string') {
             try {
               const parsedKp = JSON.parse(d.key_products);
-              setKeyProducts(parsedKp.map((kp, i) => ({ ...kp, id: kp.id || (Date.now() + i) })));
+              setKeyProducts(
+                parsedKp.map((kp, i) => ({
+                  ...kp,
+                  id: kp.id || Date.now() + i,
+                })),
+              );
             } catch (e) {}
           }
 
@@ -323,17 +371,29 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
           if (Array.isArray(d.audience)) {
             setAudienceList(d.audience);
           } else if (typeof d.audience === 'string') {
-            try { setAudienceList(JSON.parse(d.audience)); } catch (e) {}
+            try {
+              setAudienceList(JSON.parse(d.audience));
+            } catch (e) {}
           }
 
           // Material Agenda / Materials
           const mats = d.material_agenda || d.materials;
           if (Array.isArray(mats)) {
-            setMaterialsList(mats.map((mat, i) => ({ ...mat, id: mat.id || (Date.now() + i + 100) })));
+            setMaterialsList(
+              mats.map((mat, i) => ({
+                ...mat,
+                id: mat.id || Date.now() + i + 100,
+              })),
+            );
           } else if (typeof mats === 'string') {
             try {
               const parsedMat = JSON.parse(mats);
-              setMaterialsList(parsedMat.map((mat, i) => ({ ...mat, id: mat.id || (Date.now() + i + 100) })));
+              setMaterialsList(
+                parsedMat.map((mat, i) => ({
+                  ...mat,
+                  id: mat.id || Date.now() + i + 100,
+                })),
+              );
             } catch (e) {}
           }
 
@@ -341,16 +401,28 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
           if (Array.isArray(d.budget)) {
             setBudgetList(d.budget);
           } else if (typeof d.budget === 'string') {
-            try { setBudgetList(JSON.parse(d.budget)); } catch (e) {}
+            try {
+              setBudgetList(JSON.parse(d.budget));
+            } catch (e) {}
           }
 
           // Attendance
           if (Array.isArray(d.attendance)) {
-            setAttendanceList(d.attendance.map((att, i) => ({ ...att, id: att.id || (Date.now() + i + 200) })));
+            setAttendanceList(
+              d.attendance.map((att, i) => ({
+                ...att,
+                id: att.id || Date.now() + i + 200,
+              })),
+            );
           } else if (typeof d.attendance === 'string') {
             try {
               const parsedAtt = JSON.parse(d.attendance);
-              setAttendanceList(parsedAtt.map((att, i) => ({ ...att, id: att.id || (Date.now() + i + 200) })));
+              setAttendanceList(
+                parsedAtt.map((att, i) => ({
+                  ...att,
+                  id: att.id || Date.now() + i + 200,
+                })),
+              );
             } catch (e) {}
           }
           if (d.created_by) setFormCreatedBy(d.created_by);
@@ -375,11 +447,29 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
       setBenefits('');
       setSelectedStatusId(isRole3 ? '1' : '3');
       setManagerRemarks('');
-      setKeyProducts([{ id: Date.now(), prod_category: '', size_code: '', purpose: '', qty: '1' }]);
+      setKeyProducts([
+        {
+          id: Date.now(),
+          prod_category: '',
+          size_code: '',
+          purpose: '',
+          qty: '1',
+        },
+      ]);
       setAudienceList(DEFAULT_AUDIENCE);
-      setMaterialsList([{ id: Date.now() + 100, material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' }]);
+      setMaterialsList([
+        {
+          id: Date.now() + 100,
+          material_agenda: '',
+          size_qty: '1',
+          agenda: '',
+          time: '10:00:00',
+        },
+      ]);
       setBudgetList(DEFAULT_BUDGET);
-      setAttendanceList([{ id: Date.now() + 200, sales_team: '', office_staff: '' }]);
+      setAttendanceList([
+        { id: Date.now() + 200, sales_team: '', office_staff: '' },
+      ]);
       setIsModalVisible(true);
     }
   };
@@ -399,11 +489,19 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
           id: item.id,
         }).unwrap();
 
-        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+        if (
+          detailRes &&
+          (detailRes.status === 'true' || detailRes.status === true) &&
+          detailRes.data
+        ) {
           let d = detailRes.data;
           if (d && Array.isArray(d.conferences) && d.conferences.length > 0) {
             d = d.conferences[0];
-          } else if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+          } else if (
+            d &&
+            Array.isArray(d.workshops) &&
+            d.workshops.length > 0
+          ) {
             d = d.workshops[0];
           }
           setSelectedManagerItem(prev => ({
@@ -423,7 +521,13 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const addKeyProductRow = () => {
     setKeyProducts(prev => [
       ...prev,
-      { id: Date.now() + Math.random(), prod_category: '', size_code: '', purpose: '', qty: '1' },
+      {
+        id: Date.now() + Math.random(),
+        prod_category: '',
+        size_code: '',
+        purpose: '',
+        qty: '1',
+      },
     ]);
   };
   const removeKeyProductRow = index => {
@@ -441,7 +545,13 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   const addMaterialRow = () => {
     setMaterialsList(prev => [
       ...prev,
-      { id: Date.now() + Math.random(), material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' },
+      {
+        id: Date.now() + Math.random(),
+        material_agenda: '',
+        size_qty: '1',
+        agenda: '',
+        time: '10:00:00',
+      },
     ]);
   };
   const removeMaterialRow = index => {
@@ -505,12 +615,26 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
     if (list.length > 0) {
       const sum = list.reduce((acc, b) => {
-        const unitCost = parseFloat(String(b.unit_cost || b.unit_price || b.cost || 0).replace(/,/g, '')) || 0;
-        const qtyNum = parseFloat(String(b.qty || b.quantity || 0).replace(/,/g, '')) || 0;
+        const unitCost =
+          parseFloat(
+            String(b.unit_cost || b.unit_price || b.cost || 0).replace(
+              /,/g,
+              '',
+            ),
+          ) || 0;
+        const qtyNum =
+          parseFloat(String(b.qty || b.quantity || 0).replace(/,/g, '')) || 0;
         const total = parseFloat(String(b.total || 0).replace(/,/g, '')) || 0;
 
         // Multiply unit_cost * qty, or fallback to total if available
-        const rowSum = (unitCost > 0 && qtyNum > 0) ? (unitCost * qtyNum) : (total > 0 ? total : (unitCost > 0 ? unitCost : 0));
+        const rowSum =
+          unitCost > 0 && qtyNum > 0
+            ? unitCost * qtyNum
+            : total > 0
+            ? total
+            : unitCost > 0
+            ? unitCost
+            : 0;
         return acc + rowSum;
       }, 0);
 
@@ -533,7 +657,11 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   // Save Form Handler
   const handleSaveForm = async () => {
     if (!eventName.trim()) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter Event Name.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter Event Name.',
+      });
       return;
     }
 
@@ -561,31 +689,48 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         budget: budgetList,
         attendance: attendanceList,
         status_id: effectiveStatusId,
-        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.id || ''),
+        user_id:
+          String(effectiveStatusId) === '6' && formCreatedBy
+            ? formCreatedBy
+            : user?.id || '',
         role_id: user?.role_id || '',
-        manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
+        manager_remarks: isRole3
+          ? formMode === 'update'
+            ? managerRemarks
+            : null
+          : managerRemarks,
       };
 
-      console.log('📌 [CONFERENCE FORM SUBMIT] Status:', effectiveStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [CONFERENCE FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [CONFERENCE FORM SUBMIT] Status:',
+        effectiveStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [CONFERENCE FORM SUBMIT] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postConferenceData(payload).unwrap();
       console.log('📥 [CONFERENCE FORM SUBMIT RESPONSE]:', response);
 
-      const isSuccess = response && (
-        response.status === 'true' ||
-        response.status === true ||
-        response.status === 1 ||
-        response.status === '1' ||
-        response.status === 'success' ||
-        response.success === true
-      );
+      const isSuccess =
+        response &&
+        (response.status === 'true' ||
+          response.status === true ||
+          response.status === 1 ||
+          response.status === '1' ||
+          response.status === 'success' ||
+          response.success === true);
 
       if (isSuccess) {
         Toast.show({
           type: 'success',
-          text1: formMode === 'update' ? 'Conference Updated' : 'Conference Saved',
-          text2: response?.message || 'Conference request processed successfully.',
+          text1:
+            formMode === 'update' ? 'Conference Updated' : 'Conference Saved',
+          text2:
+            response?.message || 'Conference request processed successfully.',
         });
 
         // When status is Completed (6), also fire field expense payments API
@@ -595,16 +740,21 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
             const parsedAmount = calculateConferenceAmount(null, budgetList);
 
-            const actTypeName = ACTIVITY_TYPES.find(a => String(a.id) === String(activityType))?.name || 'Conference';
-            const modeName = MODES.find(m => String(m.id) === String(mode))?.name || '';
+            const actTypeName =
+              ACTIVITY_TYPES.find(a => String(a.id) === String(activityType))
+                ?.name || 'Conference';
+            const modeName =
+              MODES.find(m => String(m.id) === String(mode))?.name || '';
             const lineMemoParts = [
               eventName ? `Event: ${eventName}` : actTypeName,
             ];
-            if (actTypeName && eventName) lineMemoParts.push(`Type: ${actTypeName}`);
+            if (actTypeName && eventName)
+              lineMemoParts.push(`Type: ${actTypeName}`);
             if (modeName) lineMemoParts.push(`Mode: ${modeName}`);
             if (venue) lineMemoParts.push(`Venue: ${venue}`);
             if (organizedBy) lineMemoParts.push(`Organized By: ${organizedBy}`);
-            const lineMemo = lineMemoParts.join(' | ') || 'Conference Request Claim';
+            const lineMemo =
+              lineMemoParts.join(' | ') || 'Conference Request Claim';
 
             const confCommentParts = [
               loginUserId ? `Conference ${loginUserId}` : 'Conference',
@@ -615,14 +765,25 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             if (startDate) confCommentParts.push(`Start: ${startDate}`);
             if (endDate) confCommentParts.push(`End: ${endDate}`);
             if (venue) confCommentParts.push(`Venue: ${venue}`);
-            if (organizedBy) confCommentParts.push(`Organized By: ${organizedBy}`);
-            if (purpose && purpose.trim()) confCommentParts.push(`Purpose: ${purpose.trim()}`);
-            if (managerRemarks && managerRemarks.trim()) confCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
+            if (organizedBy)
+              confCommentParts.push(`Organized By: ${organizedBy}`);
+            if (purpose && purpose.trim())
+              confCommentParts.push(`Purpose: ${purpose.trim()}`);
+            if (managerRemarks && managerRemarks.trim())
+              confCommentParts.push(
+                `Manager Remarks: ${managerRemarks.trim()}`,
+              );
 
             const expensePayload = {
               company: 'ANS',
-              user_id: String((String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.user_id || user?.id || '')),
-              employee_id: String(user?.employee_id || user?.emp_code || user?.id || ''),
+              user_id: String(
+                String(effectiveStatusId) === '6' && formCreatedBy
+                  ? formCreatedBy
+                  : user?.user_id || user?.id || '',
+              ),
+              employee_id: String(
+                user?.employee_id || user?.emp_code || user?.id || '',
+              ),
               from_city: '0',
               to_city: '0',
               leave_date: currentDate,
@@ -696,28 +857,41 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         budget: selectedManagerItem.budget || [],
         attendance: selectedManagerItem.attendance || [],
         status_id: managerStatusId,
-        user_id: (String(managerStatusId) === '6' && (selectedManagerItem.created_by || selectedManagerItem.user_id))
-          ? (selectedManagerItem.created_by || selectedManagerItem.user_id)
-          : (user?.user_id || user?.id || ''),
+        user_id:
+          String(managerStatusId) === '6' &&
+          (selectedManagerItem.created_by || selectedManagerItem.user_id)
+            ? selectedManagerItem.created_by || selectedManagerItem.user_id
+            : user?.user_id || user?.id || '',
         role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 
-      console.log('📌 [APPROVAL STATUS UPDATE] Conference ID:', selectedManagerItem.id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Conference ID:',
+        selectedManagerItem.id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Status:',
+        managerStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postConferenceData(payload).unwrap();
       console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
-      const isSuccess = response && (
-        response.status === 'true' ||
-        response.status === true ||
-        response.status === 1 ||
-        response.status === '1' ||
-        response.status === 'success' ||
-        response.success === true
-      );
+      const isSuccess =
+        response &&
+        (response.status === 'true' ||
+          response.status === true ||
+          response.status === 1 ||
+          response.status === '1' ||
+          response.status === 'success' ||
+          response.success === true);
 
       if (isSuccess) {
         Toast.show({
@@ -734,7 +908,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
             let itemDetail = selectedManagerItem;
             // If budget array is missing or empty, fetch details from getConferenceData
-            if ((!itemDetail?.budget || !Array.isArray(itemDetail.budget) || itemDetail.budget.length === 0) && itemDetail?.id) {
+            if (
+              (!itemDetail?.budget ||
+                !Array.isArray(itemDetail.budget) ||
+                itemDetail.budget.length === 0) &&
+              itemDetail?.id
+            ) {
               try {
                 const detailRes = await getConferenceData({
                   user_id: user?.id,
@@ -742,11 +921,23 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                   id: itemDetail.id,
                 }).unwrap();
 
-                if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+                if (
+                  detailRes &&
+                  (detailRes.status === 'true' || detailRes.status === true) &&
+                  detailRes.data
+                ) {
                   let d = detailRes.data;
-                  if (d && Array.isArray(d.conferences) && d.conferences.length > 0) {
+                  if (
+                    d &&
+                    Array.isArray(d.conferences) &&
+                    d.conferences.length > 0
+                  ) {
                     d = d.conferences[0];
-                  } else if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+                  } else if (
+                    d &&
+                    Array.isArray(d.workshops) &&
+                    d.workshops.length > 0
+                  ) {
                     d = d.workshops[0];
                   }
                   itemDetail = { ...(itemDetail || {}), ...d };
@@ -756,34 +947,95 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               }
             }
 
-            const parsedAmount = calculateConferenceAmount(itemDetail, itemDetail?.budget);
+            const parsedAmount = calculateConferenceAmount(
+              itemDetail,
+              itemDetail?.budget,
+            );
 
-            const mgrActTypeName = ACTIVITY_TYPES.find(a => String(a.id) === String(selectedManagerItem.activity_type))?.name || 'Conference';
-            const mgrModeName = MODES.find(m => String(m.id) === String(selectedManagerItem.mode))?.name || '';
+            const mgrActTypeName =
+              ACTIVITY_TYPES.find(
+                a => String(a.id) === String(selectedManagerItem.activity_type),
+              )?.name || 'Conference';
+            const mgrModeName =
+              MODES.find(m => String(m.id) === String(selectedManagerItem.mode))
+                ?.name || '';
             const mgrLineMemoParts = [
-              selectedManagerItem.event_name ? `Event: ${selectedManagerItem.event_name}` : mgrActTypeName,
+              selectedManagerItem.event_name
+                ? `Event: ${selectedManagerItem.event_name}`
+                : mgrActTypeName,
             ];
-            if (mgrActTypeName && selectedManagerItem.event_name) mgrLineMemoParts.push(`Type: ${mgrActTypeName}`);
+            if (mgrActTypeName && selectedManagerItem.event_name)
+              mgrLineMemoParts.push(`Type: ${mgrActTypeName}`);
             if (mgrModeName) mgrLineMemoParts.push(`Mode: ${mgrModeName}`);
-            if (selectedManagerItem.venue) mgrLineMemoParts.push(`Venue: ${selectedManagerItem.venue}`);
-            if (selectedManagerItem.organized_by || selectedManagerItem.organizedBy) mgrLineMemoParts.push(`Organized By: ${selectedManagerItem.organized_by || selectedManagerItem.organizedBy}`);
-            const mgrLineMemo = mgrLineMemoParts.join(' | ') || 'Conference Request Claim';
+            if (selectedManagerItem.venue)
+              mgrLineMemoParts.push(`Venue: ${selectedManagerItem.venue}`);
+            if (
+              selectedManagerItem.organized_by ||
+              selectedManagerItem.organizedBy
+            )
+              mgrLineMemoParts.push(
+                `Organized By: ${
+                  selectedManagerItem.organized_by ||
+                  selectedManagerItem.organizedBy
+                }`,
+              );
+            const mgrLineMemo =
+              mgrLineMemoParts.join(' | ') || 'Conference Request Claim';
 
             const confCommentParts = [
               loginUserId ? `Conference ${loginUserId}` : 'Conference',
             ];
-            if (selectedManagerItem.event_name) confCommentParts.push(`Event: ${selectedManagerItem.event_name}`);
-            if (mgrActTypeName) confCommentParts.push(`Type: ${mgrActTypeName}`);
+            if (selectedManagerItem.event_name)
+              confCommentParts.push(`Event: ${selectedManagerItem.event_name}`);
+            if (mgrActTypeName)
+              confCommentParts.push(`Type: ${mgrActTypeName}`);
             if (mgrModeName) confCommentParts.push(`Mode: ${mgrModeName}`);
-            if (selectedManagerItem.start_date) confCommentParts.push(`Start: ${formatToYYYYMMDD(selectedManagerItem.start_date)}`);
-            if (selectedManagerItem.end_date) confCommentParts.push(`End: ${formatToYYYYMMDD(selectedManagerItem.end_date)}`);
-            if (selectedManagerItem.venue) confCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
-            if (selectedManagerItem.organized_by || selectedManagerItem.organizedBy) confCommentParts.push(`Organized By: ${selectedManagerItem.organized_by || selectedManagerItem.organizedBy}`);
-            if (selectedManagerItem.purpose && selectedManagerItem.purpose.trim()) confCommentParts.push(`Purpose: ${selectedManagerItem.purpose.trim()}`);
-            if (managerRemarksText && managerRemarksText.trim()) confCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
+            if (selectedManagerItem.start_date)
+              confCommentParts.push(
+                `Start: ${formatToYYYYMMDD(selectedManagerItem.start_date)}`,
+              );
+            if (selectedManagerItem.end_date)
+              confCommentParts.push(
+                `End: ${formatToYYYYMMDD(selectedManagerItem.end_date)}`,
+              );
+            if (selectedManagerItem.venue)
+              confCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
+            if (
+              selectedManagerItem.organized_by ||
+              selectedManagerItem.organizedBy
+            )
+              confCommentParts.push(
+                `Organized By: ${
+                  selectedManagerItem.organized_by ||
+                  selectedManagerItem.organizedBy
+                }`,
+              );
+            if (
+              selectedManagerItem.purpose &&
+              selectedManagerItem.purpose.trim()
+            )
+              confCommentParts.push(
+                `Purpose: ${selectedManagerItem.purpose.trim()}`,
+              );
+            if (managerRemarksText && managerRemarksText.trim())
+              confCommentParts.push(
+                `Manager Remarks: ${managerRemarksText.trim()}`,
+              );
 
-            const targetUserId = String(selectedManagerItem?.created_by || selectedManagerItem?.user_id || user?.id || user?.user_id || '');
-            const targetEmployeeId = String(selectedManagerItem?.employee_id || user?.employee_id || user?.emp_code || user?.id || '');
+            const targetUserId = String(
+              selectedManagerItem?.created_by ||
+                selectedManagerItem?.user_id ||
+                user?.id ||
+                user?.user_id ||
+                '',
+            );
+            const targetEmployeeId = String(
+              selectedManagerItem?.employee_id ||
+                user?.employee_id ||
+                user?.emp_code ||
+                user?.id ||
+                '',
+            );
 
             const expensePayload = {
               company: 'ANS',
@@ -809,10 +1061,20 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               filename: null,
             };
 
-            console.log('💰 [CONFERENCE FIELD EXPENSE PAYMENTS] user_id:', expensePayload.user_id, '| employee_id:', expensePayload.employee_id);
-            console.log('💰 [CONFERENCE FIELD EXPENSE PAYMENTS] Payload:', JSON.stringify(expensePayload, null, 2));
+            console.log(
+              '💰 [CONFERENCE FIELD EXPENSE PAYMENTS] user_id:',
+              expensePayload.user_id,
+              '| employee_id:',
+              expensePayload.employee_id,
+            );
+            console.log(
+              '💰 [CONFERENCE FIELD EXPENSE PAYMENTS] Payload:',
+              JSON.stringify(expensePayload, null, 2),
+            );
 
-            const expRes = await postFieldExpensePayments(expensePayload).unwrap();
+            const expRes = await postFieldExpensePayments(
+              expensePayload,
+            ).unwrap();
             console.log('📥 [FIELD EXPENSE PAYMENTS RESPONSE]:', expRes);
           } catch (expErr) {
             console.log('❌ Error posting field expense payments:', expErr);
@@ -841,17 +1103,28 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
   };
 
   // Stock Category Options
-  const stockCategoryList = (stockCatRes && (stockCatRes.data || Array.isArray(stockCatRes))) ? (Array.isArray(stockCatRes) ? stockCatRes : stockCatRes.data) : [];
+  const stockCategoryList =
+    stockCatRes && (stockCatRes.data || Array.isArray(stockCatRes))
+      ? Array.isArray(stockCatRes)
+        ? stockCatRes
+        : stockCatRes.data
+      : [];
   const productCategoryOptions = stockCategoryList.map(c => ({
     id: String(c.category_id || c.id || ''),
     name: c.description || c.name || 'Category',
   }));
 
   const renderStatusBadge = statusId => {
-    const info = STATUS_MAP[String(statusId)] || { label: 'Draft', bg: '#FEF3C7', text: '#92400E' };
+    const info = STATUS_MAP[String(statusId)] || {
+      label: 'Draft',
+      bg: '#FEF3C7',
+      text: '#92400E',
+    };
     return (
       <View style={[styles.statusBadge, { backgroundColor: info.bg }]}>
-        <Text style={[styles.statusText, { color: info.text }]}>{info.label}</Text>
+        <Text style={[styles.statusText, { color: info.text }]}>
+          {info.label}
+        </Text>
       </View>
     );
   };
@@ -861,22 +1134,38 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.referenceContainer}>
-            <Icon name="ribbon-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.referenceText}>{item.reference || `CONF-${item.id}`}</Text>
+            <Icon
+              name="ribbon-outline"
+              size={16}
+              color={theme.colors.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.referenceText}>
+              {item.reference || `CONF-${item.id}`}
+            </Text>
           </View>
           <View style={styles.headerRightRow}>
             {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.start_date || item.tran_date, false)}</Text>
+            <Text style={styles.cardDateText}>
+              {formatToAsiaDateTime(item.start_date || item.tran_date, false)}
+            </Text>
           </View>
         </View>
 
         <View style={styles.divider} />
 
-        {item.event_name ? <Text style={styles.cardTitleText}>{item.event_name}</Text> : null}
+        {item.event_name ? (
+          <Text style={styles.cardTitleText}>{item.event_name}</Text>
+        ) : null}
 
         {item.venue ? (
           <View style={styles.infoRow}>
-            <Icon name="location-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="location-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Venue:</Text>
             <Text style={styles.infoValue}>{item.venue}</Text>
           </View>
@@ -884,7 +1173,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
         {item.organized_by ? (
           <View style={styles.infoRow}>
-            <Icon name="people-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="people-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Organized By:</Text>
             <Text style={styles.infoValue}>{item.organized_by}</Text>
           </View>
@@ -892,17 +1186,29 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
         {item.lead_organiser_name ? (
           <View style={styles.infoRow}>
-            <Icon name="person-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="person-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Lead Organiser:</Text>
             <Text style={styles.infoValue}>{item.lead_organiser_name}</Text>
           </View>
         ) : null}
 
-        {(item.created_by_name || item.created_by) ? (
+        {item.created_by_name || item.created_by ? (
           <View style={styles.infoRow}>
-            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="person-circle-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Created By:</Text>
-            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.created_by}</Text>
+            <Text style={[styles.infoValue, { fontWeight: '700' }]}>
+              {item.created_by_name || item.created_by}
+            </Text>
           </View>
         ) : null}
 
@@ -916,7 +1222,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
         {item.manager_remarks ? (
           <View style={styles.managerRemarksBox}>
             <Text style={styles.managerRemarksLabel}>Manager Remarks:</Text>
-            <Text style={styles.managerRemarksText}>{item.manager_remarks}</Text>
+            <Text style={styles.managerRemarksText}>
+              {item.manager_remarks}
+            </Text>
           </View>
         ) : null}
 
@@ -927,7 +1235,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               onPress={() => openFormModal('update', item)}
               activeOpacity={0.7}
             >
-              <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <Icon
+                name="create-outline"
+                size={18}
+                color={theme.colors.primary}
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.updateCardBtnText}>Update</Text>
             </TouchableOpacity>
           ) : (
@@ -936,7 +1249,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               onPress={() => openManagerStatusModal(item)}
               activeOpacity={0.7}
             >
-              <Icon name="options-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Icon
+                name="options-outline"
+                size={18}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.statusManagerCardBtnText}>Status</Text>
             </TouchableOpacity>
           )}
@@ -947,15 +1265,31 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
   const filteredConferenceList = conferenceList.filter(item => {
     if (selectedStatusFilter && selectedStatusFilter !== 'all') {
-      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
-      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
+      const sId = String(
+        item.status_id !== undefined && item.status_id !== null
+          ? item.status_id
+          : '',
+      ).trim();
+      const statusName = String(item.status || item.status_name || '')
+        .trim()
+        .toLowerCase();
 
-      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
-      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
-      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
-      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
-      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
-      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
+      if (selectedStatusFilter === '1')
+        return sId === '1' || statusName === 'draft';
+      if (selectedStatusFilter === '2')
+        return (
+          sId === '2' ||
+          statusName === 'submit for approval' ||
+          statusName === 'pending'
+        );
+      if (selectedStatusFilter === '3')
+        return sId === '3' || statusName === 'approved';
+      if (selectedStatusFilter === '4')
+        return sId === '4' || statusName === 'rejected';
+      if (selectedStatusFilter === '5')
+        return sId === '5' || statusName === 'resubmit';
+      if (selectedStatusFilter === '6')
+        return sId === '6' || statusName === 'completed';
 
       return sId === String(selectedStatusFilter);
     }
@@ -999,18 +1333,30 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Icon name="ribbon-outline" size={48} color={theme.colors.textSecondary} />
+              <Icon
+                name="ribbon-outline"
+                size={48}
+                color={theme.colors.textSecondary}
+              />
               <Text style={styles.emptyTitle}>No Conference Requests</Text>
               <Text style={styles.emptySubtext}>
-                Tap the (+) icon in the top right header to add a new conference request.
+                Tap the (+) icon in the top right header to add a new conference
+                request.
               </Text>
               <TouchableOpacity
                 style={styles.addFirstBtn}
                 onPress={() => openFormModal('add')}
                 activeOpacity={0.8}
               >
-                <Icon name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.addFirstBtnText}>Add Conference Request</Text>
+                <Icon
+                  name="add"
+                  size={20}
+                  color="#FFFFFF"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.addFirstBtnText}>
+                  Add Conference Request
+                </Text>
               </TouchableOpacity>
             </View>
           }
@@ -1060,7 +1406,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
               <View style={styles.modalHeaderTitleContainer}>
                 <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
-                  {formMode === 'update' ? 'Update Conference Request' : 'Add Conference Request'}
+                  {formMode === 'update'
+                    ? 'Update Conference Request'
+                    : 'Add Conference Request'}
                 </Text>
               </View>
 
@@ -1075,7 +1423,10 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalCard}>
               {/* Event Name */}
               <Text style={styles.fieldLabel}>
@@ -1083,7 +1434,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Event Name e.g. Annual Medical Conference"
+                placeholder="Event Name  Annual Medical Conference"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={eventName}
                 onChangeText={setEventName}
@@ -1102,52 +1453,76 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               </View>
 
               {/* Start Date */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Start Date</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Start Date
+              </Text>
               <TouchableOpacity
                 style={styles.dateSelector}
-                onPress={() => setDatePickerConfig({ visible: true, target: 'start' })}
+                onPress={() =>
+                  setDatePickerConfig({ visible: true, target: 'start' })
+                }
                 activeOpacity={0.7}
               >
-                <Text style={styles.dateText}>{startDate || 'Select Start Date'}</Text>
-                <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.dateText}>
+                  {startDate || 'Select Start Date'}
+                </Text>
+                <Icon
+                  name="calendar-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
 
               {/* End Date */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>End Date</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                End Date
+              </Text>
               <TouchableOpacity
                 style={styles.dateSelector}
-                onPress={() => setDatePickerConfig({ visible: true, target: 'end' })}
+                onPress={() =>
+                  setDatePickerConfig({ visible: true, target: 'end' })
+                }
                 activeOpacity={0.7}
               >
-                <Text style={styles.dateText}>{endDate || 'Select End Date'}</Text>
-                <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.dateText}>
+                  {endDate || 'Select End Date'}
+                </Text>
+                <Icon
+                  name="calendar-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
 
               {/* Venue */}
               <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Venue</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Venue e.g. Karachi"
+                placeholder="Venue  Karachi"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={venue}
                 onChangeText={setVenue}
               />
 
               {/* Organized By */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Organized By</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Organized By
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Organized By e.g. ABC Pharma"
+                placeholder="Organized By  ABC Pharma"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={organizedBy}
                 onChangeText={setOrganizedBy}
               />
 
               {/* Lead Organiser Name */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Lead Organiser Name</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Lead Organiser Name
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Lead Organiser e.g. Ali Khan"
+                placeholder="Lead Organiser  Ali Khan"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={leadOrganiserName}
                 onChangeText={setLeadOrganiserName}
@@ -1166,17 +1541,21 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               </View>
 
               {/* Website Link */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Website Link</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Website Link
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Web Link e.g. https://example.com"
+                placeholder="Web Link  https://example.com"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={webLink}
                 onChangeText={setWebLink}
               />
 
               {/* Purpose */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Purpose</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Purpose
+              </Text>
               <TextInput
                 style={styles.textArea}
                 placeholder="Purpose of participation..."
@@ -1189,7 +1568,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               />
 
               {/* Benefits */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Benefits</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Benefits
+              </Text>
               <TextInput
                 style={styles.textArea}
                 placeholder="Expected benefits..."
@@ -1206,7 +1587,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Status"
                   placeholder="Select Status..."
-                  data={isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER}
+                  data={
+                    isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER
+                  }
                   idKey="id"
                   labelKey="name"
                   selectedId={selectedStatusId}
@@ -1218,8 +1601,15 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               {/* Section: Key Products */}
               <View style={styles.sectionHeaderBox}>
                 <Text style={styles.sectionHeaderTitle}>Key Products</Text>
-                <TouchableOpacity onPress={addKeyProductRow} style={styles.addRowBtn}>
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                <TouchableOpacity
+                  onPress={addKeyProductRow}
+                  style={styles.addRowBtn}
+                >
+                  <Icon
+                    name="add-circle-outline"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text style={styles.addRowBtnText}>Add Product</Text>
                 </TouchableOpacity>
               </View>
@@ -1227,9 +1617,13 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
               {keyProducts.map((kp, idx) => (
                 <View key={kp.id || `kp_${idx}`} style={styles.dynamicRowCard}>
                   <View style={styles.dynamicRowHeader}>
-                    <Text style={styles.dynamicRowTitle}>Product #{idx + 1}</Text>
+                    <Text style={styles.dynamicRowTitle}>
+                      Product #{idx + 1}
+                    </Text>
                     {keyProducts.length > 1 && (
-                      <TouchableOpacity onPress={() => removeKeyProductRow(idx)}>
+                      <TouchableOpacity
+                        onPress={() => removeKeyProductRow(idx)}
+                      >
                         <Icon name="trash-outline" size={18} color="#EF4444" />
                       </TouchableOpacity>
                     )}
@@ -1242,7 +1636,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                     idKey="id"
                     labelKey="name"
                     selectedId={kp.prod_category}
-                    onSelect={item => updateKeyProduct(idx, 'prod_category', item.id)}
+                    onSelect={item =>
+                      updateKeyProduct(idx, 'prod_category', item.id)
+                    }
                     isLoading={stockCatLoading}
                     iconName="cube-outline"
                   />
@@ -1252,10 +1648,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Size Code</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. 2-0"
+                        placeholder=" 2-0"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={kp.size_code}
-                        onChangeText={v => updateKeyProduct(idx, 'size_code', v)}
+                        onChangeText={v =>
+                          updateKeyProduct(idx, 'size_code', v)
+                        }
                       />
                     </View>
                     <View style={{ flex: 1, marginLeft: 6 }}>
@@ -1271,10 +1669,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                     </View>
                   </View>
 
-                  <Text style={[styles.subLabel, { marginTop: 6 }]}>Purpose</Text>
+                  <Text style={[styles.subLabel, { marginTop: 6 }]}>
+                    Purpose
+                  </Text>
                   <TextInput
                     style={styles.textInputSmall}
-                    placeholder="Purpose e.g. Product Demonstration"
+                    placeholder="Purpose  Product Demonstration"
                     placeholderTextColor={theme.colors.textSecondary}
                     value={kp.purpose}
                     onChangeText={v => updateKeyProduct(idx, 'purpose', v)}
@@ -1284,7 +1684,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
               {/* Section: Audience */}
               <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
-                <Text style={styles.sectionHeaderTitle}>Audience Breakdown</Text>
+                <Text style={styles.sectionHeaderTitle}>
+                  Audience Breakdown
+                </Text>
               </View>
               {audienceList.map((aud, idx) => (
                 <View key={idx} style={styles.audienceRow}>
@@ -1302,17 +1704,31 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
               {/* Section: Materials & Agenda */}
               <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
-                <Text style={styles.sectionHeaderTitle}>Materials & Agenda</Text>
-                <TouchableOpacity onPress={addMaterialRow} style={styles.addRowBtn}>
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.sectionHeaderTitle}>
+                  Materials & Agenda
+                </Text>
+                <TouchableOpacity
+                  onPress={addMaterialRow}
+                  style={styles.addRowBtn}
+                >
+                  <Icon
+                    name="add-circle-outline"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text style={styles.addRowBtnText}>Add Material</Text>
                 </TouchableOpacity>
               </View>
 
               {materialsList.map((mat, idx) => (
-                <View key={mat.id || `mat_${idx}`} style={styles.dynamicRowCard}>
+                <View
+                  key={mat.id || `mat_${idx}`}
+                  style={styles.dynamicRowCard}
+                >
                   <View style={styles.dynamicRowHeader}>
-                    <Text style={styles.dynamicRowTitle}>Material #{idx + 1}</Text>
+                    <Text style={styles.dynamicRowTitle}>
+                      Material #{idx + 1}
+                    </Text>
                     {materialsList.length > 1 && (
                       <TouchableOpacity onPress={() => removeMaterialRow(idx)}>
                         <Icon name="trash-outline" size={18} color="#EF4444" />
@@ -1323,10 +1739,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                   <Text style={styles.subLabel}>Material / Equipment</Text>
                   <TextInput
                     style={styles.textInputSmall}
-                    placeholder="e.g. Projector / Demo Kit"
+                    placeholder=" Projector / Demo Kit"
                     placeholderTextColor={theme.colors.textSecondary}
                     value={mat.material_agenda}
-                    onChangeText={v => updateMaterial(idx, 'material_agenda', v)}
+                    onChangeText={v =>
+                      updateMaterial(idx, 'material_agenda', v)
+                    }
                   />
 
                   <View style={styles.inlineInputsRow}>
@@ -1334,7 +1752,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Qty / Size</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. 1"
+                        placeholder=" 1"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={mat.size_qty}
                         onChangeText={v => updateMaterial(idx, 'size_qty', v)}
@@ -1344,7 +1762,7 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Time</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. 10:00:00"
+                        placeholder=" 10:00:00"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={mat.time}
                         onChangeText={v => updateMaterial(idx, 'time', v)}
@@ -1352,10 +1770,12 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                     </View>
                   </View>
 
-                  <Text style={[styles.subLabel, { marginTop: 6 }]}>Agenda Item</Text>
+                  <Text style={[styles.subLabel, { marginTop: 6 }]}>
+                    Agenda Item
+                  </Text>
                   <TextInput
                     style={styles.textInputSmall}
-                    placeholder="Agenda e.g. Introduction"
+                    placeholder="Agenda  Introduction"
                     placeholderTextColor={theme.colors.textSecondary}
                     value={mat.agenda}
                     onChangeText={v => updateMaterial(idx, 'agenda', v)}
@@ -1394,19 +1814,35 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
 
               {/* Section: Company Attendance */}
               <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
-                <Text style={styles.sectionHeaderTitle}>Company Attendance</Text>
-                <TouchableOpacity onPress={addAttendanceRow} style={styles.addRowBtn}>
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.sectionHeaderTitle}>
+                  Company Attendance
+                </Text>
+                <TouchableOpacity
+                  onPress={addAttendanceRow}
+                  style={styles.addRowBtn}
+                >
+                  <Icon
+                    name="add-circle-outline"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text style={styles.addRowBtnText}>Add Attendee</Text>
                 </TouchableOpacity>
               </View>
 
               {attendanceList.map((att, idx) => (
-                <View key={att.id || `att_${idx}`} style={styles.dynamicRowCard}>
+                <View
+                  key={att.id || `att_${idx}`}
+                  style={styles.dynamicRowCard}
+                >
                   <View style={styles.dynamicRowHeader}>
-                    <Text style={styles.dynamicRowTitle}>Attendee #{idx + 1}</Text>
+                    <Text style={styles.dynamicRowTitle}>
+                      Attendee #{idx + 1}
+                    </Text>
                     {attendanceList.length > 1 && (
-                      <TouchableOpacity onPress={() => removeAttendanceRow(idx)}>
+                      <TouchableOpacity
+                        onPress={() => removeAttendanceRow(idx)}
+                      >
                         <Icon name="trash-outline" size={18} color="#EF4444" />
                       </TouchableOpacity>
                     )}
@@ -1417,20 +1853,24 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Sales Team</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. Ali"
+                        placeholder=" Ali"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={att.sales_team}
-                        onChangeText={v => updateAttendance(idx, 'sales_team', v)}
+                        onChangeText={v =>
+                          updateAttendance(idx, 'sales_team', v)
+                        }
                       />
                     </View>
                     <View style={{ flex: 1, marginLeft: 6 }}>
                       <Text style={styles.subLabel}>Office Staff</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. Ahmed"
+                        placeholder=" Ahmed"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={att.office_staff}
-                        onChangeText={v => updateAttendance(idx, 'office_staff', v)}
+                        onChangeText={v =>
+                          updateAttendance(idx, 'office_staff', v)
+                        }
                       />
                     </View>
                   </View>
@@ -1475,9 +1915,16 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Icon name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Icon
+                        name="checkmark-done-outline"
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
                       <Text style={styles.submitText}>
-                        {formMode === 'update' ? 'Update Conference Request' : 'Save Conference Request'}
+                        {formMode === 'update'
+                          ? 'Update Conference Request'
+                          : 'Save Conference Request'}
                       </Text>
                     </>
                   )}
@@ -1500,19 +1947,35 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             style={styles.statusModalBg}
             onPress={() => setIsManagerStatusModalVisible(false)}
           />
-          <View style={[styles.statusModalSheet, { backgroundColor: theme.colors.surface }]}>
-            <View style={[styles.modalSheetHandle, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.statusModalTitle, { color: theme.colors.text }]}>
+          <View
+            style={[
+              styles.statusModalSheet,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalSheetHandle,
+                { backgroundColor: theme.colors.border },
+              ]}
+            />
+            <Text
+              style={[styles.statusModalTitle, { color: theme.colors.text }]}
+            >
               Update Conference Status
             </Text>
 
             {selectedManagerItem ? (
               <View style={styles.managerSummaryBox}>
                 <Text style={styles.summaryRefText}>
-                  {selectedManagerItem.reference || `CONF-${selectedManagerItem.id}`} - {selectedManagerItem.event_name || 'Conference'}
+                  {selectedManagerItem.reference ||
+                    `CONF-${selectedManagerItem.id}`}{' '}
+                  - {selectedManagerItem.event_name || 'Conference'}
                 </Text>
                 {selectedManagerItem.venue ? (
-                  <Text style={styles.summaryAmountText}>Venue: {selectedManagerItem.venue}</Text>
+                  <Text style={styles.summaryAmountText}>
+                    Venue: {selectedManagerItem.venue}
+                  </Text>
                 ) : null}
               </View>
             ) : null}
@@ -1532,7 +1995,9 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
             </View>
 
             {/* Manager Remarks Input */}
-            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Manager Remarks</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
+              Manager Remarks
+            </Text>
             <TextInput
               style={styles.textArea}
               placeholder="Enter remarks for status change..."
@@ -1555,8 +2020,15 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Icon name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.saveManagerStatusBtnText}>Update Status</Text>
+                  <Icon
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.saveManagerStatusBtnText}>
+                    Update Status
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -1577,8 +2049,14 @@ const CRMConferenceRequestScreen = ({ navigation, route }) => {
           }
           setDatePickerConfig({ visible: false, target: 'start' });
         }}
-        selectedDate={parseDate(datePickerConfig.target === 'start' ? startDate : endDate)}
-        title={datePickerConfig.target === 'start' ? 'Select Start Date' : 'Select End Date'}
+        selectedDate={parseDate(
+          datePickerConfig.target === 'start' ? startDate : endDate,
+        )}
+        title={
+          datePickerConfig.target === 'start'
+            ? 'Select Start Date'
+            : 'Select End Date'
+        }
       />
     </View>
   );

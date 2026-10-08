@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -18,7 +23,11 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@config/useTheme';
-import { CustomDatePicker, SearchableDropdown, DateFilter } from '@components/common';
+import {
+  CustomDatePicker,
+  SearchableDropdown,
+  DateFilter,
+} from '@components/common';
 import { formatToAsiaDateTime } from '../../utils/dateUtils';
 import {
   useGetHospitalMutation,
@@ -90,12 +99,12 @@ const STATUS_OPTIONS_MANAGER = [
 ];
 
 const STATUS_MAP = {
-  '1': { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
-  '2': { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
-  '3': { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
-  '4': { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
-  '5': { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
-  '6': { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
+  1: { label: 'Draft', bg: '#FEF3C7', text: '#92400E' },
+  2: { label: 'Submit for Approval', bg: '#DBEAFE', text: '#1E40AF' },
+  3: { label: 'Approved', bg: '#D1FAE5', text: '#065F46' },
+  4: { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B' },
+  5: { label: 'Resubmit', bg: '#FFEDD5', text: '#C2410C' },
+  6: { label: 'Completed', bg: '#E0E7FF', text: '#3730A3' },
 };
 
 const DEFAULT_AUDIENCE = [
@@ -118,7 +127,10 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const styles = getStyles(theme);
   const user = useSelector(state => state.auth.user);
   const insets = useSafeAreaInsets();
-  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
+  );
 
   const isRole3 = String(user?.role_id) === '3';
 
@@ -174,15 +186,19 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Manager Status Modal State
-  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] = useState(false);
+  const [isManagerStatusModalVisible, setIsManagerStatusModalVisible] =
+    useState(false);
   const [selectedManagerItem, setSelectedManagerItem] = useState(null);
   const [managerStatusId, setManagerStatusId] = useState('3');
   const [managerRemarksText, setManagerRemarksText] = useState('');
   const [isManagerSubmitting, setIsManagerSubmitting] = useState(false);
 
-  const [getWorkshopData, { isLoading: dataLoading }] = useGetWorkshopDataMutation();
-  const [getHospital, { data: hospRes, isLoading: hospLoading }] = useGetHospitalMutation();
-  const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] = useGetStockCategoryMutation();
+  const [getWorkshopData, { isLoading: dataLoading }] =
+    useGetWorkshopDataMutation();
+  const [getHospital, { data: hospRes, isLoading: hospLoading }] =
+    useGetHospitalMutation();
+  const [getStockCategory, { data: stockCatRes, isLoading: stockCatLoading }] =
+    useGetStockCategoryMutation();
   const [postWorkshopData] = usePostWorkshopDataMutation();
   const [postFieldExpensePayments] = usePostOutstationExpenseClaimMutation();
 
@@ -258,7 +274,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
       setFormId(item.id || 0);
       setFormCreatedBy(item.created_by || item.user_id || null);
       setTitle(item.title || '');
-      setRequestDate(formatToYYYYMMDD(item.date || item.tran_date || new Date()));
+      setRequestDate(
+        formatToYYYYMMDD(item.date || item.tran_date || new Date()),
+      );
       setSelectedHospitalId(item.hospital_id || null);
       setVenue(item.venue || '');
       setHospitalDepart(item.hospital_depart || '');
@@ -278,7 +296,11 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
           id: item.id,
         }).unwrap();
 
-        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+        if (
+          detailRes &&
+          (detailRes.status === 'true' || detailRes.status === true) &&
+          detailRes.data
+        ) {
           let d = detailRes.data;
           if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
             d = d.workshops[0];
@@ -288,36 +310,69 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
           if (d.date) setRequestDate(formatToYYYYMMDD(d.date));
           if (d.hospital_id) setSelectedHospitalId(d.hospital_id);
           if (d.venue !== undefined) setVenue(d.venue);
-          if (d.hospital_depart !== undefined) setHospitalDepart(d.hospital_depart);
-          if (d.workshop_type !== undefined) setWorkshopType(String(d.workshop_type));
-          if (d.product_segment !== undefined) setProductSegment(String(d.product_segment));
+          if (d.hospital_depart !== undefined)
+            setHospitalDepart(d.hospital_depart);
+          if (d.workshop_type !== undefined)
+            setWorkshopType(String(d.workshop_type));
+          if (d.product_segment !== undefined)
+            setProductSegment(String(d.product_segment));
           if (d.objectives !== undefined) setObjectives(d.objectives);
-          if (d.status_id !== undefined) setSelectedStatusId(String(d.status_id));
-          if (d.manager_remarks !== undefined) setManagerRemarks(d.manager_remarks || '');
+          if (d.status_id !== undefined)
+            setSelectedStatusId(String(d.status_id));
+          if (d.manager_remarks !== undefined)
+            setManagerRemarks(d.manager_remarks || '');
 
           if (Array.isArray(d.key_products)) {
-            setKeyProducts(d.key_products.map((kp, i) => ({ ...kp, id: kp.id || (Date.now() + i) })));
+            setKeyProducts(
+              d.key_products.map((kp, i) => ({
+                ...kp,
+                id: kp.id || Date.now() + i,
+              })),
+            );
           } else if (typeof d.key_products === 'string') {
-            try { setKeyProducts(JSON.parse(d.key_products).map((kp, i) => ({ ...kp, id: kp.id || (Date.now() + i) }))); } catch (e) {}
+            try {
+              setKeyProducts(
+                JSON.parse(d.key_products).map((kp, i) => ({
+                  ...kp,
+                  id: kp.id || Date.now() + i,
+                })),
+              );
+            } catch (e) {}
           }
 
           if (Array.isArray(d.audience)) {
             setAudienceList(d.audience);
           } else if (typeof d.audience === 'string') {
-            try { setAudienceList(JSON.parse(d.audience)); } catch (e) {}
+            try {
+              setAudienceList(JSON.parse(d.audience));
+            } catch (e) {}
           }
 
           const mats = d.material_agenda || d.materials;
           if (Array.isArray(mats)) {
-            setMaterialsList(mats.map((mat, i) => ({ ...mat, id: mat.id || (Date.now() + i + 100) })));
+            setMaterialsList(
+              mats.map((mat, i) => ({
+                ...mat,
+                id: mat.id || Date.now() + i + 100,
+              })),
+            );
           } else if (typeof mats === 'string') {
-            try { setMaterialsList(JSON.parse(mats).map((mat, i) => ({ ...mat, id: mat.id || (Date.now() + i + 100) }))); } catch (e) {}
+            try {
+              setMaterialsList(
+                JSON.parse(mats).map((mat, i) => ({
+                  ...mat,
+                  id: mat.id || Date.now() + i + 100,
+                })),
+              );
+            } catch (e) {}
           }
 
           if (Array.isArray(d.budget)) {
             setBudgetList(d.budget);
           } else if (typeof d.budget === 'string') {
-            try { setBudgetList(JSON.parse(d.budget)); } catch (e) {}
+            try {
+              setBudgetList(JSON.parse(d.budget));
+            } catch (e) {}
           }
         }
       } catch (err) {
@@ -337,9 +392,25 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
       setObjectives('');
       setSelectedStatusId(isRole3 ? '1' : '3');
       setManagerRemarks('');
-      setKeyProducts([{ id: Date.now(), prod_category: '', size_code: '', purpose: '', qty: '1' }]);
+      setKeyProducts([
+        {
+          id: Date.now(),
+          prod_category: '',
+          size_code: '',
+          purpose: '',
+          qty: '1',
+        },
+      ]);
       setAudienceList(DEFAULT_AUDIENCE);
-      setMaterialsList([{ id: Date.now() + 100, material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' }]);
+      setMaterialsList([
+        {
+          id: Date.now() + 100,
+          material_agenda: '',
+          size_qty: '1',
+          agenda: '',
+          time: '10:00:00',
+        },
+      ]);
       setBudgetList(DEFAULT_BUDGET);
       setIsModalVisible(true);
     }
@@ -360,7 +431,11 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
           id: item.id,
         }).unwrap();
 
-        if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+        if (
+          detailRes &&
+          (detailRes.status === 'true' || detailRes.status === true) &&
+          detailRes.data
+        ) {
           let d = detailRes.data;
           if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
             d = d.workshops[0];
@@ -383,7 +458,13 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const addKeyProductRow = () => {
     setKeyProducts(prev => [
       ...prev,
-      { id: Date.now() + Math.random(), prod_category: '', size_code: '', purpose: '', qty: '1' },
+      {
+        id: Date.now() + Math.random(),
+        prod_category: '',
+        size_code: '',
+        purpose: '',
+        qty: '1',
+      },
     ]);
   };
 
@@ -403,7 +484,13 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   const addMaterialRow = () => {
     setMaterialsList(prev => [
       ...prev,
-      { id: Date.now() + Math.random(), material_agenda: '', size_qty: '1', agenda: '', time: '10:00:00' },
+      {
+        id: Date.now() + Math.random(),
+        material_agenda: '',
+        size_qty: '1',
+        agenda: '',
+        time: '10:00:00',
+      },
     ]);
   };
 
@@ -451,12 +538,26 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
     if (list.length > 0) {
       const sum = list.reduce((acc, b) => {
-        const unitCost = parseFloat(String(b.unit_cost || b.unit_price || b.cost || 0).replace(/,/g, '')) || 0;
-        const qtyNum = parseFloat(String(b.qty || b.quantity || 0).replace(/,/g, '')) || 0;
+        const unitCost =
+          parseFloat(
+            String(b.unit_cost || b.unit_price || b.cost || 0).replace(
+              /,/g,
+              '',
+            ),
+          ) || 0;
+        const qtyNum =
+          parseFloat(String(b.qty || b.quantity || 0).replace(/,/g, '')) || 0;
         const total = parseFloat(String(b.total || 0).replace(/,/g, '')) || 0;
 
         // Multiply unit_cost * qty, or fallback to row total
-        const rowSum = (unitCost > 0 && qtyNum > 0) ? (unitCost * qtyNum) : (total > 0 ? total : (unitCost > 0 ? unitCost : 0));
+        const rowSum =
+          unitCost > 0 && qtyNum > 0
+            ? unitCost * qtyNum
+            : total > 0
+            ? total
+            : unitCost > 0
+            ? unitCost
+            : 0;
         return acc + rowSum;
       }, 0);
 
@@ -484,11 +585,19 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   // Save Form Handler
   const handleSaveForm = async () => {
     if (!title.trim()) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter Workshop Title.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter Workshop Title.',
+      });
       return;
     }
     if (!selectedHospitalId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a Hospital.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please select a Hospital.',
+      });
       return;
     }
 
@@ -512,31 +621,47 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         materials: materialsList,
         budget: budgetList,
         status_id: effectiveStatusId,
-        user_id: (String(effectiveStatusId) === '6' && formCreatedBy) ? formCreatedBy : (user?.id || ''),
+        user_id:
+          String(effectiveStatusId) === '6' && formCreatedBy
+            ? formCreatedBy
+            : user?.id || '',
         role_id: user?.role_id || '',
-        manager_remarks: isRole3 ? (formMode === 'update' ? managerRemarks : null) : managerRemarks,
+        manager_remarks: isRole3
+          ? formMode === 'update'
+            ? managerRemarks
+            : null
+          : managerRemarks,
       };
 
-      console.log('📌 [WORKSHOP FORM SUBMIT] Status:', effectiveStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [WORKSHOP FORM SUBMIT] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [WORKSHOP FORM SUBMIT] Status:',
+        effectiveStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [WORKSHOP FORM SUBMIT] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postWorkshopData(payload).unwrap();
       console.log('📥 [WORKSHOP FORM SUBMIT RESPONSE]:', response);
 
-      const isSuccess = response && (
-        response.status === 'true' ||
-        response.status === true ||
-        response.status === 1 ||
-        response.status === '1' ||
-        response.status === 'success' ||
-        response.success === true
-      );
+      const isSuccess =
+        response &&
+        (response.status === 'true' ||
+          response.status === true ||
+          response.status === 1 ||
+          response.status === '1' ||
+          response.status === 'success' ||
+          response.success === true);
 
       if (isSuccess) {
         Toast.show({
           type: 'success',
           text1: formMode === 'update' ? 'Workshop Updated' : 'Workshop Saved',
-          text2: response?.message || 'Workshop request processed successfully.',
+          text2:
+            response?.message || 'Workshop request processed successfully.',
         });
 
         // When status is Completed (6), also fire field expense payments API
@@ -546,9 +671,20 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
             const parsedAmount = calculateWorkshopAmount(null, budgetList);
 
-            const hospName = selectedHospitalId ? ((hospitalList || []).find(h => String(h.id || h.debtor_no || h.hospital_id) === String(selectedHospitalId))?.name || '') : '';
-            const typeName = WORKSHOP_TYPES.find(w => String(w.id) === String(workshopType))?.name || '';
-            const segName = PRODUCT_SEGMENTS.find(p => String(p.id) === String(productSegment))?.name || '';
+            const hospName = selectedHospitalId
+              ? (hospitalList || []).find(
+                  h =>
+                    String(h.id || h.debtor_no || h.hospital_id) ===
+                    String(selectedHospitalId),
+                )?.name || ''
+              : '';
+            const typeName =
+              WORKSHOP_TYPES.find(w => String(w.id) === String(workshopType))
+                ?.name || '';
+            const segName =
+              PRODUCT_SEGMENTS.find(
+                p => String(p.id) === String(productSegment),
+              )?.name || '';
 
             const memoParts = [];
             if (title) memoParts.push(`Title: ${title}`);
@@ -556,7 +692,8 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             if (typeName) memoParts.push(`Type: ${typeName}`);
             if (segName) memoParts.push(`Segment: ${segName}`);
             if (venue) memoParts.push(`Venue: ${venue}`);
-            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Workshop Request';
+            const lineMemo =
+              memoParts.length > 0 ? memoParts.join(' | ') : 'Workshop Request';
 
             const workshopCommentParts = [
               loginUserId ? `Workshop ${loginUserId}` : 'Workshop',
@@ -566,12 +703,20 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             if (hospName) workshopCommentParts.push(`Hospital: ${hospName}`);
             if (typeName) workshopCommentParts.push(`Type: ${typeName}`);
             if (segName) workshopCommentParts.push(`Segment: ${segName}`);
-            if (hospitalDepart) workshopCommentParts.push(`Depart: ${hospitalDepart}`);
+            if (hospitalDepart)
+              workshopCommentParts.push(`Depart: ${hospitalDepart}`);
             if (venue) workshopCommentParts.push(`Venue: ${venue}`);
-            if (objectives && objectives.trim()) workshopCommentParts.push(`Objectives: ${objectives.trim()}`);
-            if (managerRemarks && managerRemarks.trim()) workshopCommentParts.push(`Manager Remarks: ${managerRemarks.trim()}`);
+            if (objectives && objectives.trim())
+              workshopCommentParts.push(`Objectives: ${objectives.trim()}`);
+            if (managerRemarks && managerRemarks.trim())
+              workshopCommentParts.push(
+                `Manager Remarks: ${managerRemarks.trim()}`,
+              );
 
-            const targetUserId = (formMode === 'update' && formCreatedBy) ? formCreatedBy : String(user?.user_id || user?.id || '');
+            const targetUserId =
+              formMode === 'update' && formCreatedBy
+                ? formCreatedBy
+                : String(user?.user_id || user?.id || '');
 
             const expensePayload = {
               company: 'ANS',
@@ -646,22 +791,34 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         materials: selectedManagerItem.materials || [],
         budget: selectedManagerItem.budget || [],
         status_id: managerStatusId,
-        user_id: (String(managerStatusId) === '6' && (selectedManagerItem.created_by)) ? (selectedManagerItem.created_by) : (user?.id || ''),
+        user_id:
+          String(managerStatusId) === '6' && selectedManagerItem.created_by
+            ? selectedManagerItem.created_by
+            : user?.id || '',
         role_id: user?.role_id || '',
         manager_remarks: managerRemarksText,
       };
 
-      console.log('📌 [APPROVAL STATUS UPDATE] Workshop ID:', selectedManagerItem.id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Status:', managerStatusId, '| user_id sent:', payload.user_id);
-      console.log('📌 [APPROVAL STATUS UPDATE] Payload:', JSON.stringify(payload, null, 2));
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Workshop ID:',
+        selectedManagerItem.id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Status:',
+        managerStatusId,
+        '| user_id sent:',
+        payload.user_id,
+      );
+      console.log(
+        '📌 [APPROVAL STATUS UPDATE] Payload:',
+        JSON.stringify(payload, null, 2),
+      );
 
       const response = await postWorkshopData(payload).unwrap();
       console.log('📥 [APPROVAL STATUS UPDATE RESPONSE]:', response);
 
-      const isSuccess = response && (
-        response.status === 'true' ||
-        response.status === true 
-      );
+      const isSuccess =
+        response && (response.status === 'true' || response.status === true);
 
       if (isSuccess) {
         Toast.show({
@@ -677,7 +834,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             const loginUserId = user?.user_id || user?.username || '';
 
             let itemDetail = selectedManagerItem;
-            if ((!itemDetail?.budget || !Array.isArray(itemDetail.budget) || itemDetail.budget.length === 0) && itemDetail?.id) {
+            if (
+              (!itemDetail?.budget ||
+                !Array.isArray(itemDetail.budget) ||
+                itemDetail.budget.length === 0) &&
+              itemDetail?.id
+            ) {
               try {
                 const detailRes = await getWorkshopData({
                   user_id: user?.id,
@@ -685,9 +847,17 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                   id: itemDetail.id,
                 }).unwrap();
 
-                if (detailRes && (detailRes.status === 'true' || detailRes.status === true) && detailRes.data) {
+                if (
+                  detailRes &&
+                  (detailRes.status === 'true' || detailRes.status === true) &&
+                  detailRes.data
+                ) {
                   let d = detailRes.data;
-                  if (d && Array.isArray(d.workshops) && d.workshops.length > 0) {
+                  if (
+                    d &&
+                    Array.isArray(d.workshops) &&
+                    d.workshops.length > 0
+                  ) {
                     d = d.workshops[0];
                   }
                   itemDetail = { ...(itemDetail || {}), ...d };
@@ -697,35 +867,82 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               }
             }
 
-            const parsedAmount = calculateWorkshopAmount(itemDetail, itemDetail?.budget);
+            const parsedAmount = calculateWorkshopAmount(
+              itemDetail,
+              itemDetail?.budget,
+            );
 
-            const hospName = selectedManagerItem.hospital_name || (hospitalList || []).find(h => String(h.id || h.debtor_no || h.hospital_id) === String(selectedManagerItem.hospital_id))?.name || '';
-            const typeName = WORKSHOP_TYPES.find(w => String(w.id) === String(selectedManagerItem.workshop_type))?.name || '';
-            const segName = PRODUCT_SEGMENTS.find(p => String(p.id) === String(selectedManagerItem.product_segment))?.name || '';
+            const hospName =
+              selectedManagerItem.hospital_name ||
+              (hospitalList || []).find(
+                h =>
+                  String(h.id || h.debtor_no || h.hospital_id) ===
+                  String(selectedManagerItem.hospital_id),
+              )?.name ||
+              '';
+            const typeName =
+              WORKSHOP_TYPES.find(
+                w => String(w.id) === String(selectedManagerItem.workshop_type),
+              )?.name || '';
+            const segName =
+              PRODUCT_SEGMENTS.find(
+                p =>
+                  String(p.id) === String(selectedManagerItem.product_segment),
+              )?.name || '';
 
             const memoParts = [];
-            if (selectedManagerItem.title) memoParts.push(`Title: ${selectedManagerItem.title}`);
+            if (selectedManagerItem.title)
+              memoParts.push(`Title: ${selectedManagerItem.title}`);
             if (hospName) memoParts.push(`Hospital: ${hospName}`);
             if (typeName) memoParts.push(`Type: ${typeName}`);
             if (segName) memoParts.push(`Segment: ${segName}`);
-            if (selectedManagerItem.venue) memoParts.push(`Venue: ${selectedManagerItem.venue}`);
-            const lineMemo = memoParts.length > 0 ? memoParts.join(' | ') : 'Workshop Request';
+            if (selectedManagerItem.venue)
+              memoParts.push(`Venue: ${selectedManagerItem.venue}`);
+            const lineMemo =
+              memoParts.length > 0 ? memoParts.join(' | ') : 'Workshop Request';
 
             const workshopCommentParts = [
               loginUserId ? `Workshop ${loginUserId}` : 'Workshop',
             ];
-            if (selectedManagerItem.title) workshopCommentParts.push(`Title: ${selectedManagerItem.title}`);
-            if (selectedManagerItem.date || selectedManagerItem.tran_date) workshopCommentParts.push(`Date: ${formatToYYYYMMDD(selectedManagerItem.date || selectedManagerItem.tran_date)}`);
+            if (selectedManagerItem.title)
+              workshopCommentParts.push(`Title: ${selectedManagerItem.title}`);
+            if (selectedManagerItem.date || selectedManagerItem.tran_date)
+              workshopCommentParts.push(
+                `Date: ${formatToYYYYMMDD(
+                  selectedManagerItem.date || selectedManagerItem.tran_date,
+                )}`,
+              );
             if (hospName) workshopCommentParts.push(`Hospital: ${hospName}`);
             if (typeName) workshopCommentParts.push(`Type: ${typeName}`);
             if (segName) workshopCommentParts.push(`Segment: ${segName}`);
-            if (selectedManagerItem.hospital_depart) workshopCommentParts.push(`Depart: ${selectedManagerItem.hospital_depart}`);
-            if (selectedManagerItem.venue) workshopCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
-            if (selectedManagerItem.objectives && selectedManagerItem.objectives.trim()) workshopCommentParts.push(`Objectives: ${selectedManagerItem.objectives.trim()}`);
-            if (managerRemarksText && managerRemarksText.trim()) workshopCommentParts.push(`Manager Remarks: ${managerRemarksText.trim()}`);
+            if (selectedManagerItem.hospital_depart)
+              workshopCommentParts.push(
+                `Depart: ${selectedManagerItem.hospital_depart}`,
+              );
+            if (selectedManagerItem.venue)
+              workshopCommentParts.push(`Venue: ${selectedManagerItem.venue}`);
+            if (
+              selectedManagerItem.objectives &&
+              selectedManagerItem.objectives.trim()
+            )
+              workshopCommentParts.push(
+                `Objectives: ${selectedManagerItem.objectives.trim()}`,
+              );
+            if (managerRemarksText && managerRemarksText.trim())
+              workshopCommentParts.push(
+                `Manager Remarks: ${managerRemarksText.trim()}`,
+              );
 
-            const targetUserId = String(selectedManagerItem?.created_by || selectedManagerItem?.user_id || '');
-            const targetEmployeeId = String(selectedManagerItem?.employee_id || selectedManagerItem?.created_by || '');
+            const targetUserId = String(
+              selectedManagerItem?.created_by ||
+                selectedManagerItem?.user_id ||
+                '',
+            );
+            const targetEmployeeId = String(
+              selectedManagerItem?.employee_id ||
+                selectedManagerItem?.created_by ||
+                '',
+            );
 
             const expensePayload = {
               company: 'ANS',
@@ -751,10 +968,20 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               filename: null,
             };
 
-            console.log('💰 [WORKSHOP FIELD EXPENSE PAYMENTS] user_id:', expensePayload.user_id, '| employee_id:', expensePayload.employee_id);
-            console.log('💰 [WORKSHOP FIELD EXPENSE PAYMENTS] Payload:', JSON.stringify(expensePayload, null, 2));
+            console.log(
+              '💰 [WORKSHOP FIELD EXPENSE PAYMENTS] user_id:',
+              expensePayload.user_id,
+              '| employee_id:',
+              expensePayload.employee_id,
+            );
+            console.log(
+              '💰 [WORKSHOP FIELD EXPENSE PAYMENTS] Payload:',
+              JSON.stringify(expensePayload, null, 2),
+            );
 
-            const expRes = await postFieldExpensePayments(expensePayload).unwrap();
+            const expRes = await postFieldExpensePayments(
+              expensePayload,
+            ).unwrap();
             console.log('📥 [FIELD EXPENSE PAYMENTS RESPONSE]:', expRes);
           } catch (expErr) {
             console.log('❌ Error posting field expense payments:', expErr);
@@ -783,23 +1010,39 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
   };
 
   // Options
-  const hospitalList = (hospRes && (hospRes.data || Array.isArray(hospRes))) ? (Array.isArray(hospRes) ? hospRes : hospRes.data) : [];
+  const hospitalList =
+    hospRes && (hospRes.data || Array.isArray(hospRes))
+      ? Array.isArray(hospRes)
+        ? hospRes
+        : hospRes.data
+      : [];
   const hospitalOptions = hospitalList.map(h => ({
     id: String(h.id || h.debtor_no || h.hospital_id || ''),
     name: h.name || h.hospital_name || h.title || 'Hospital',
   }));
 
-  const stockCategoryList = (stockCatRes && (stockCatRes.data || Array.isArray(stockCatRes))) ? (Array.isArray(stockCatRes) ? stockCatRes : stockCatRes.data) : [];
+  const stockCategoryList =
+    stockCatRes && (stockCatRes.data || Array.isArray(stockCatRes))
+      ? Array.isArray(stockCatRes)
+        ? stockCatRes
+        : stockCatRes.data
+      : [];
   const productCategoryOptions = stockCategoryList.map(c => ({
     id: String(c.category_id || c.id || ''),
     name: c.description || c.name || 'Category',
   }));
 
   const renderStatusBadge = statusId => {
-    const info = STATUS_MAP[String(statusId)] || { label: 'Draft', bg: '#FEF3C7', text: '#92400E' };
+    const info = STATUS_MAP[String(statusId)] || {
+      label: 'Draft',
+      bg: '#FEF3C7',
+      text: '#92400E',
+    };
     return (
       <View style={[styles.statusBadge, { backgroundColor: info.bg }]}>
-        <Text style={[styles.statusText, { color: info.text }]}>{info.label}</Text>
+        <Text style={[styles.statusText, { color: info.text }]}>
+          {info.label}
+        </Text>
       </View>
     );
   };
@@ -809,28 +1052,49 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.referenceContainer}>
-            <Icon name="easel-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.referenceText}>{item.reference || `WS-${item.id}`}</Text>
+            <Icon
+              name="easel-outline"
+              size={16}
+              color={theme.colors.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.referenceText}>
+              {item.reference || `WS-${item.id}`}
+            </Text>
           </View>
           <View style={styles.headerRightRow}>
             {renderStatusBadge(item.status_id)}
-            <Text style={styles.cardDateText}>{formatToAsiaDateTime(item.date || item.tran_date, false)}</Text>
+            <Text style={styles.cardDateText}>
+              {formatToAsiaDateTime(item.date || item.tran_date, false)}
+            </Text>
           </View>
         </View>
 
         <View style={styles.divider} />
 
-        {item.title ? <Text style={styles.cardTitleText}>{item.title}</Text> : null}
+        {item.title ? (
+          <Text style={styles.cardTitleText}>{item.title}</Text>
+        ) : null}
 
         <View style={styles.infoRow}>
-          <Icon name="business-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+          <Icon
+            name="business-outline"
+            size={16}
+            color={theme.colors.textSecondary}
+            style={styles.infoIcon}
+          />
           <Text style={styles.infoLabel}>Hospital:</Text>
           <Text style={styles.infoValue}>{item.hospital_name || 'N/A'}</Text>
         </View>
 
         {item.venue ? (
           <View style={styles.infoRow}>
-            <Icon name="location-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="location-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Venue:</Text>
             <Text style={styles.infoValue}>{item.venue}</Text>
           </View>
@@ -838,17 +1102,29 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
         {item.hospital_depart ? (
           <View style={styles.infoRow}>
-            <Icon name="git-network-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="git-network-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Department:</Text>
             <Text style={styles.infoValue}>{item.hospital_depart}</Text>
           </View>
         ) : null}
 
-        {(item.created_by_name || item.created_by) ? (
+        {item.created_by_name || item.created_by ? (
           <View style={styles.infoRow}>
-            <Icon name="person-circle-outline" size={16} color={theme.colors.textSecondary} style={styles.infoIcon} />
+            <Icon
+              name="person-circle-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+              style={styles.infoIcon}
+            />
             <Text style={styles.infoLabel}>Created By:</Text>
-            <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.created_by_name || item.created_by}</Text>
+            <Text style={[styles.infoValue, { fontWeight: '700' }]}>
+              {item.created_by_name || item.created_by}
+            </Text>
           </View>
         ) : null}
 
@@ -862,7 +1138,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
         {item.manager_remarks ? (
           <View style={styles.managerRemarksBox}>
             <Text style={styles.managerRemarksLabel}>Manager Remarks:</Text>
-            <Text style={styles.managerRemarksText}>{item.manager_remarks}</Text>
+            <Text style={styles.managerRemarksText}>
+              {item.manager_remarks}
+            </Text>
           </View>
         ) : null}
 
@@ -873,7 +1151,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               onPress={() => openFormModal('update', item)}
               activeOpacity={0.7}
             >
-              <Icon name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <Icon
+                name="create-outline"
+                size={18}
+                color={theme.colors.primary}
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.updateCardBtnText}>Update</Text>
             </TouchableOpacity>
           ) : (
@@ -882,7 +1165,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               onPress={() => openManagerStatusModal(item)}
               activeOpacity={0.7}
             >
-              <Icon name="options-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Icon
+                name="options-outline"
+                size={18}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.statusManagerCardBtnText}>Status</Text>
             </TouchableOpacity>
           )}
@@ -893,15 +1181,31 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
   const filteredWorkshopList = workshopList.filter(item => {
     if (selectedStatusFilter && selectedStatusFilter !== 'all') {
-      const sId = String(item.status_id !== undefined && item.status_id !== null ? item.status_id : '').trim();
-      const statusName = String(item.status || item.status_name || '').trim().toLowerCase();
+      const sId = String(
+        item.status_id !== undefined && item.status_id !== null
+          ? item.status_id
+          : '',
+      ).trim();
+      const statusName = String(item.status || item.status_name || '')
+        .trim()
+        .toLowerCase();
 
-      if (selectedStatusFilter === '1') return sId === '1' || statusName === 'draft';
-      if (selectedStatusFilter === '2') return sId === '2' || statusName === 'submit for approval' || statusName === 'pending';
-      if (selectedStatusFilter === '3') return sId === '3' || statusName === 'approved';
-      if (selectedStatusFilter === '4') return sId === '4' || statusName === 'rejected';
-      if (selectedStatusFilter === '5') return sId === '5' || statusName === 'resubmit';
-      if (selectedStatusFilter === '6') return sId === '6' || statusName === 'completed';
+      if (selectedStatusFilter === '1')
+        return sId === '1' || statusName === 'draft';
+      if (selectedStatusFilter === '2')
+        return (
+          sId === '2' ||
+          statusName === 'submit for approval' ||
+          statusName === 'pending'
+        );
+      if (selectedStatusFilter === '3')
+        return sId === '3' || statusName === 'approved';
+      if (selectedStatusFilter === '4')
+        return sId === '4' || statusName === 'rejected';
+      if (selectedStatusFilter === '5')
+        return sId === '5' || statusName === 'resubmit';
+      if (selectedStatusFilter === '6')
+        return sId === '6' || statusName === 'completed';
 
       return sId === String(selectedStatusFilter);
     }
@@ -945,17 +1249,27 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Icon name="easel-outline" size={48} color={theme.colors.textSecondary} />
+              <Icon
+                name="easel-outline"
+                size={48}
+                color={theme.colors.textSecondary}
+              />
               <Text style={styles.emptyTitle}>No Workshop Requests</Text>
               <Text style={styles.emptySubtext}>
-                Tap the (+) icon in the top right header to add a new workshop request.
+                Tap the (+) icon in the top right header to add a new workshop
+                request.
               </Text>
               <TouchableOpacity
                 style={styles.addFirstBtn}
                 onPress={() => openFormModal('add')}
                 activeOpacity={0.8}
               >
-                <Icon name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Icon
+                  name="add"
+                  size={20}
+                  color="#FFFFFF"
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={styles.addFirstBtnText}>Add Workshop Request</Text>
               </TouchableOpacity>
             </View>
@@ -1006,7 +1320,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
               <View style={styles.modalHeaderTitleContainer}>
                 <Text style={styles.customModalHeaderTitle} numberOfLines={1}>
-                  {formMode === 'update' ? 'Update Workshop Request' : 'Add Workshop Request'}
+                  {formMode === 'update'
+                    ? 'Update Workshop Request'
+                    : 'Add Workshop Request'}
                 </Text>
               </View>
 
@@ -1021,7 +1337,10 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalCard}>
               {/* Workshop Title */}
               <Text style={styles.fieldLabel}>
@@ -1029,7 +1348,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Title e.g. New Product Introduction"
+                placeholder="Title  New Product Introduction"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={title}
                 onChangeText={setTitle}
@@ -1044,8 +1363,14 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.dateText}>{requestDate || 'Select Date'}</Text>
-                <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.dateText}>
+                  {requestDate || 'Select Date'}
+                </Text>
+                <Icon
+                  name="calendar-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
 
               {/* Hospital Dropdown */}
@@ -1055,7 +1380,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                   placeholder="Select Hospital..."
                   data={hospitalOptions}
                   selectedId={selectedHospitalId}
-                  onSelect={item => setSelectedHospitalId(item.id || item.debtor_no)}
+                  onSelect={item =>
+                    setSelectedHospitalId(item.id || item.debtor_no)
+                  }
                   isLoading={hospLoading}
                   iconName="business-outline"
                 />
@@ -1065,17 +1392,19 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Venue</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Venue e.g. Karachi"
+                placeholder="Venue  Karachi"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={venue}
                 onChangeText={setVenue}
               />
 
               {/* Department / Specialty Text Input */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Department / Specialty</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Department / Specialty
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Department e.g. Cardio / Surgery"
+                placeholder="Department  Cardio / Surgery"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={hospitalDepart}
                 onChangeText={setHospitalDepart}
@@ -1110,7 +1439,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                 <SearchableDropdown
                   label="Status"
                   placeholder="Select Status..."
-                  data={isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER}
+                  data={
+                    isRole3 ? STATUS_OPTIONS_ROLE_3 : STATUS_OPTIONS_MANAGER
+                  }
                   idKey="id"
                   labelKey="name"
                   selectedId={selectedStatusId}
@@ -1120,7 +1451,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               </View>
 
               {/* Objectives */}
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Objectives</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                Objectives
+              </Text>
               <TextInput
                 style={styles.textArea}
                 placeholder="Objectives or goals..."
@@ -1135,8 +1468,15 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               {/* Section: Key Products */}
               <View style={styles.sectionHeaderBox}>
                 <Text style={styles.sectionHeaderTitle}>Key Products</Text>
-                <TouchableOpacity onPress={addKeyProductRow} style={styles.addRowBtn}>
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                <TouchableOpacity
+                  onPress={addKeyProductRow}
+                  style={styles.addRowBtn}
+                >
+                  <Icon
+                    name="add-circle-outline"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text style={styles.addRowBtnText}>Add Product</Text>
                 </TouchableOpacity>
               </View>
@@ -1144,9 +1484,13 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
               {keyProducts.map((kp, idx) => (
                 <View key={kp.id || `kp_${idx}`} style={styles.dynamicRowCard}>
                   <View style={styles.dynamicRowHeader}>
-                    <Text style={styles.dynamicRowTitle}>Product #{idx + 1}</Text>
+                    <Text style={styles.dynamicRowTitle}>
+                      Product #{idx + 1}
+                    </Text>
                     {keyProducts.length > 1 && (
-                      <TouchableOpacity onPress={() => removeKeyProductRow(idx)}>
+                      <TouchableOpacity
+                        onPress={() => removeKeyProductRow(idx)}
+                      >
                         <Icon name="trash-outline" size={18} color="#EF4444" />
                       </TouchableOpacity>
                     )}
@@ -1159,7 +1503,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                     idKey="id"
                     labelKey="name"
                     selectedId={kp.prod_category}
-                    onSelect={item => updateKeyProduct(idx, 'prod_category', item.id)}
+                    onSelect={item =>
+                      updateKeyProduct(idx, 'prod_category', item.id)
+                    }
                     isLoading={stockCatLoading}
                     iconName="cube-outline"
                   />
@@ -1169,10 +1515,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Size Code</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. 2-0"
+                        placeholder=" 2-0"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={kp.size_code}
-                        onChangeText={v => updateKeyProduct(idx, 'size_code', v)}
+                        onChangeText={v =>
+                          updateKeyProduct(idx, 'size_code', v)
+                        }
                       />
                     </View>
                     <View style={{ flex: 1, marginLeft: 6 }}>
@@ -1188,10 +1536,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                     </View>
                   </View>
 
-                  <Text style={[styles.subLabel, { marginTop: 6 }]}>Purpose</Text>
+                  <Text style={[styles.subLabel, { marginTop: 6 }]}>
+                    Purpose
+                  </Text>
                   <TextInput
                     style={styles.textInputSmall}
-                    placeholder="Purpose e.g. Product Demonstration"
+                    placeholder="Purpose  Product Demonstration"
                     placeholderTextColor={theme.colors.textSecondary}
                     value={kp.purpose}
                     onChangeText={v => updateKeyProduct(idx, 'purpose', v)}
@@ -1201,7 +1551,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
               {/* Section: Audience */}
               <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
-                <Text style={styles.sectionHeaderTitle}>Audience Breakdown</Text>
+                <Text style={styles.sectionHeaderTitle}>
+                  Audience Breakdown
+                </Text>
               </View>
               {audienceList.map((aud, idx) => (
                 <View key={idx} style={styles.audienceRow}>
@@ -1219,17 +1571,31 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
 
               {/* Section: Materials & Agenda */}
               <View style={[styles.sectionHeaderBox, { marginTop: 20 }]}>
-                <Text style={styles.sectionHeaderTitle}>Materials & Agenda</Text>
-                <TouchableOpacity onPress={addMaterialRow} style={styles.addRowBtn}>
-                  <Icon name="add-circle-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.sectionHeaderTitle}>
+                  Materials & Agenda
+                </Text>
+                <TouchableOpacity
+                  onPress={addMaterialRow}
+                  style={styles.addRowBtn}
+                >
+                  <Icon
+                    name="add-circle-outline"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text style={styles.addRowBtnText}>Add Material</Text>
                 </TouchableOpacity>
               </View>
 
               {materialsList.map((mat, idx) => (
-                <View key={mat.id || `mat_${idx}`} style={styles.dynamicRowCard}>
+                <View
+                  key={mat.id || `mat_${idx}`}
+                  style={styles.dynamicRowCard}
+                >
                   <View style={styles.dynamicRowHeader}>
-                    <Text style={styles.dynamicRowTitle}>Material #{idx + 1}</Text>
+                    <Text style={styles.dynamicRowTitle}>
+                      Material #{idx + 1}
+                    </Text>
                     {materialsList.length > 1 && (
                       <TouchableOpacity onPress={() => removeMaterialRow(idx)}>
                         <Icon name="trash-outline" size={18} color="#EF4444" />
@@ -1240,10 +1606,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                   <Text style={styles.subLabel}>Material / Equipment</Text>
                   <TextInput
                     style={styles.textInputSmall}
-                    placeholder="e.g. Projector / Demo Kit"
+                    placeholder=" Projector / Demo Kit"
                     placeholderTextColor={theme.colors.textSecondary}
                     value={mat.material_agenda}
-                    onChangeText={v => updateMaterial(idx, 'material_agenda', v)}
+                    onChangeText={v =>
+                      updateMaterial(idx, 'material_agenda', v)
+                    }
                   />
 
                   <View style={styles.inlineInputsRow}>
@@ -1251,7 +1619,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Qty / Size</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. 1"
+                        placeholder=" 1"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={mat.size_qty}
                         onChangeText={v => updateMaterial(idx, 'size_qty', v)}
@@ -1261,7 +1629,7 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                       <Text style={styles.subLabel}>Time</Text>
                       <TextInput
                         style={styles.textInputSmall}
-                        placeholder="e.g. 10:00:00"
+                        placeholder=" 10:00:00"
                         placeholderTextColor={theme.colors.textSecondary}
                         value={mat.time}
                         onChangeText={v => updateMaterial(idx, 'time', v)}
@@ -1269,10 +1637,12 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                     </View>
                   </View>
 
-                  <Text style={[styles.subLabel, { marginTop: 6 }]}>Agenda Item</Text>
+                  <Text style={[styles.subLabel, { marginTop: 6 }]}>
+                    Agenda Item
+                  </Text>
                   <TextInput
                     style={styles.textInputSmall}
-                    placeholder="Agenda e.g. Introduction / Demonstration"
+                    placeholder="Agenda  Introduction / Demonstration"
                     placeholderTextColor={theme.colors.textSecondary}
                     value={mat.agenda}
                     onChangeText={v => updateMaterial(idx, 'agenda', v)}
@@ -1347,9 +1717,16 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Icon name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Icon
+                        name="checkmark-done-outline"
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
                       <Text style={styles.submitText}>
-                        {formMode === 'update' ? 'Update Workshop Request' : 'Save Workshop Request'}
+                        {formMode === 'update'
+                          ? 'Update Workshop Request'
+                          : 'Save Workshop Request'}
                       </Text>
                     </>
                   )}
@@ -1372,19 +1749,38 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             style={styles.statusModalBg}
             onPress={() => setIsManagerStatusModalVisible(false)}
           />
-          <View style={[styles.statusModalSheet, { backgroundColor: theme.colors.surface }]}>
-            <View style={[styles.modalSheetHandle, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.statusModalTitle, { color: theme.colors.text }]}>
+          <View
+            style={[
+              styles.statusModalSheet,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalSheetHandle,
+                { backgroundColor: theme.colors.border },
+              ]}
+            />
+            <Text
+              style={[styles.statusModalTitle, { color: theme.colors.text }]}
+            >
               Update Workshop Status
             </Text>
 
             {selectedManagerItem ? (
               <View style={styles.managerSummaryBox}>
                 <Text style={styles.summaryRefText}>
-                  {selectedManagerItem.reference || `WS-${selectedManagerItem.id}`} - {selectedManagerItem.title || selectedManagerItem.hospital_name || 'Workshop'}
+                  {selectedManagerItem.reference ||
+                    `WS-${selectedManagerItem.id}`}{' '}
+                  -{' '}
+                  {selectedManagerItem.title ||
+                    selectedManagerItem.hospital_name ||
+                    'Workshop'}
                 </Text>
                 {selectedManagerItem.venue ? (
-                  <Text style={styles.summaryAmountText}>Venue: {selectedManagerItem.venue}</Text>
+                  <Text style={styles.summaryAmountText}>
+                    Venue: {selectedManagerItem.venue}
+                  </Text>
                 ) : null}
               </View>
             ) : null}
@@ -1404,7 +1800,9 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
             </View>
 
             {/* Manager Remarks Input */}
-            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Manager Remarks</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
+              Manager Remarks
+            </Text>
             <TextInput
               style={styles.textArea}
               placeholder="Enter remarks for status change..."
@@ -1427,8 +1825,15 @@ const CRMWorkshopRequestScreen = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Icon name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.saveManagerStatusBtnText}>Update Status</Text>
+                  <Icon
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.saveManagerStatusBtnText}>
+                    Update Status
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

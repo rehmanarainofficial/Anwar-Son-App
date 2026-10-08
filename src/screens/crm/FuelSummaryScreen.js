@@ -62,7 +62,7 @@ const FuelSummaryScreen = ({ navigation }) => {
   const [fuelSummary, setFuelSummary] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Generate 10 Years List starting from current year (e.g. 2026 to 2035, no previous years)
+  // Generate 10 Years List starting from current year ( 2026 to 2035, no previous years)
   useEffect(() => {
     const years = [];
     const curY = new Date().getFullYear();
@@ -92,7 +92,12 @@ const FuelSummaryScreen = ({ navigation }) => {
 
       if (rawArr.length > 0) {
         const list = rawArr.map(m => ({
-          label: m.description || m.month_name || m.name || m.title || `Month ${m.id || m.month_id}`,
+          label:
+            m.description ||
+            m.month_name ||
+            m.name ||
+            m.title ||
+            `Month ${m.id || m.month_id}`,
           value: String(m.id || m.month_id || m.value),
         }));
         setMonthsList(list);
@@ -125,7 +130,15 @@ const FuelSummaryScreen = ({ navigation }) => {
         console.log('Error fetching salesman fuel summary:', error);
       }
     },
-    [getSalesmanFuelSummary, user?.emp_code, user?.id, user?.user_id, user?.role_id, selectedYear, selectedMonth],
+    [
+      getSalesmanFuelSummary,
+      user?.emp_code,
+      user?.id,
+      user?.user_id,
+      user?.role_id,
+      selectedYear,
+      selectedMonth,
+    ],
   );
 
   useEffect(() => {
@@ -246,21 +259,32 @@ const FuelSummaryScreen = ({ navigation }) => {
             {rules && (
               <View style={styles.rulesCard}>
                 <View style={styles.rulesHeader}>
-                  <Icon name="information-circle" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                  <Icon
+                    name="information-circle"
+                    size={18}
+                    color={theme.colors.primary}
+                    style={{ marginRight: 6 }}
+                  />
                   <Text style={styles.rulesTitle}>Fuel Rules & Criteria</Text>
                 </View>
                 <View style={styles.rulesRow}>
                   <View style={styles.ruleBadge}>
                     <Text style={styles.ruleBadgeLabel}>Attendance</Text>
-                    <Text style={styles.ruleBadgeVal}>≤ {rules.attendance_before_or_at || '09:05:00'}</Text>
+                    <Text style={styles.ruleBadgeVal}>
+                      ≤ {rules.attendance_before_or_at || '09:05:00'}
+                    </Text>
                   </View>
                   <View style={styles.ruleBadge}>
                     <Text style={styles.ruleBadgeLabel}>Progress Update</Text>
-                    <Text style={styles.ruleBadgeVal}>≤ {rules.progress_before || '12:00:00'}</Text>
+                    <Text style={styles.ruleBadgeVal}>
+                      ≤ {rules.progress_before || '12:00:00'}
+                    </Text>
                   </View>
                   <View style={styles.ruleBadgePrimary}>
                     <Text style={styles.ruleBadgeLabelPrimary}>Allowance</Text>
-                    <Text style={styles.ruleBadgeValPrimary}>{rules.fuel_if_both_valid || '3L'}/day</Text>
+                    <Text style={styles.ruleBadgeValPrimary}>
+                      {rules.fuel_if_both_valid || '3L'}/day
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -269,34 +293,68 @@ const FuelSummaryScreen = ({ navigation }) => {
             {/* Summary Overview Grid */}
             <View style={styles.summaryGrid}>
               <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconWrap, { backgroundColor: theme.colors.primary + '18' }]}>
-                  <Icon name="calendar-outline" size={20} color={theme.colors.primary} />
+                <View
+                  style={[
+                    styles.summaryIconWrap,
+                    { backgroundColor: theme.colors.primary + '18' },
+                  ]}
+                >
+                  <Icon
+                    name="calendar-outline"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                 </View>
-                <Text style={styles.summaryVal}>{summary.attendance_days || 0}</Text>
+                <Text style={styles.summaryVal}>
+                  {summary.attendance_days || 0}
+                </Text>
                 <Text style={styles.summaryLabel}>Attendance Days</Text>
               </View>
 
               <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconWrap, { backgroundColor: '#3B82F618' }]}>
+                <View
+                  style={[
+                    styles.summaryIconWrap,
+                    { backgroundColor: '#3B82F618' },
+                  ]}
+                >
                   <Icon name="trending-up-outline" size={20} color="#3B82F6" />
                 </View>
-                <Text style={styles.summaryVal}>{summary.progress_days || 0}</Text>
+                <Text style={styles.summaryVal}>
+                  {summary.progress_days || 0}
+                </Text>
                 <Text style={styles.summaryLabel}>Progress Days</Text>
               </View>
 
               <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconWrap, { backgroundColor: '#10B98118' }]}>
-                  <Icon name="checkmark-done-circle-outline" size={20} color="#10B981" />
+                <View
+                  style={[
+                    styles.summaryIconWrap,
+                    { backgroundColor: '#10B98118' },
+                  ]}
+                >
+                  <Icon
+                    name="checkmark-done-circle-outline"
+                    size={20}
+                    color="#10B981"
+                  />
                 </View>
                 <Text style={styles.summaryVal}>{summary.fuel_days || 0}</Text>
                 <Text style={styles.summaryLabel}>Fuel Days</Text>
               </View>
 
               <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconWrap, { backgroundColor: '#F59E0B18' }]}>
+                <View
+                  style={[
+                    styles.summaryIconWrap,
+                    { backgroundColor: '#F59E0B18' },
+                  ]}
+                >
                   <Icon name="color-fill-outline" size={20} color="#F59E0B" />
                 </View>
-                <Text style={[styles.summaryVal, { color: '#F59E0B' }]}>{summary.total_fuel || '0L'}</Text>
+                <Text style={[styles.summaryVal, { color: '#F59E0B' }]}>
+                  {summary.total_fuel || '0L'}
+                </Text>
                 <Text style={styles.summaryLabel}>Total Fuel</Text>
               </View>
             </View>
@@ -305,14 +363,22 @@ const FuelSummaryScreen = ({ navigation }) => {
             <View style={styles.tableTitleWrap}>
               <View style={styles.accentBar} />
               <Text style={styles.tableTitleText}>
-                {monthData.name ? `${monthData.name.toUpperCase()} BREAKDOWN` : 'DAILY FUEL BREAKDOWN'}
+                {monthData.name
+                  ? `${monthData.name.toUpperCase()} BREAKDOWN`
+                  : 'DAILY FUEL BREAKDOWN'}
               </Text>
             </View>
 
             {dailyList.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Icon name="file-tray-outline" size={40} color={theme.colors.textSecondary} />
-                <Text style={styles.emptyText}>No fuel record found for selected period.</Text>
+                <Icon
+                  name="file-tray-outline"
+                  size={40}
+                  color={theme.colors.textSecondary}
+                />
+                <Text style={styles.emptyText}>
+                  No fuel record found for selected period.
+                </Text>
               </View>
             ) : (
               <View style={styles.tableCard}>
@@ -322,26 +388,46 @@ const FuelSummaryScreen = ({ navigation }) => {
                     <View style={styles.tableHeaderRow}>
                       <Text style={[styles.thCell, { width: 95 }]}>Date</Text>
                       <Text style={[styles.thCell, { width: 55 }]}>Day</Text>
-                      <Text style={[styles.thCell, { width: 125 }]}>Attendance</Text>
-                      <Text style={[styles.thCell, { width: 125 }]}>Progress</Text>
-                      <Text style={[styles.thCell, { width: 85, textAlign: 'right' }]}>Fuel Allowed</Text>
+                      <Text style={[styles.thCell, { width: 125 }]}>
+                        Attendance
+                      </Text>
+                      <Text style={[styles.thCell, { width: 125 }]}>
+                        Progress
+                      </Text>
+                      <Text
+                        style={[
+                          styles.thCell,
+                          { width: 85, textAlign: 'right' },
+                        ]}
+                      >
+                        Fuel Allowed
+                      </Text>
                     </View>
 
                     {/* Table Body */}
                     {dailyList.map((row, index) => {
                       const isAttYes = row.attendance === 'Yes';
                       const isProgYes = row.progress_update === 'Yes';
-                      const hasFuel = row.fuel_allowed && row.fuel_allowed !== '0L';
+                      const hasFuel =
+                        row.fuel_allowed && row.fuel_allowed !== '0L';
 
                       return (
                         <View
                           key={index}
                           style={[
                             styles.tableBodyRow,
-                            index % 2 === 1 && { backgroundColor: theme.colors.background + '60' },
+                            index % 2 === 1 && {
+                              backgroundColor: theme.colors.background + '60',
+                            },
                           ]}
                         >
-                          <Text style={[styles.tdCell, styles.dateText, { width: 95 }]}>
+                          <Text
+                            style={[
+                              styles.tdCell,
+                              styles.dateText,
+                              { width: 95 },
+                            ]}
+                          >
                             {row.date}
                           </Text>
 
@@ -349,11 +435,17 @@ const FuelSummaryScreen = ({ navigation }) => {
                             {row.day}
                           </Text>
 
-                          <View style={{ width: 125, justifyContent: 'center' }}>
+                          <View
+                            style={{ width: 125, justifyContent: 'center' }}
+                          >
                             <View
                               style={[
                                 styles.badge,
-                                { backgroundColor: isAttYes ? '#10B98118' : '#EF444418' },
+                                {
+                                  backgroundColor: isAttYes
+                                    ? '#10B98118'
+                                    : '#EF444418',
+                                },
                               ]}
                             >
                               <Text
@@ -362,16 +454,24 @@ const FuelSummaryScreen = ({ navigation }) => {
                                   { color: isAttYes ? '#10B981' : '#EF4444' },
                                 ]}
                               >
-                                {isAttYes ? `Yes (${row.attendance_time})` : 'No'}
+                                {isAttYes
+                                  ? `Yes (${row.attendance_time})`
+                                  : 'No'}
                               </Text>
                             </View>
                           </View>
 
-                          <View style={{ width: 125, justifyContent: 'center' }}>
+                          <View
+                            style={{ width: 125, justifyContent: 'center' }}
+                          >
                             <View
                               style={[
                                 styles.badge,
-                                { backgroundColor: isProgYes ? '#10B98118' : '#EF444418' },
+                                {
+                                  backgroundColor: isProgYes
+                                    ? '#10B98118'
+                                    : '#EF444418',
+                                },
                               ]}
                             >
                               <Text
@@ -380,7 +480,9 @@ const FuelSummaryScreen = ({ navigation }) => {
                                   { color: isProgYes ? '#10B981' : '#EF4444' },
                                 ]}
                               >
-                                {isProgYes ? `Yes (${row.progress_time || 'Done'})` : 'No'}
+                                {isProgYes
+                                  ? `Yes (${row.progress_time || 'Done'})`
+                                  : 'No'}
                               </Text>
                             </View>
                           </View>
@@ -392,7 +494,9 @@ const FuelSummaryScreen = ({ navigation }) => {
                               {
                                 width: 85,
                                 textAlign: 'right',
-                                color: hasFuel ? theme.colors.primary : theme.colors.textSecondary,
+                                color: hasFuel
+                                  ? theme.colors.primary
+                                  : theme.colors.textSecondary,
                               },
                             ]}
                           >
@@ -404,8 +508,19 @@ const FuelSummaryScreen = ({ navigation }) => {
 
                     {/* Table Footer */}
                     <View style={styles.tableFooterRow}>
-                      <Text style={[styles.tfCell, { width: 400 }]}>Total Fuel Allowance</Text>
-                      <Text style={[styles.tfCell, { width: 85, textAlign: 'right', color: theme.colors.primary }]}>
+                      <Text style={[styles.tfCell, { width: 400 }]}>
+                        Total Fuel Allowance
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tfCell,
+                          {
+                            width: 85,
+                            textAlign: 'right',
+                            color: theme.colors.primary,
+                          },
+                        ]}
+                      >
                         {summary.total_fuel || '0L'}
                       </Text>
                     </View>
